@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SparkQuest</string>
+    <string name="title_activity_main">SparkQuest</string>
+    <string name="package_name">com.sparkquest.app</string>
+    <string name="custom_url_scheme">com.sparkquest.app</string>
+</resources>

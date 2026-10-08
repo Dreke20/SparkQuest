@@ -1,0 +1,1689 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>SparkQuest — Where Every Login Sparks Something New</title>
+  <meta name="description"
+    content="SparkQuest: Gamified dating app with Proof of Presence rewards, Daily Quests, and a Neon Night experience." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800;900&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="style-leaflet.css" />
+  <!-- Leaflet JS -->
+  <script src="js/leaflet.js"></script>
+  <link rel="manifest" href="manifest.json" />
+  <script>
+    // RESET old service worker cache, then re-register with network-first SW
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', async () => {
+        // Unregister ALL existing service workers
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          await reg.unregister();
+          console.log('Old Service Worker unregistered');
+        }
+        // Clear ALL caches
+        const cacheNames = await caches.keys();
+        for (const name of cacheNames) {
+          await caches.delete(name);
+          console.log('Cache deleted:', name);
+        }
+        // Re-register with new network-first SW
+        navigator.serviceWorker.register('/service-worker.js')
+          .then(reg => console.log('Service Worker registered (v2 network-first)'))
+          .catch(err => console.log('Service Worker registration failed: ', err));
+      });
+    }
+  </script>
+</head>
+<!-- ERROR HANDLER -->
+<script>
+  window.onerror = function (msg, url, lineNo, columnNo, error) {
+    if (msg.includes('Script error')) return; // Ignore noisy cross-domain errors
+    var string = msg.toLowerCase();
+    var substring = "script error";
+    if (string.indexOf(substring) > -1) {
+      alert('Script Error: See Browser Console for Detail');
+    } else {
+      var message = [
+        'Message: ' + msg,
+        'URL: ' + url,
+        'Line: ' + lineNo
+      ].join('\n');
+
+      alert("ERROR: " + message);
+    }
+    return false;
+  };
+</script>
+
+<body>
+
+  <!-- ========== TOAST CONTAINER ========== -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- ========== SPLASH SCREEN ========== -->
+  <div id="splash-screen" class="screen splash-screen active">
+    <div class="splash-bg"></div>
+    <div class="splash-particles" id="splash-particles"></div>
+    <div class="splash-content">
+      <div class="splash-logo">
+        <div class="spark-icon">🔥</div>
+        <h1 class="logo-text">Spark<span>Quest</span></h1>
+      </div>
+      <p class="splash-tagline">Where every login sparks something new</p>
+      <div class="splash-actions">
+        <button class="btn-primary" id="btn-get-started" onclick="showLoginReward()">Get Started</button>
+        <p class="splash-login-link">Already have an account? <a href="#" onclick="showLoginReward()">Log in</a></p>
+        <p class="legal-link-splash"><a href="#" onclick="openLegalModal()">Terms & Privacy</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== LEGAL MODAL ========== -->
+  <div id="legal-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card legal-modal">
+      <h2>Terms & Privacy</h2>
+      <div class="legal-content">
+        <p><strong>1. Terms of Service</strong></p>
+        <p>By using SparkQuest, you agree to our terms. This is a prototype application. No real dates, no real money.
+        </p>
+        <p><strong>2. Privacy Policy</strong></p>
+        <p>We use your customized profile data only for the duration of this session. LocalStorage is used to save your
+          progress.</p>
+        <p><strong>3. Age Verification</strong></p>
+        <p>You must be 18+ to use this application.</p>
+      </div>
+      <div class="legal-actions">
+        <button class="btn-primary" onclick="acceptLegal()">Accept & Continue</button>
+        <button class="btn-secondary" onclick="closeModal('legal-modal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== LOGIN REWARD MODAL ========== -->
+  <div id="login-reward-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card reward-modal">
+      <div class="reward-flame">🔥</div>
+      <h2>Daily Login Reward!</h2>
+      <p class="reward-subtitle">Day <span id="streak-day">3</span> Streak</p>
+      <div class="reward-amount">
+        <span class="ember-icon">✦</span>
+        <span class="reward-number" id="reward-embers">25</span>
+        <span class="reward-label">Embers</span>
+      </div>
+      <div class="streak-dots">
+        <div class="streak-dot filled">1</div>
+        <div class="streak-dot filled">2</div>
+        <div class="streak-dot filled current">3</div>
+        <div class="streak-dot">4</div>
+        <div class="streak-dot">5</div>
+        <div class="streak-dot">6</div>
+        <div class="streak-dot bonus">7</div>
+      </div>
+      <p class="streak-hint">Keep your streak for a 75 Ember bonus on Day 7!</p>
+      <button class="btn-primary" onclick="claimReward()">Claim & Enter</button>
+    </div>
+  </div>
+
+  <!-- ========== MEDIA UPSELL MODAL ========== -->
+  <div id="media-upsell-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card upsell-modal">
+      <button class="modal-close" onclick="closeModal('media-upsell-modal')">✕</button>
+      <div class="upsell-icon">📹</div>
+      <h2>Unlock Video Sharing</h2>
+      <p class="upsell-desc">Post video stories and send video messages to your matches with a Premium subscription.</p>
+      <ul class="upsell-features">
+        <li>✨ HD Video Stories</li>
+        <li>💬 Video Chat Messages</li>
+        <li>🛡️ Verified Creator Badge</li>
+      </ul>
+      <button class="btn-primary" onclick="mockSubscribe()">Subscribe to Gold ($29.99/mo)</button>
+      <button class="btn-secondary" onclick="closeModal('media-upsell-modal')">Maybe Later</button>
+    </div>
+  </div>
+
+  <!-- ========== CAMERA MODAL ========== -->
+  <div id="camera-modal" class="modal-overlay camera-modal" style="display:none;">
+    <div class="camera-viewfinder">
+      <div class="camera-placeholder-text">Camera Preview</div>
+      <!-- Simulated Recording UI -->
+      <div class="recording-timer" id="camera-timer" style="display:none;">00:00</div>
+    </div>
+    <div class="camera-overlay-ui">
+      <button class="camera-btn close" onclick="closeCamera()">✕</button>
+      <button class="camera-btn flip" onclick="flipCamera()">🔄</button>
+      <div class="camera-bottom-bar">
+        <button class="camera-gallery-btn">🖼️</button>
+        <button class="camera-shutter" id="camera-shutter" onmousedown="startRecording()" onmouseup="stopRecording()"
+          ontouchstart="startRecording()" ontouchend="stopRecording()"></button>
+        <button class="camera-effect-btn">✨</button>
+      </div>
+    </div>
+    <!-- Preview / Post UI -->
+    <div class="camera-preview-ui" id="camera-preview-ui" style="display:none;">
+      <div class="preview-actions">
+        <button class="btn-secondary" onclick="retakeVideo()">Retake</button>
+        <button class="btn-primary" onclick="postVideo()">Post / Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== MAIN APP ========== -->
+  <div id="app" class="app-container" style="display:none;">
+
+    <!-- Daily Login Modal -->
+    <div id="daily-login-modal" class="modal-overlay" style="display:none; z-index:999;">
+      <div class="modal-content" style="text-align:center;">
+        <h2 style="color:var(--primary-color);">Daily Reward! 🎁</h2>
+        <p>You logged in <span id="daily-streak">1</span> day(s) in a row!</p>
+        <div style="font-size:4em; margin: 20px 0;">🔥</div>
+        <p><strong>+50 Embers</strong></p>
+        <button class="btn-primary" onclick="claimDailyReward()">Claim</button>
+      </div>
+    </div>
+
+    <!-- Top Bar -->
+    <header class="top-bar">
+      <div class="top-bar-left">
+        <span class="logo-small">🔥 Spark<span>Quest</span></span>
+      </div>
+      <div class="top-bar-right">
+        <div class="ember-balance" onclick="navigate('wallet')">
+          <span class="ember-icon">✦</span>
+          <span id="ember-count">325</span>
+        </div>
+        <div class="notification-bell" onclick="navigate('chat')">
+          💬
+          <span class="notif-badge">3</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- ========== SCREENS ========== -->
+
+    <!-- HOME / SWIPE DECK -->
+    <section id="screen-home" class="app-screen active">
+      <!-- Dynamic Filter -->
+      <div class="deck-filter" style="padding: 10px 15px; text-align: right;">
+        <select id="profile-filter" onchange="window.applyProfileFilter()" style="padding: 6px 12px; border-radius: 15px; background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--primary-color); font-size: 0.9em;">
+          <option value="all">🔍 All Vibes</option>
+          <option value="Foodie">🍣 Foodie</option>
+          <option value="Gamer">🎮 Gamer</option>
+          <option value="Fitness">🏋️ Fitness</option>
+          <option value="Art">🎨 Art</option>
+          <option value="Travel">✈️ Travel</option>
+        </select>
+      </div>
+      <!-- Stories Row -->
+      <div class="stories-row" id="stories-row">
+        <div class="story-avatar add-story" onclick="addStory()">
+          <div class="story-avatar-img user-story">
+            <img src="img/alex.png" alt="You" />
+          </div>
+          <span class="story-add-icon">+</span>
+          <span class="story-name">Your Story</span>
+        </div>
+        <div class="story-avatar has-story" onclick="openStory('sophia')">
+          <div class="story-avatar-img"><img src="img/sophia.png" alt="Sophia" /></div>
+          <span class="story-name">Sophia</span>
+        </div>
+        <div class="story-avatar has-story" onclick="openStory('jordan')">
+          <div class="story-avatar-img"><img src="img/jordan.png" alt="Jordan" /></div>
+          <span class="story-name">Jordan</span>
+        </div>
+        <div class="story-avatar" onclick="openStory('maya')">
+          <div class="story-avatar-img"><img src="img/maya.png" alt="Maya" /></div>
+          <span class="story-name">Maya</span>
+        </div>
+        <div class="story-avatar has-story" onclick="openStory('taylor')">
+          <div class="story-avatar-img"><img src="img/taylor.png" alt="Taylor" /></div>
+          <span class="story-name">Taylor</span>
+        </div>
+      </div>
+
+      <div class="swipe-deck" id="swipe-deck">
+        <!-- Cards generated by JS -->
+      </div>
+      <div class="swipe-actions">
+        <button class="action-btn undo" id="btn-undo" onclick="undoSwipe()">↩</button>
+        <button class="action-btn pass" id="btn-pass" onclick="swipeAction('left')">✕</button>
+        <button class="action-btn superlike" id="btn-superlike" onclick="swipeAction('superlike')">⭐</button>
+        <button class="action-btn like" id="btn-like" onclick="swipeAction('right')">♥</button>
+        <button class="action-btn boost" id="btn-boost" onclick="openBoostModal()">⚡</button>
+      </div>
+      <button class="btn-secondary" style="width: calc(100% - 40px); margin: 10px 20px; font-weight: bold; border: 1px solid var(--primary-color); box-sizing: border-box;" onclick="joinMaskedSpark()">🎭 Join The Masked Spark</button>
+    </section>
+
+    <!-- LIVE STREAMING HUB -->
+    <section id="screen-live" class="app-screen">
+      <div class="live-stream-container" style="position:relative; height:100vh; background: #000; overflow:hidden;">
+        <!-- WebRTC Containers -->
+        <div id="remote-video-container" style="position:absolute; width:100%; height:100%; top:0; left:0; z-index:1; background: #000;"></div>
+        <div id="local-video-container" style="position:absolute; width:120px; height:160px; top:60px; right:20px; z-index:2; border-radius:10px; overflow:hidden; border:2px solid var(--primary-color); background: #333;"></div>
+        
+        <!-- Stream UI Overlay -->
+        <div style="position:absolute; top:20px; left:20px; z-index:10; display:flex; align-items:center; gap:10px;">
+          <div style="background:red; color:white; padding:5px 10px; border-radius:5px; font-weight:bold; animation: pulse 1.5s infinite;">LIVE</div>
+          <div style="background:rgba(0,0,0,0.5); color:white; padding:5px 10px; border-radius:5px;">👁️ 1,204 watching</div>
+        </div>
+        
+        <div style="position:absolute; bottom:80px; left:0; width:100%; padding:20px; background: linear-gradient(transparent, rgba(0,0,0,0.9)); display:flex; flex-direction:column; gap:10px;">
+          <div class="stream-chat" style="height: 150px; overflow-y:scroll; display:flex; flex-direction:column; gap:8px;">
+            <div style="color:white; font-size:0.9em;"><span style="color:#FF3F6C; font-weight:bold;">Alex:</span> This date is going terribly 😂</div>
+            <div style="color:white; font-size:0.9em;"><span style="color:#00E5FF; font-weight:bold;">Jordan:</span> drop a spark on them!!</div>
+            <div style="color:white; font-size:0.9em;"><span style="color:#FFD700; font-weight:bold;">Maya sent 50 🔥 Embers!</span></div>
+          </div>
+          
+          <div style="display:flex; gap:10px;">
+            <input type="text" placeholder="Chat in stream..." style="flex:1; padding:10px; border-radius:20px; border:none; background:rgba(255,255,255,0.2); color:white;">
+            <button class="btn-primary" style="padding:10px 15px; border-radius:20px; margin:0;" onclick="showToast('Gift Sent!', 'earn', '-10')">🎁 Gift</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- QUEST HUB -->
+    <section id="screen-quests" class="app-screen">
+      <div class="screen-header">
+        <h2>Quest Hub</h2>
+        <p class="screen-subtitle">Complete quests to earn Embers</p>
+      </div>
+
+      <div class="quest-streak-banner">
+        <div class="streak-fire">🔥</div>
+        <div class="streak-info">
+          <span class="streak-label">Current Streak</span>
+          <span class="streak-value">3 Days</span>
+        </div>
+        <div class="streak-progress-mini">
+          <div class="streak-fill" style="width: 43%;"></div>
+        </div>
+      </div>
+
+      <div class="quest-section">
+        <h3 class="quest-section-title">Daily Quests <span class="quest-timer">Resets in 6h 42m</span></h3>
+
+        <div class="quest-card" data-quest="engage1">
+          <div class="quest-icon">💜</div>
+          <div class="quest-info">
+            <span class="quest-name">Like 10 Profiles</span>
+            <div class="quest-progress-bar">
+              <div class="quest-fill" style="width: 70%"></div>
+            </div>
+            <span class="quest-progress-text">7 / 10</span>
+          </div>
+          <div class="quest-reward">
+            <span class="ember-icon">✦</span> 20
+          </div>
+        </div>
+
+        <div class="quest-card" data-quest="engage2">
+          <div class="quest-icon">💬</div>
+          <div class="quest-info">
+            <span class="quest-name">Send 3 Thoughtful Openers</span>
+            <div class="quest-progress-bar">
+              <div class="quest-fill" style="width: 33%"></div>
+            </div>
+            <span class="quest-progress-text">1 / 3</span>
+          </div>
+          <div class="quest-reward">
+            <span class="ember-icon">✦</span> 30
+          </div>
+        </div>
+
+        <div class="quest-card completed" data-quest="engage3">
+          <div class="quest-icon">📸</div>
+          <div class="quest-info">
+            <span class="quest-name">Update Your Bio</span>
+            <div class="quest-progress-bar">
+              <div class="quest-fill" style="width: 100%"></div>
+            </div>
+            <span class="quest-progress-text">Done ✓</span>
+          </div>
+          <div class="quest-reward claimed">
+            <span class="ember-icon">✦</span> 20
+          </div>
+        </div>
+      </div>
+
+      <div class="quest-section">
+        <h3 class="quest-section-title">Weekly Challenge</h3>
+        <div class="quest-card weekly">
+          <div class="quest-icon">🏆</div>
+          <div class="quest-info">
+            <span class="quest-name">Complete 5 Daily Quest Sets</span>
+            <div class="quest-progress-bar">
+              <div class="quest-fill" style="width: 40%"></div>
+            </div>
+            <span class="quest-progress-text">2 / 5 days</span>
+          </div>
+          <div class="quest-reward">
+            <span class="ember-icon">✦</span> 100
+          </div>
+        </div>
+      </div>
+
+      <!-- Rewarded Video Ad -->
+      <div class="quest-section">
+        <div class="rewarded-ad-card" onclick="showRewardedAd()">
+          <div class="rewarded-ad-icon">🎬</div>
+          <div class="rewarded-ad-info">
+            <span class="rewarded-ad-title">Watch Ad for Bonus Embers</span>
+            <span class="rewarded-ad-desc">Watch a short video to earn <strong>20 Embers</strong></span>
+          </div>
+          <div class="rewarded-ad-btn">▶</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- GACHA / SHOP -->
+    <section id="screen-shop" class="app-screen">
+      <div class="screen-header">
+        <h2>Ember Shop</h2>
+        <p class="screen-subtitle">Spin, shop, and upgrade</p>
+      </div>
+
+      <!-- Gacha Spinner -->
+      <div class="gacha-container">
+        <h3 class="section-title">Ember Roulette</h3>
+        <div class="gacha-machine" id="gacha-machine">
+          <div class="gacha-ring">
+            <div class="gacha-display" id="gacha-display">
+              <span class="gacha-question">?</span>
+            </div>
+          </div>
+          <div class="gacha-info">
+            <p>Spin for cosmetics, boosts, reveals & more!</p>
+          </div>
+          <div class="gacha-buttons">
+            <button class="btn-gacha standard" onclick="spinGacha('standard')">
+              <span>Standard Spin</span>
+              <span class="gacha-cost"><span class="ember-icon">✦</span> 100</span>
+            </button>
+            <button class="btn-gacha premium" onclick="spinGacha('premium')">
+              <span>Premium Spin</span>
+              <span class="gacha-cost"><span class="ember-icon">✦</span> 250</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Shop Items -->
+      <div class="shop-section">
+        <h3 class="section-title">Power-Ups</h3>
+        <div class="shop-grid">
+          <div class="shop-item" onclick="buyItem('boost')">
+            <div class="shop-item-icon">⚡</div>
+            <span class="shop-item-name">5× Boost</span>
+            <span class="shop-item-price">$7.99</span>
+          </div>
+          <div class="shop-item" onclick="buyItem('superlike')">
+            <div class="shop-item-icon">⭐</div>
+            <span class="shop-item-name">10× Super-Like</span>
+            <span class="shop-item-price">$9.99</span>
+          </div>
+          <div class="shop-item" onclick="buyItem('embers500')">
+            <div class="shop-item-icon">✦</div>
+            <span class="shop-item-name">500 Embers</span>
+            <span class="shop-item-price">$4.99</span>
+          </div>
+          <div class="shop-item highlight" onclick="buyItem('embers1200')">
+            <div class="shop-item-icon">💎</div>
+            <span class="shop-item-name">1,200 Embers</span>
+            <span class="shop-item-price">$9.99</span>
+            <span class="shop-item-badge">Best Value</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Subscriptions -->
+      <div class="shop-section">
+        <h3 class="section-title">Subscriptions</h3>
+        <div class="sub-cards">
+          <div class="sub-card silver">
+            <div class="sub-tier">Silver</div>
+            <div class="sub-tagline">Date More</div>
+            <div class="sub-price">$14.99<span>/mo</span></div>
+            <ul class="sub-features">
+              <li>100 daily swipes</li>
+              <li>3 Liked-You reveals/day</li>
+              <li>2 Boosts/month</li>
+              <li>1.25× Ember multiplier</li>
+            </ul>
+            <button class="btn-sub">Subscribe</button>
+          </div>
+          <div class="sub-card gold popular">
+            <div class="popular-badge">Most Popular</div>
+            <div class="sub-tier">Gold</div>
+            <div class="sub-tagline">Date Smarter</div>
+            <div class="sub-price">$29.99<span>/mo</span></div>
+            <ul class="sub-features">
+              <li>Unlimited swipes</li>
+              <li>10 reveals/day</li>
+              <li>5 Boosts/month</li>
+              <li>1.5× Ember multiplier</li>
+              <li>Incognito mode</li>
+            </ul>
+            <button class="btn-sub">Subscribe</button>
+          </div>
+          <div class="sub-card platinum">
+            <div class="sub-tier">Platinum</div>
+            <div class="sub-tagline">Date Like a VIP</div>
+            <div class="sub-price">$49.99<span>/mo</span></div>
+            <ul class="sub-features">
+              <li>Everything in Gold</li>
+              <li>Unlimited reveals</li>
+              <li>10 Boosts/month</li>
+              <li>2× Ember multiplier</li>
+              <li>Travel / Passport mode</li>
+              <li>Ad-free experience</li>
+            </ul>
+            <button class="btn-sub">Subscribe</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MAP / WORLD -->
+    <section id="screen-map" class="app-screen">
+      <div class="screen-header">
+        <h2>Spark Map 🗺️</h2>
+        <p class="screen-subtitle">Find drops & trending spots</p>
+      </div>
+
+      <div class="map-container">
+        <div id="spark-map"></div>
+      </div>
+    </section>
+
+    <!-- INVITE HUB -->
+    <section id="screen-invite" class="app-screen">
+      <div class="screen-header">
+        <h2>Invite Hub</h2>
+        <p class="screen-subtitle">Invite friends, earn rewards, climb the ranks</p>
+      </div>
+
+      <!-- Personal Invite Code -->
+      <div class="invite-code-card">
+        <div class="invite-code-glow"></div>
+        <div class="invite-code-label">Your Personal Invite Code</div>
+        <div class="invite-code-value" id="invite-code">SPARK-AX7K</div>
+        <div class="invite-code-actions">
+          <button class="invite-btn copy" onclick="copyInviteCode()">📋 Copy Code</button>
+          <button class="invite-btn share" onclick="shareInviteLink()">🔗 Share Link</button>
+        </div>
+      </div>
+
+      <!-- Tier Progress -->
+      <div class="invite-tier-card">
+        <div class="invite-tier-header">
+          <span class="invite-tier-label">Current Tier</span>
+          <span class="invite-tier-name" id="invite-tier-name">🔥 Spark</span>
+        </div>
+        <div class="invite-tier-progress">
+          <div class="invite-tier-bar">
+            <div class="invite-tier-fill" id="invite-tier-fill" style="width: 0%"></div>
+          </div>
+          <div class="invite-tier-milestones">
+            <span class="milestone active" data-tier="0">🔥</span>
+            <span class="milestone" data-tier="3">⚡</span>
+            <span class="milestone" data-tier="10">💎</span>
+            <span class="milestone" data-tier="25">👑</span>
+            <span class="milestone" data-tier="50">🌟</span>
+          </div>
+        </div>
+        <div class="invite-tier-next" id="invite-tier-next">
+          <span>Next tier: <strong>⚡ Flame</strong> — invite <span id="invites-to-next">3</span> more friends</span>
+        </div>
+        <div class="invite-tier-reward" id="invite-tier-reward">
+          <span class="ember-icon">✦</span> Currently earning <strong>25 Embers</strong> per invite
+        </div>
+      </div>
+
+      <!-- Tier Details Accordion -->
+      <div class="invite-tiers-detail">
+        <h3 class="section-title">All Tiers</h3>
+        <div class="tier-detail-list">
+          <div class="tier-detail-item active" id="tier-item-0">
+            <div class="tier-detail-icon">🔥</div>
+            <div class="tier-detail-info">
+              <span class="tier-detail-name">Spark</span>
+              <span class="tier-detail-req">0 invites</span>
+            </div>
+            <div class="tier-detail-reward">25 ✦/invite</div>
+          </div>
+          <div class="tier-detail-item" id="tier-item-1">
+            <div class="tier-detail-icon">⚡</div>
+            <div class="tier-detail-info">
+              <span class="tier-detail-name">Flame</span>
+              <span class="tier-detail-req">3 invites</span>
+            </div>
+            <div class="tier-detail-reward">50 ✦ + Frame</div>
+          </div>
+          <div class="tier-detail-item" id="tier-item-2">
+            <div class="tier-detail-icon">💎</div>
+            <div class="tier-detail-info">
+              <span class="tier-detail-name">Blaze</span>
+              <span class="tier-detail-req">10 invites</span>
+            </div>
+            <div class="tier-detail-reward">75 ✦ + Boost</div>
+          </div>
+          <div class="tier-detail-item" id="tier-item-3">
+            <div class="tier-detail-icon">👑</div>
+            <div class="tier-detail-info">
+              <span class="tier-detail-name">Inferno</span>
+              <span class="tier-detail-req">25 invites</span>
+            </div>
+            <div class="tier-detail-reward">100 ✦ + Gold</div>
+          </div>
+          <div class="tier-detail-item" id="tier-item-4">
+            <div class="tier-detail-icon">🌟</div>
+            <div class="tier-detail-info">
+              <span class="tier-detail-name">Supernova</span>
+              <span class="tier-detail-req">50 invites</span>
+            </div>
+            <div class="tier-detail-reward">150 ✦ + VIP</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats Dashboard -->
+      <div class="invite-stats">
+        <h3 class="section-title">Your Stats</h3>
+        <div class="invite-stats-grid">
+          <div class="invite-stat-card">
+            <span class="invite-stat-value" id="invite-total-count">0</span>
+            <span class="invite-stat-label">Total Invites</span>
+          </div>
+          <div class="invite-stat-card">
+            <span class="invite-stat-value" id="invite-active-count">0</span>
+            <span class="invite-stat-label">Active Users</span>
+          </div>
+          <div class="invite-stat-card">
+            <span class="invite-stat-value" id="invite-embers-earned">0</span>
+            <span class="invite-stat-label">Embers Earned</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Referral Activity Feed -->
+      <div class="invite-activity">
+        <h3 class="section-title">Recent Activity</h3>
+        <div class="invite-activity-list" id="invite-activity-list">
+          <div class="invite-empty-state">
+            <span class="invite-empty-icon">🎁</span>
+            <p>No referrals yet — share your code to get started!</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weekly Leaderboard -->
+      <div class="invite-leaderboard">
+        <h3 class="section-title">Weekly Leaderboard 🏆</h3>
+        <div class="invite-leaderboard-list" id="invite-leaderboard-list">
+          <div class="leaderboard-item gold">
+            <span class="lb-rank">1</span>
+            <span class="lb-name">🥇 Jessica M.</span>
+            <span class="lb-count">47 invites</span>
+            <span class="lb-prize">🌟 500 ✦</span>
+          </div>
+          <div class="leaderboard-item silver">
+            <span class="lb-rank">2</span>
+            <span class="lb-name">🥈 Marcus D.</span>
+            <span class="lb-count">38 invites</span>
+            <span class="lb-prize">💎 300 ✦</span>
+          </div>
+          <div class="leaderboard-item bronze">
+            <span class="lb-rank">3</span>
+            <span class="lb-name">🥉 Priya K.</span>
+            <span class="lb-count">31 invites</span>
+            <span class="lb-prize">⚡ 200 ✦</span>
+          </div>
+          <div class="leaderboard-item">
+            <span class="lb-rank">4</span>
+            <span class="lb-name">Liam T.</span>
+            <span class="lb-count">24 invites</span>
+            <span class="lb-prize">100 ✦</span>
+          </div>
+          <div class="leaderboard-item">
+            <span class="lb-rank">5</span>
+            <span class="lb-name">Ava S.</span>
+            <span class="lb-count">19 invites</span>
+            <span class="lb-prize">50 ✦</span>
+          </div>
+          <div class="leaderboard-item you">
+            <span class="lb-rank" id="lb-your-rank">—</span>
+            <span class="lb-name">You</span>
+            <span class="lb-count" id="lb-your-count">0 invites</span>
+            <span class="lb-prize">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Share -->
+      <div class="invite-share-section">
+        <h3 class="section-title">Quick Share</h3>
+        <div class="invite-share-grid">
+          <button class="share-action-btn" onclick="shareInviteLink()">
+            <span class="share-action-icon">🔗</span>
+            <span>Copy Link</span>
+          </button>
+          <button class="share-action-btn" onclick="shareViaText()">
+            <span class="share-action-icon">💬</span>
+            <span>Text</span>
+          </button>
+          <button class="share-action-btn" onclick="showQrCode()">
+            <span class="share-action-icon">📱</span>
+            <span>QR Code</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Simulate Button (Demo) -->
+      <div class="invite-demo-section">
+        <button class="btn-primary invite-simulate-btn" onclick="simulateInvite()">
+          ✨ Simulate a Friend Joining
+        </button>
+        <p class="invite-demo-hint">Demo: See the affiliate system in action</p>
+      </div>
+    </section>
+
+    <!-- QR Code Modal -->
+    <div id="qr-modal" class="modal-overlay" style="display:none;">
+      <div class="modal-card qr-modal">
+        <button class="modal-close" onclick="closeModal('qr-modal')">✕</button>
+        <h2>Your QR Code</h2>
+        <div class="qr-display">
+          <div class="qr-placeholder">
+            <div class="qr-grid">
+              <div class="qr-cell"></div>
+              <div class="qr-cell"></div>
+              <div class="qr-cell f"></div>
+              <div class="qr-cell"></div>
+              <div class="qr-cell f"></div>
+              <div class="qr-cell"></div>
+              <div class="qr-cell"></div>
+              <div class="qr-cell"></div>
+              <div class="qr-cell f"></div>
+              <div class="qr-cell"></div>
+              <div class="qr-cell f"></div>
+              <div class="qr-cell"></div>
+              <div class="qr-cell f"></div>
+              <div class="qr-cell"></div>
+              <div class="qr-cell f"></div>
+              <div class="qr-cell"></div>
+              <div class="qr-cell f"></div>
+              <div class="qr-cell f"></div>
+              <div class="qr-cell f"></div>
+              <div class="qr-cell"></div>
+              <div class="qr-cell f"></div>
+              <div class="qr-cell"></div>
+              <div class="qr-cell f"></div>
+              <div class="qr-cell f"></div>
+              <div class="qr-cell"></div>
+              <div class="qr-cell f"></div>
+              <div class="qr-cell f"></div>
+              <div class="qr-cell"></div>
+              <div class="qr-cell f"></div>
+              <div class="qr-cell"></div>
+              <div class="qr-cell f"></div>
+              <div class="qr-cell f"></div>
+              <div class="qr-cell f"></div>
+              <div class="qr-cell"></div>
+              <div class="qr-cell f"></div>
+              <div class="qr-cell"></div>
+              <div class="qr-cell f"></div>
+              <div class="qr-cell"></div>
+              <div class="qr-cell f"></div>
+              <div class="qr-cell"></div>
+              <div class="qr-cell f"></div>
+              <div class="qr-cell"></div>
+              <div class="qr-cell"></div>
+              <div class="qr-cell"></div>
+              <div class="qr-cell f"></div>
+              <div class="qr-cell"></div>
+              <div class="qr-cell f"></div>
+              <div class="qr-cell"></div>
+              <div class="qr-cell"></div>
+            </div>
+          </div>
+        </div>
+        <p class="qr-code-text">SPARK-AX7K</p>
+        <p class="qr-hint">Friends scan this to auto-apply your code</p>
+      </div>
+    </div>
+
+    <!-- CHAT -->
+    <section id="screen-chat" class="app-screen">
+      <div class="screen-header">
+        <div class="screen-header flex-header">
+          <div>
+            <h2>Messages</h2>
+            <p class="screen-subtitle">Your matches</p>
+          </div>
+          <button class="icon-btn" onclick="openCalendarModal()">📅</button>
+        </div>
+
+        <div class="chat-new-matches">
+          <h3 class="section-title">New Matches</h3>
+          <div class="matches-scroll">
+            <div class="match-avatar" onclick="openChatDetail('sophia')">
+              <img src="img/sophia.png" alt="Sophia" class="match-avatar-img-photo" />
+            </div>
+            <div class="match-avatar" onclick="openChatDetail('alex')">
+              <img src="img/alex.png" alt="Alex" class="match-avatar-img-photo" />
+            </div>
+            <div class="match-avatar" onclick="openChatDetail('maya')">
+              <img src="img/maya.png" alt="Maya" class="match-avatar-img-photo" />
+            </div>
+            <div class="match-avatar blurred-match" onclick="openGachaReveal()">
+              <span>?</span>
+              <div class="blur-overlay"></div>
+            </div>
+            <div class="match-avatar blurred-match" onclick="openGachaReveal()">
+              <span>?</span>
+              <div class="blur-overlay"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-list">
+          <div class="chat-item" onclick="openChatDetail('sophia')">
+            <div class="chat-avatar-photo"><img src="img/sophia.png" alt="Sophia" /></div>
+            <div class="chat-info">
+              <div class="chat-name">Sophia <span class="verified-badge">✓</span></div>
+              <div class="chat-preview">Hey! I love your hiking photos 🏔️</div>
+            </div>
+            <div class="chat-meta">
+              <span class="chat-time">2m</span>
+              <span class="chat-unread">1</span>
+            </div>
+          </div>
+          <div class="chat-item" onclick="openChatDetail('alex')">
+            <div class="chat-avatar-photo"><img src="img/alex.png" alt="Alex" /></div>
+            <div class="chat-info">
+              <div class="chat-name">Alex <span class="verified-badge">✓</span></div>
+              <div class="chat-preview">That coffee shop rec was 😍</div>
+            </div>
+            <div class="chat-meta">
+              <span class="chat-time">1h</span>
+            </div>
+          </div>
+          <div class="chat-item" onclick="openChatDetail('maya')">
+            <div class="chat-avatar-photo"><img src="img/maya.png" alt="Maya" /></div>
+            <div class="chat-info">
+              <div class="chat-name">Maya</div>
+              <div class="chat-preview">You matched! Say something first ✨</div>
+            </div>
+            <div class="chat-meta">
+              <span class="chat-time">3h</span>
+            </div>
+          </div>
+        </div>
+    </section>
+
+    <!-- WALLET -->
+    <section id="screen-wallet" class="app-screen">
+      <div class="screen-header">
+        <h2>Ember Wallet</h2>
+        <p class="screen-subtitle">Your rewards & activity</p>
+      </div>
+
+      <div class="wallet-balance-card">
+        <div class="wallet-balance-label">Current Balance</div>
+        <div class="wallet-balance-amount">
+          <span class="ember-icon large">✦</span>
+          <span class="wallet-number" id="wallet-balance">325</span>
+        </div>
+        <div class="wallet-balance-sub">Embers</div>
+        <button class="btn-buy-embers" onclick="navigate('shop')">Buy More Embers</button>
+      </div>
+
+      <div class="wallet-stats">
+        <div class="wallet-stat">
+          <span class="stat-value">1,240</span>
+          <span class="stat-label">Total Earned</span>
+        </div>
+        <div class="wallet-stat">
+          <span class="stat-value">915</span>
+          <span class="stat-label">Total Spent</span>
+        </div>
+        <div class="wallet-stat">
+          <span class="stat-value">3 🔥</span>
+          <span class="stat-label">Streak</span>
+        </div>
+      </div>
+
+      <div class="wallet-history">
+        <h3 class="section-title">Recent Activity</h3>
+        <div class="history-item earn">
+          <span class="history-icon">📋</span>
+          <span class="history-desc">Daily Quest: Like 10 Profiles</span>
+          <span class="history-amount">+20</span>
+        </div>
+        <div class="history-item earn">
+          <span class="history-icon">🔥</span>
+          <span class="history-desc">Login Streak Day 3</span>
+          <span class="history-amount">+25</span>
+        </div>
+        <div class="history-item spend">
+          <span class="history-icon">🎰</span>
+          <span class="history-desc">Standard Gacha Spin</span>
+          <span class="history-amount">-100</span>
+        </div>
+        <div class="history-item earn">
+          <span class="history-icon">💬</span>
+          <span class="history-desc">First Message Bonus</span>
+          <span class="history-amount">+10</span>
+        </div>
+        <div class="history-item spend">
+          <span class="history-icon">⭐</span>
+          <span class="history-desc">Super-Like Used</span>
+          <span class="history-amount">-80</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROFILE -->
+    <section id="screen-profile" class="app-screen">
+      <div class="screen-header">
+        <h2>My Profile</h2>
+        <p class="screen-subtitle">Manage your presence</p>
+      </div>
+
+        <div class="profile-hero">
+        <div class="profile-avatar-large" style="position:relative;">
+          <img src="img/alex.png" alt="You" id="my-profile-img" />
+          <label for="profile-upload" style="position:absolute; bottom:0; right:0; background:var(--primary-color); border-radius:50%; padding:8px; cursor:pointer;">📷</label>
+          <input type="file" id="profile-upload" style="display:none;" accept="image/*" onchange="uploadProfilePhoto(event)">
+        </div>
+        <h3 class="profile-name">You, 26</h3>
+        <div class="profile-badges">
+          <span class="badge verified">✓ Photo Verified</span>
+          <span class="badge streak">🔥 3-Day Streak</span>
+        </div>
+        
+        <!-- Editable Tags -->
+        <div class="profile-tags-editor" style="margin-top: 15px;">
+            <input type="text" id="my-tags-input" placeholder="Add vibe tags (e.g. Gaming, Coffee)" style="padding: 8px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-surface); color: white; width: 80%;" />
+            <button class="btn-primary" onclick="saveProfileTags()" style="padding: 8px; margin-top: 5px;">Save Tags</button>
+        </div>
+
+        <!-- RPG Stats -->
+        <div class="rpg-stats-container">
+          <div class="rpg-radar">
+            <svg viewBox="0 0 100 100" class="radar-svg">
+              <polygon points="50,10 90,50 50,90 10,50" class="radar-bg" />
+              <polygon points="50,20 80,50 50,80 20,50" class="radar-fill" />
+            </svg>
+            <div class="radar-label top">CHA</div>
+            <div class="radar-label right">INT</div>
+            <div class="radar-label bottom">ADV</div>
+            <div class="radar-label left">EMP</div>
+          </div>
+          <div class="rpg-details">
+            <div class="rpg-stat">
+              <span>Charisma</span>
+              <div class="stat-bar">
+                <div class="stat-fill" style="width: 80%"></div>
+              </div>
+            </div>
+            <div class="rpg-stat">
+              <span>Intellect</span>
+              <div class="stat-bar">
+                <div class="stat-fill" style="width: 65%"></div>
+              </div>
+            </div>
+            <div class="rpg-stat">
+              <span>Adventure</span>
+              <div class="stat-bar">
+                <div class="stat-fill" style="width: 90%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="trust-score-display">
+          <span class="trust-label">Trust Score</span>
+          <div class="trust-bar">
+            <div class="trust-fill" style="width: 85%;"></div>
+          </div>
+          <span class="trust-value">85 / 100</span>
+        </div>
+      </div>
+
+      <div class="profile-completion">
+        <div class="completion-header">
+          <span>Profile Completion</span>
+          <span class="completion-pct">78%</span>
+        </div>
+        <div class="completion-bar">
+          <div class="completion-fill" style="width: 78%"></div>
+        </div>
+        <p class="completion-hint">Add a voice prompt to earn 50 Embers!</p>
+      </div>
+
+      <!-- AI Photo Score -->
+      <div class="profile-section">
+        <h3 class="section-title">AI Photo Analysis</h3>
+        <div class="ai-photo-score-grid">
+          <div class="score-gauge">
+            <svg viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="42" class="gauge-bg" />
+              <circle cx="50" cy="50" r="42" class="gauge-fill" style="--score: 0.88" />
+            </svg>
+            <div class="score-value">88</div>
+          </div>
+          <div class="score-details">
+            <p><strong>Strong Profile!</strong> Great lighting and smile. Try one outdoor shot for +5%.</p>
+            <button class="btn-small" onclick="alert('Photo tips: Natural light, smile, show hobbies!')">View
+              Tips</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="profile-section settings-link-section">
+        <button class="btn-secondary full-width" onclick="openSettingsModal()">⚙️ Settings & Preferences</button>
+        <button class="btn-ghost full-width" onclick="openLegalModal()">Terms & Privacy Policy</button>
+      </div> </svg>
+      <div class="gauge-label">
+        <span class="gauge-value">88</span>
+        <span class="gauge-name">Lighting</span>
+      </div>
+  </div>
+  <div class="score-gauge">
+    <svg viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="42" class="gauge-bg" />
+      <circle cx="50" cy="50" r="42" class="gauge-fill" style="--score: 0.75" />
+    </svg>
+    <div class="gauge-label">
+      <span class="gauge-value">75</span>
+      <span class="gauge-name">Composition</span>
+    </div>
+  </div>
+  <div class="score-gauge">
+    <svg viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="42" class="gauge-bg" />
+      <circle cx="50" cy="50" r="42" class="gauge-fill best" style="--score: 0.93" />
+    </svg>
+    <div class="gauge-label">
+      <span class="gauge-value">93</span>
+      <span class="gauge-name">Appeal ⭐</span>
+    </div>
+  </div>
+  </div>
+  <p class="ai-hint">🌟 Your lead photo scored highest — great choice!</p>
+  </div>
+
+  <!-- Voice Prompts -->
+  <div class="profile-section">
+    <h3 class="section-title">Voice Prompt</h3>
+    <div class="voice-prompt-card">
+      <div class="voice-prompt-question">What's your ideal weekend?</div>
+      <div class="voice-waveform" id="voice-waveform" onclick="playVoicePrompt()">
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+      </div>
+      <div class="voice-controls">
+        <button class="voice-play-btn" onclick="playVoicePrompt()">▶ 0:08</button>
+        <button class="voice-record-btn" onclick="recordVoicePrompt()">🎙 Record New</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="profile-section">
+    <h3 class="section-title">Verification</h3>
+    <div class="verify-card">
+      <div class="verify-tier done">
+        <span class="verify-icon">✓</span>
+        <span>Email & Phone</span>
+      </div>
+      <div class="verify-tier done">
+        <span class="verify-icon">✓</span>
+        <span>Photo Verified</span>
+      </div>
+      <div class="verify-tier pending" onclick="startSelfieVerification()">
+        <span class="verify-icon">🛡️</span>
+        <span>ID Verified — <a href="#">Unlock Gold Badge</a></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="profile-section">
+    <h3 class="section-title">S-Pen Studio</h3>
+    <p class="spen-desc">Use your S-Pen to doodle on photos, handwrite openers, and add personal flair!</p>
+    <div class="spen-demo">
+      <div class="spen-card">
+        <span class="spen-icon">✏️</span>
+        <span>Photo Doodles</span>
+      </div>
+      <div class="spen-card">
+        <span class="spen-icon">✍️</span>
+        <span>Handwritten Openers</span>
+      </div>
+      <div class="spen-card">
+        <span class="spen-icon">🖌️</span>
+        <span>Photo Markup</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="profile-section">
+    <h3 class="section-title">AI Profile Polish</h3>
+    <div class="ai-polish-container" id="ai-polish-container">
+      <div class="ai-polish-bio" id="ai-polish-bio">
+        <p>Love hiking, photography, and finding the best coffee spots in town. Always up for an adventure!</p>
+      </div>
+      <button class="btn-ai-polish" id="btn-ai-polish" onclick="aiPolishBio()">✨ Polish My Bio with AI</button>
+    </div>
+    <p class="ai-hint" id="ai-polish-hint">1 free trial remaining · Costs 30 Embers · Powered by on-device AI</p>
+  </div>
+
+  <div class="profile-section">
+    <h3 class="section-title">Safety</h3>
+    <div class="safety-features">
+      <div class="safety-item" onclick="activatePanicButton()">
+        <span>🚨</span>
+        <span>Panic Button (Meetups)</span>
+        <label class="toggle"><input type="checkbox" checked /><span class="slider"></span></label>
+      </div>
+      <div class="safety-item">
+        <span>📍</span>
+        <span>Share My Date Location</span>
+        <label class="toggle"><input type="checkbox" /><span class="slider"></span></label>
+      </div>
+      <div class="safety-item" onclick="openReportModal('general')">
+        <span>🔒</span>
+        <span>Block & Report</span>
+        <span class="safety-link">Manage →</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Intimate Mode (18+ Premium) -->
+  <div class="profile-section">
+    <h3 class="section-title">🔞 Intimate Mode</h3>
+    <div class="intimate-mode-card">
+      <p class="intimate-desc">Enable Intimate Mode to share and view private content with matches. Premium
+        subscribers only.</p>
+      <div class="safety-item" onclick="toggleIntimateMode()">
+        <span>🔥</span>
+        <span>Enable Intimate Mode</span>
+        <label class="toggle"><input type="checkbox" id="intimate-toggle" /><span class="slider"></span></label>
+      </div>
+      <div class="intimate-tier-badge">Requires Gold or Platinum</div>
+    </div>
+  </div>
+
+  <div class="profile-section settings-link-section">
+    <button class="btn-secondary full-width" onclick="openLegalModal()">Terms & Privacy Policy</button>
+  </div>
+  </section>
+
+  <!-- Chat Detail Modal -->
+  <div id="chat-detail-modal" class="chat-detail-overlay" style="display:none;">
+    <div class="chat-detail">
+      <div class="chat-detail-header">
+        <button class="chat-back" onclick="closeChatDetail()">←</button>
+        <div class="chat-detail-user">
+          <div class="chat-avatar-sm-photo" id="chat-detail-avatar"
+            onclick="if(currentChatUser) openStory(currentChatUser)" style="cursor: pointer;"><img src="img/sophia.png"
+              alt="" /></div>
+          <span class="chat-detail-name" id="chat-detail-name">Sophia</span>
+          <span class="verified-badge">✓</span>
+        </div>
+        <button class="chat-more" onclick="openReportModal('sophia')" title="Report">⋯</button>
+        <button class="chat-video-btn" onclick="scheduleVideoDate()">📹</button>
+      </div>
+
+      <!-- AI Conversation Starters -->
+      <div class="ai-starters" id="ai-starters" style="display:none;">
+        <div class="ai-starters-header">
+          <span>✨ AI Suggestions</span>
+          <button onclick="hideAiStarters()">✕</button>
+        </div>
+        <div class="ai-starters-list" id="ai-starters-list"></div>
+      </div>
+
+      <!-- Date Planner Card -->
+      <div class="date-planner-btn" onclick="openDatePlanner()">
+        <span>📅</span>
+        <span>Plan a Date</span>
+        <span>→</span>
+      </div>
+
+      <!-- Icebreaker Quest Overlay -->
+      <div id="icebreaker-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(18,18,18,0.95); z-index:100; flex-direction:column; justify-content:center; align-items:center; padding: 20px; text-align:center;">
+          <div style="font-size:3em; margin-bottom:10px;">🧊</div>
+          <h3>Icebreaker Required</h3>
+          <p style="opacity:0.8; margin-bottom: 20px;">Answer to unlock the chat!</p>
+          <div style="background:#2a2a2a; padding:20px; border-radius:15px; width: 100%;">
+              <strong style="color:var(--primary-color);">Would you rather...</strong><br><br>
+              <button class="btn-primary" onclick="submitIcebreaker(1)" style="margin-bottom:10px; width:100%;">Never drink coffee again</button>
+              <button class="btn-secondary" onclick="submitIcebreaker(2)" style="width:100%;">Never eat chocolate again</button>
+          </div>
+          <p id="icebreaker-status" style="font-size:0.9em; opacity:0.6; margin-top: 15px;"></p>
+      </div>
+      
+      <div class="chat-messages" id="chat-messages" style="position: relative;">
+        <div class="chat-date-divider">Today</div>
+        <div class="chat-bubble received">
+          <p>Hey! I love your hiking photos 🏔️ Where was that last trail?</p>
+          <span class="bubble-time">2:34 PM</span>
+        </div>
+      </div>
+      <div class="chat-input-bar">
+        <button class="attach-btn" onclick="attachMedia()">📷</button>
+        <button class="attach-btn" onclick="openCamera('chat')">📹</button>
+        <input type="text" placeholder="Type something thoughtful..." class="chat-input" id="chat-input" />
+        <button class="ai-suggest-btn" onclick="startAiQuest()" style="background:#00E5FF; color:black; border:none; border-radius:50%; width:36px; height:36px; font-size:1.2em; cursor:pointer; margin-right:5px;" title="Start AI Quest">🐉</button>
+        <button class="ai-suggest-btn" onclick="generateAiReply()" style="background:var(--primary-color); border:none; border-radius:50%; width:36px; height:36px; font-size:1.2em; cursor:pointer; margin-right:5px;" title="Autopilot Reply">🤖</button>
+        <button class="ai-suggest-btn" onclick="showAiStarters()">✨</button>
+        <button class="chat-send" id="chat-send-btn">→</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Boost Modal -->
+  <div id="boost-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card boost-modal">
+      <button class="modal-close" onclick="closeModal('boost-modal')">✕</button>
+      <div class="boost-icon-lg">⚡</div>
+      <h2>Boost Your Profile</h2>
+      <p>Be a top profile in your area for 30 minutes!</p>
+      <div class="boost-options">
+        <button class="boost-option" onclick="activateBoost('embers')">
+          <span class="ember-icon">✦</span> 150 Embers
+        </button>
+        <button class="boost-option premium" onclick="activateBoost('cash')">
+          $2.99 One-Time
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gacha Result Modal -->
+  <div id="gacha-result-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card gacha-result-modal">
+      <div class="gacha-result-rarity" id="gacha-result-rarity">RARE</div>
+      <div class="gacha-result-icon" id="gacha-result-icon">🎨</div>
+      <h2 id="gacha-result-name">Neon Frame</h2>
+      <p id="gacha-result-desc">A glowing neon profile frame that makes you stand out!</p>
+      <button class="btn-primary" onclick="closeModal('gacha-result-modal')">Awesome!</button>
+    </div>
+  </div>
+
+  <!-- Match Modal -->
+  <div id="match-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card match-modal">
+      <div class="match-sparks">✨🔥✨</div>
+      <h2>It's a Match!</h2>
+      <div class="match-photos">
+        <div class="match-photo"><img src="img/alex.png" alt="You" /></div>
+        <div class="match-heart">♥</div>
+        <div class="match-photo" id="match-their-photo"><img id="match-their-img" src="img/sophia.png" alt="" /></div>
+      </div>
+      <p class="match-text">You and <span id="match-name">Sophia</span> liked each other!</p>
+      <div class="match-actions">
+        <button class="btn-primary" onclick="closeModal('match-modal'); navigate('chat')">Send a Message</button>
+        <button class="btn-secondary" onclick="closeModal('match-modal')">Keep Swiping</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sponsored Card (Native Ad) -->
+  <div id="sponsored-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card sponsored-modal">
+      <span class="sponsored-label">Sponsored · Date Night Idea</span>
+      <div class="sponsored-img">🍷🌃</div>
+      <h3>Skyline Rooftop Lounge</h3>
+      <p>$20 off your first date night — couples cocktail flight included!</p>
+      <div class="sponsored-actions">
+        <button class="btn-primary">Book Now</button>
+        <button class="btn-ghost" onclick="closeModal('sponsored-modal')">Skip</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Story Viewer -->
+  <div id="story-viewer" class="story-viewer-overlay" style="display:none;">
+    <div class="story-viewer">
+      <div class="story-progress-bars" id="story-progress-bars"></div>
+      <div class="story-header">
+        <div class="story-user">
+          <div class="story-user-avatar" id="story-user-avatar"></div>
+          <span class="story-user-name" id="story-user-name">Sophia</span>
+          <span class="story-time-ago">2h ago</span>
+        </div>
+        <button class="story-close" onclick="closeStory()">✕</button>
+      </div>
+      <div class="story-content" id="story-content" onclick="advanceStory()"></div>
+      <div class="story-reactions">
+        <button onclick="reactToStory('🔥')">🔥</button>
+        <button onclick="reactToStory('❤️')">❤️</button>
+        <button onclick="reactToStory('😍')">😍</button>
+        <input type="text" placeholder="Reply to story..." class="story-reply-input" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Media Lightbox -->
+  <div id="media-lightbox" class="media-lightbox" style="display:none;" onclick="closeLightbox()">
+    <img id="lightbox-img" src="" alt="Full image" />
+  </div>
+
+  <!-- Selfie Verification Modal -->
+  <div id="selfie-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card selfie-modal">
+      <button class="modal-close" onclick="closeModal('selfie-modal')">✕</button>
+      <div class="selfie-icon">📸</div>
+      <h2>Selfie Verification</h2>
+      <p>Take a selfie matching the pose below to verify your identity.</p>
+      <div class="selfie-camera" id="selfie-camera">
+        <div class="selfie-pose">😊</div>
+        <div class="selfie-frame"></div>
+        <div class="selfie-status" id="selfie-status">Position your face in the frame</div>
+        <input type="file" id="selfie-upload" accept="image/*" style="margin-top: 10px; display: none;"
+          onchange="handleSelfieUpload(this)">
+        <button class="btn-secondary btn-small" onclick="document.getElementById('selfie-upload').click()"
+          style="margin-top: 10px; z-index: 10; position: relative;">📂 Upload Photo</button>
+      </div>
+      <button class="btn-primary" id="selfie-capture-btn" onclick="captureSelfie()">📷 Capture</button>
+    </div>
+  </div>
+
+  <!-- Report Modal -->
+  <div id="report-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card report-modal">
+      <button class="modal-close" onclick="closeModal('report-modal')">✕</button>
+      <h2>🔒 Block & Report</h2>
+      <p>Choose a reason for reporting:</p>
+      <div class="report-categories">
+        <button class="report-cat" onclick="submitReport('fake')">🎭 Fake Profile</button>
+        <button class="report-cat" onclick="submitReport('harassment')">⚠️ Harassment</button>
+        <button class="report-cat" onclick="submitReport('spam')">📧 Spam</button>
+        <button class="report-cat" onclick="submitReport('inappropriate')">🚫 Inappropriate Content</button>
+        <button class="report-cat" onclick="submitReport('underage')">👶 Underage User</button>
+        <button class="report-cat" onclick="submitReport('other')">📝 Other</button>
+      </div>
+      <textarea class="report-desc" placeholder="Add details (optional)..."></textarea>
+      <button class="btn-primary report-submit"
+        onclick="closeModal('report-modal'); showToast('Report submitted. Thank you for keeping SparkQuest safe.', 'info')">Submit
+        Report</button>
+    </div>
+  </div>
+
+  <!-- Panic Button Modal -->
+  <div id="panic-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card panic-modal">
+      <div class="panic-icon">🚨</div>
+      <h2>Emergency Mode</h2>
+      <p>Your emergency contacts will be notified with your location.</p>
+      <div class="panic-countdown" id="panic-countdown">5</div>
+      <p class="panic-sub">Alerting in <span id="panic-timer">5</span> seconds...</p>
+      <button class="btn-secondary" onclick="cancelPanic()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Video Date Schedule Modal -->
+  <div id="video-date-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card video-date-modal">
+      <button class="modal-close" onclick="closeModal('video-date-modal')">✕</button>
+      <div class="video-date-icon">📹</div>
+      <h2>Schedule Video Date</h2>
+      <p>Pick a time for your video date!</p>
+      <div class="video-date-times">
+        <button class="video-time-option" onclick="selectVideoTime(this)">Today, 7 PM</button>
+        <button class="video-time-option" onclick="selectVideoTime(this)">Today, 9 PM</button>
+        <button class="video-time-option" onclick="selectVideoTime(this)">Tomorrow, 6 PM</button>
+        <button class="video-time-option" onclick="selectVideoTime(this)">Tomorrow, 8 PM</button>
+      </div>
+      <button class="btn-primary" onclick="confirmVideoDate()">Schedule & Send</button>
+    </div>
+  </div>
+
+  <!-- Video Call Screen -->
+  <div id="video-call-screen" class="video-call-overlay" style="display:none;">
+    <div class="video-call">
+      <div class="video-call-bg">
+        <div class="video-call-name" id="video-call-name">Sophia</div>
+        <div class="video-call-timer" id="video-call-timer">00:00</div>
+        <div class="video-call-self">📷</div>
+      </div>
+      <div class="filter-carousel">
+        <button class="filter-btn active">None</button>
+        <button class="filter-btn">🌃 Neon Night</button>
+        <button class="filter-btn">🌸 Blossom</button>
+        <button class="filter-btn">⭐ Sparkle</button>
+        <button class="filter-btn">🎨 Artistic</button>
+      </div>
+      <div class="video-controls">
+        <button class="vc-btn" onclick="toggleMute()">🎤</button>
+        <button class="vc-btn" onclick="toggleCamera()">📷</button>
+        <button class="vc-btn filter-toggle">🎨</button>
+        <button class="vc-btn end-call" onclick="endVideoDate()">📞</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Date Planner Modal -->
+  <div id="date-planner-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card date-planner-modal">
+      <button class="modal-close" onclick="closeModal('date-planner-modal')">✕</button>
+      <h2>📅 Plan a Date</h2>
+      <p>Choose a vibe:</p>
+      <div class="venue-grid">
+        <button class="venue-option" onclick="selectVenue(this, 'drinks')">🍷<br>Drinks</button>
+        <button class="venue-option" onclick="selectVenue(this, 'dinner')">🍽️<br>Dinner</button>
+        <button class="venue-option" onclick="selectVenue(this, 'coffee')">☕<br>Coffee</button>
+        <button class="venue-option" onclick="selectVenue(this, 'movie')">🎬<br>Movie</button>
+        <button class="venue-option" onclick="selectVenue(this, 'outdoor')">🏞️<br>Outdoor</button>
+        <button class="venue-option" onclick="selectVenue(this, 'creative')">🎨<br>Creative</button>
+      </div>
+      <div class="ai-venue-suggestion" id="ai-venue-suggestion" style="display:none;">
+        <div class="venue-suggestion-header">✨ AI Suggestion</div>
+        <div class="venue-suggestion-body" id="venue-suggestion-body"></div>
+        <span class="sponsored-tag">Sponsored</span>
+      </div>
+      <button class="btn-primary" onclick="confirmDate()">Confirm & Send</button>
+    </div>
+  </div>
+
+  <!-- Age Verification Gate -->
+  <div id="age-gate-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card age-gate-modal">
+      <div class="age-gate-icon">🔞</div>
+      <h2>Age Verification Required</h2>
+      <p>Intimate Mode requires age verification. Please confirm you are 18 or older.</p>
+      <div class="age-gate-check">
+        <label><input type="checkbox" id="age-confirm-check" /> I confirm I am 18 years of age or older</label>
+      </div>
+      <div class="age-gate-id">
+        <div class="id-upload-zone" onclick="simulateIdUpload()">
+          <span>🪪</span>
+          <span id="id-upload-text">Tap to upload government ID</span>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="verifyAge()">Verify & Enable</button>
+    </div>
+  </div>
+
+  <!-- Rewarded Ad Overlay -->
+  <div id="rewarded-ad-overlay" class="rewarded-ad-overlay" style="display:none;">
+    <div class="rewarded-ad-screen">
+      <div class="rewarded-ad-header">
+        <span class="ad-label">Advertisement</span>
+        <span class="ad-countdown" id="ad-countdown">Skip in 5s</span>
+      </div>
+      <div class="rewarded-ad-content">
+        <div class="fake-ad">
+          <div class="fake-ad-icon">🍷</div>
+          <h3>Skyline Rooftop Lounge</h3>
+          <p>The perfect date night spot. Book now and get $20 off!</p>
+          <button class="btn-primary">Learn More</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recording Overlay -->
+  <div id="recording-overlay" class="modal-overlay" style="display:none;">
+    <div class="modal-card recording-modal">
+      <div class="recording-indicator">
+        <div class="rec-dot"></div>
+        <span>Recording...</span>
+      </div>
+      <div class="recording-waveform">
+        <div class="rec-wave"></div>
+        <div class="rec-wave"></div>
+        <div class="rec-wave"></div>
+        <div class="rec-wave"></div>
+        <div class="rec-wave"></div>
+        <div class="rec-wave"></div>
+        <div class="rec-wave"></div>
+        <div class="rec-wave"></div>
+      </div>
+      <div class="recording-timer" id="recording-timer">0:00</div>
+      <button class="btn-primary" onclick="stopRecording()">✓ Done</button>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <button class="nav-item" data-screen="live" onclick="navigate('live')" style="color:#FF3F6C;">
+      <span class="nav-icon" style="animation: pulse 1.5s infinite;">🔴</span>
+      <span class="nav-label">Live</span>
+    </button>
+    <button class="nav-item active" data-screen="home" onclick="navigate('home')">
+      <span class="nav-icon">🔥</span>
+      <span class="nav-label">Discover</span>
+    </button>
+    <button class="nav-item" data-screen="map" onclick="navigate('map')">
+      <span class="nav-icon">🗺️</span>
+      <span class="nav-label">Map</span>
+    </button>
+    <button class="nav-item" data-screen="quests" onclick="navigate('quests')">
+      <span class="nav-icon">📋</span>
+      <span class="nav-label">Quests</span>
+    </button>
+    <button class="nav-item" data-screen="shop" onclick="navigate('shop')">
+      <span class="nav-icon">🎰</span>
+      <span class="nav-label">Shop</span>
+    </button>
+    <button class="nav-item" data-screen="chat" onclick="navigate('chat')">
+      <span class="nav-icon">💬</span>
+      <span class="nav-label">Chat</span>
+      <span class="nav-badge">3</span>
+    </button>
+    <button class="nav-item" data-screen="profile" onclick="navigate('profile')">
+      <span class="nav-icon">👤</span>
+      <span class="nav-label">Profile</span>
+    </button>
+  </nav>
+  </div>
+
+  <!-- ========== LEGAL MODAL ========== -->
+  <div id="legal-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card legal-modal">
+      <button class="modal-close" onclick="closeModal('legal-modal')">✕</button>
+      <h2>Terms & Privacy</h2>
+      <div class="legal-content">
+        <h3>1. Acceptance of Terms</h3>
+        <p>By accessing or using SparkQuest ("the App"), you agree to be bound by these Terms of Service. If you do not
+          agree, you may not use the App. Use of the App is void where prohibited.</p>
+
+        <h3>2. Eligibility & User Conduct</h3>
+        <p>You must be at least 18 years old to use SparkQuest. You agree not to: (a) harass, abuse, or harm another
+          person; (b) use the App for any illegal purpose; (c) spam or solicit money from other users. We reserve the
+          right to terminate accounts violating these rules without notice.</p>
+
+        <h3>3. Determining Location</h3>
+        <p>SparkQuest uses your location to identify "Ember Drops" and nearby matches. By using the App, you consent to
+          the collection and use of your location data while the App is in use.</p>
+
+        <h3>4. Content Ownership & License</h3>
+        <p>You retain rights to content you post. However, you grant SparkQuest a worldwide, royalty-free license to
+          use,
+          display, and distribute your content within the App. SparkQuest owns all App design, code, and "Embers" (which
+          have no real-world monetary value).</p>
+
+        <h3>5. Disclaimers & Liability</h3>
+        <p>THE APP IS PROVIDED "AS IS". TO THE FULLEST EXTENT PERMITTED BY LAW, SPARKQUEST DISCLAIMS ALL WARRANTIES. WE
+          ARE NOT LIABLE FOR ANY DAMAGES ARISING FROM YOUR USE OF THE APP OR INTERACTIONS WITH OTHER USERS. YOU ARE
+          SOLELY RESPONSIBLE FOR YOUR INTERACTIONS.</p>
+
+        <h3>6. Privacy Policy (Summary)</h3>
+        <p>We collect: Profile data, Location data, and Usage data. We do not sell your personal data to third parties.
+          For full details, request our full Data Policy via Settings. California residents have specific rights under
+          CCPA.</p>
+
+        <h3>7. Governing Law</h3>
+        <p>These Terms are governed by the laws of the State of California, USA.</p>
+      </div>
+      <div class="legal-actions">
+        <button class="btn-secondary" onclick="declineLegal()">Decline</button>
+        <button class="btn-primary" onclick="acceptLegal()">Accept & Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== SETTINGS MODAL ========== -->
+  <div id="settings-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card settings-modal">
+      <div class="settings-header">
+        <h2>Settings</h2>
+        <button class="modal-close-btn" onclick="saveApiKey(); closeModal('settings-modal')">Done</button>
+      </div>
+
+      <div class="setting-item">
+        <label>AI Features (Gemini)</label>
+        <input type="password" id="settings-api-key" placeholder="Enter Gemini API Key" class="settings-input" />
+        <p class="settings-hint">Required for smart bio & chat suggestions.</p>
+      </div>
+      <div class="setting-item">
+        <label>Discovery Radius</label>
+        <input type="range" class="settings-range" />
+      </div>
+
+      <div class="settings-group">
+        <h3>Preferences</h3>
+        <div class="setting-item">
+          <span>🔔 Push Notifications</span>
+          <label class="toggle"><input type="checkbox" checked onchange="toggleSetting('notif')" /><span
+              class="slider"></span></label>
+        </div>
+        <div class="setting-item">
+          <span>👻 Ghost Mode (Hide Profile)</span>
+          <label class="toggle"><input type="checkbox" onchange="toggleSetting('ghost')" /><span
+              class="slider"></span></label>
+        </div>
+        <div class="setting-item">
+          <span>🌙 Dark Theme</span>
+          <label class="toggle"><input type="checkbox" checked disabled /><span class="slider"></span></label>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <h3>Account</h3>
+        <button class="setting-action" onclick="alert('Data export requested. Check your email.')">📥 Download My
+          Data</button>
+        <button class="setting-action destructive" onclick="alert('Account deletion initiated.')">🗑️ Delete
+          Account</button>
+      </div>
+
+      <div class="app-version">Version 1.2.0 (Beta)</div>
+    </div>
+  </div>
+
+  <!-- ========== DATE CALENDAR MODAL ========== -->
+  <div id="calendar-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card calendar-modal">
+      <div class="calendar-header">
+        <h2>My Dates 📅</h2>
+        <button class="modal-close" onclick="closeModal('calendar-modal')">✕</button>
+      </div>
+
+      <div class="calendar-tabs">
+        <button class="cal-tab active">Upcoming</button>
+        <button class="cal-tab">Past</button>
+      </div>
+
+      <div class="calendar-list" id="calendar-list">
+        <!-- Date Cards -->
+        <div class="date-card">
+          <div class="date-date">
+            <span class="date-day">18</span>
+            <span class="date-month">FEB</span>
+          </div>
+          <div class="date-info">
+            <span class="date-title">Video Date with Sophia</span>
+            <span class="date-time">7:00 PM · In-App Video</span>
+          </div>
+          <div class="date-actions">
+            <button class="btn-xs primary">Join</button>
+            <button class="btn-xs secondary">Reschedule</button>
+          </div>
+        </div>
+
+        <div class="date-empty-state" style="display:none">
+          <span>📅</span>
+          <p>No dates planned yet.</p>
+          <button class="btn-small" onclick="closeModal('calendar-modal'); navigate('chat')">Ask someone out!</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/supabase-config.js"></script>
+  <script type="module" src="js/db-service.js"></script>
+  <script type="module" src="js/ai-service.js"></script>
+  <!-- app.js is now loaded as module to support top-level await if needed, or just to be consistent -->
+  <script type="module" src="main_v2.js"></script>
+
+
+  <!-- DIAGNOSTIC SCRIPT: Detect if modules failed to load -->
+  <script>
+    window.addEventListener('load', function () {
+      setTimeout(function () {
+        if (typeof window.showLoginReward !== 'function') {
+          // App failed to initialize
+          var isFileProtocol = window.location.protocol === 'file:';
+          var msg = "⚠️ App failed to load.\n\n";
+          if (isFileProtocol) {
+            msg += "You are opening this file directly (file://). Modern web features (ES Modules) require a local server.\n\n";
+            msg += "👉 Please run 'python -m http.server' and open http://localhost:8000";
+          } else {
+            msg += "Please check the console (F12) for errors.";
+          }
+          alert(msg);
+        }
+      }, 2000); // Wait 2s for modules to initialize
+    });
+  </script>
+
+  <!-- FIREBASE AUTH: Logic moved to app.js -->
+
+  <!-- CHAT HANDLER: Logic moved to app.js -->
+  <!-- Masked Spark Modal -->
+  <div id="masked-spark-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-card masked-modal" style="background: linear-gradient(135deg, #111, #333); border: 2px solid var(--primary-color);">
+      <div style="font-size: 3em; animation: float 3s ease-in-out infinite;">🎭</div>
+      <h2 style="background: linear-gradient(90deg, #ff00ff, #00ffff); -webkit-background-clip: text; color: transparent;">The Masked Spark</h2>
+      <p>Voice-only speed dating. Blur your camera, let your personality shine, and reveal yourselves if you match!</p>
+      <div id="masked-match-status" style="margin: 20px 0; color: #aaa; font-style: italic;">Ready to find your masked match?</div>
+      <div class="match-actions">
+        <button class="btn-primary" id="btn-masked-search" onclick="startMaskedSearch()">Find a Match (50 🔥)</button>
+        <button class="btn-secondary" onclick="closeModal('masked-spark-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+  <style>
+    @keyframes float {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-15px); }
+      100% { transform: translateY(0px); }
+    }
+  </style>
+</body>
+</html>

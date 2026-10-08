@@ -1,0 +1,22 @@
+{
+  "name": "SparkQuest",
+  "short_name": "SparkQuest",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#FF4B91",
+  "description": "Gamified dating app with Proof of Presence rewards.",
+  "icons": [
+    {
+      "src": "https://img.icons8.com/fluency/192/fire-element.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://img.icons8.com/fluency/512/fire-element.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "orientation": "portrait-primary"
+}
