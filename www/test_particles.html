@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Particle Test</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            background-color: #121212;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            background: #FF4B91;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            z-index: 10;
+        }
+    </style>
+</head>
+
+<body>
+    <button onclick="testParticles()">Explode!</button>
+    <script type="module">
+        import { createParticles } from './js/particles.js';
+
+        window.testParticles = function () {
+            const btn = document.querySelector('button');
+            const rect = btn.getBoundingClientRect();
+            const x = rect.left + rect.width / 2;
+            const y = rect.top + rect.height / 2;
+
+            if (createParticles) {
+                createParticles(x, y, 'confetti');
+                setTimeout(() => createParticles(x, y, 'heart'), 300);
+            } else {
+                alert('createParticles not found!');
+            }
+        }
+    </script>
+</body>
+
+</html>
