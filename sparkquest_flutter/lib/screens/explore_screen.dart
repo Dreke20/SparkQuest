@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:confetti/confetti.dart';
 import '../models/profile.dart';
 import '../theme/app_theme.dart';
+import '../widgets/mystery_blind_match_dialog.dart';
 
 class ExploreScreen extends StatefulWidget {
   final VoidCallback onEmbersEarned;
@@ -183,6 +184,67 @@ class _ExploreScreenState extends State<ExploreScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         children: [
+          // Mystery Blind Match & Vibes Pill
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                InkWell(
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => MysteryBlindMatchDialog(
+                        onAwardEmbers: (val) {
+                          widget.onEmbersEarned();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('🎉 +$val Embers earned from Mystery Match!'),
+                              backgroundColor: AppTheme.questGold,
+                            ),
+                          );
+                        },
+                        onOpenChat: widget.onOpenChat,
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppTheme.electricViolet.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppTheme.electricViolet.withOpacity(0.5)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('🔮 ', style: TextStyle(fontSize: 12)),
+                        Text(
+                          'Mystery Match',
+                          style: TextStyle(color: AppTheme.neonCyan, fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.bgSurface,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white10),
+                  ),
+                  child: const Row(
+                    children: [
+                      Text('🔍 ', style: TextStyle(fontSize: 11)),
+                      Text('All Vibes', style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
           // Card Stack
           Expanded(
             child: Stack(

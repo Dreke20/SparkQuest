@@ -94,11 +94,15 @@ const MapService = {
 
             L.marker([venue.lat, venue.lng], { icon: customIcon }).addTo(this.map)
                 .on('click', () => {
-                    if (window.showVenueInfo) window.showVenueInfo(venue.name);
+                    if (window.SafeHavensInstance) {
+                        const vId = venue.name.toLowerCase().includes('skyline') ? 'venue_skyline' : 'venue_boathouse';
+                        window.SafeHavensInstance.showVenue(vId);
+                    } else if (window.showVenueInfo) {
+                        window.showVenueInfo(venue.name);
+                    }
                     
                     if (window.currentUserUid && window.DB_Service) {
                         window.DB_Service.saveCheckIn(window.currentUserUid, venue.name, venue.lat, venue.lng);
-                        if (window.showToast) window.showToast(`Checked in to ${venue.name}! 🗺️`, 'info');
                     }
                 });
         });

@@ -13,6 +13,11 @@ import VoiceSparks from './js/modules/voice-sparks.js';
 import SparkyAI from './js/modules/sparky-ai.js';
 import CoopQuests from './js/modules/coop-quests.js';
 import LivenessVerification from './js/modules/liveness-verification.js';
+import DailySpinWheel from './js/modules/daily-spin.js';
+import MysteryMatch from './js/modules/mystery-match.js';
+import VibeHeatmeter from './js/modules/vibe-heatmeter.js';
+import SafeHavens from './js/modules/safe-havens.js';
+import VIPCosmetics from './js/modules/vip-cosmetics.js';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { PushNotifications } from '@capacitor/push-notifications';
 import interact from 'interactjs';
@@ -32,6 +37,11 @@ window.VoiceSparks = VoiceSparks;
 window.SparkyAI = SparkyAI;
 window.CoopQuests = CoopQuests;
 window.LivenessVerification = LivenessVerification;
+window.DailySpinWheel = DailySpinWheel;
+window.MysteryMatch = MysteryMatch;
+window.VibeHeatmeter = VibeHeatmeter;
+window.SafeHavens = SafeHavens;
+window.VIPCosmetics = VIPCosmetics;
 window.toggleSoundFX = () => {
   const isEnabled = AudioFX.toggleMute();
   const btn = document.getElementById('sound-fx-toggle-btn');
@@ -1242,8 +1252,8 @@ function openChatDetail(user) {
       flowEl.style.borderColor = 'var(--cyan)';
     } else {
       flowEl.innerHTML = '🔥 Spark: Blazing Hot! 🔥';
-      flowEl.style.borderColor = 'var(--coral)';
     }
+    if (window.VibeHeatmeter) window.VibeHeatmeter.updateHeat(msgCount);
   }
 
   // Load messages
@@ -2858,6 +2868,11 @@ function initNetworkMonitor() {
     if (streakMount && window.CoopQuests) {
       streakMount.innerHTML = window.CoopQuests.renderHeaderStreakBadge();
     }
+    if (window.DailySpinWheel) window.DailySpinWheel.init();
+    if (window.MysteryMatch) window.MysteryMatch.init();
+    if (window.VibeHeatmeter) window.VibeHeatmeter.init();
+    if (window.SafeHavens) window.SafeHavens.init();
+    if (window.VIPCosmetics) window.VIPCosmetics.init();
 
     console.log('[DEBUG] Step 3: AI Init');
     const userApiKey = localStorage.getItem('spark_ai_api_key') || localStorage.getItem('spark_gemini_api_key');
