@@ -9,6 +9,24 @@
     },
     "AdMob": {
       "initializeForTesting": true
+    },
+    "SplashScreen": {
+      "launchShowDuration": 2500,
+      "launchAutoHide": false,
+      "backgroundColor": "#0B0F1A",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#0B0F1A",
+      "overlaysWebView": false
+    },
+    "Keyboard": {
+      "resize": "body",
+      "style": "DARK",
+      "resizeOnFullScreen": true
     }
   },
   "android": {
