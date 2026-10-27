@@ -18,6 +18,8 @@ import MysteryMatch from './js/modules/mystery-match.js';
 import VibeHeatmeter from './js/modules/vibe-heatmeter.js';
 import SafeHavens from './js/modules/safe-havens.js';
 import VIPCosmetics from './js/modules/vip-cosmetics.js';
+import SupabaseClient from './js/modules/supabase-client.js';
+import SparkPass from './js/modules/spark-pass.js';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { PushNotifications } from '@capacitor/push-notifications';
 import interact from 'interactjs';
@@ -42,6 +44,9 @@ window.MysteryMatch = MysteryMatch;
 window.VibeHeatmeter = VibeHeatmeter;
 window.SafeHavens = SafeHavens;
 window.VIPCosmetics = VIPCosmetics;
+window.SupabaseClient = SupabaseClient;
+window.SparkPass = SparkPass;
+try { SupabaseClient.init(); } catch (e) { console.warn(e); }
 window.toggleSoundFX = () => {
   const isEnabled = AudioFX.toggleMute();
   const btn = document.getElementById('sound-fx-toggle-btn');

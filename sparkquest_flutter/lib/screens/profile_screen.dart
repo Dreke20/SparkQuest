@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/app_theme.dart';
+import '../widgets/spark_pass_dialog.dart';
+import '../services/supabase_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   final int embers;
@@ -357,6 +360,106 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Spark Pass Season 1 Banner Button
+          GestureDetector(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              showDialog(
+                context: context,
+                builder: (ctx) => SparkPassDialog(
+                  currentXP: 450,
+                  onRewardClaimed: (val) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('🎉 +$val Embers from Spark Pass!')),
+                    );
+                  },
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0xFF8B5CF6).withOpacity(0.2),
+                    const Color(0xFFEC4899).withOpacity(0.2),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFF8B5CF6).withOpacity(0.4)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF8B5CF6).withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Text('⭐', style: TextStyle(fontSize: 20)),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Season 1: Spark Pass (30 Tiers)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white)),
+                        Text('Level 4: Explorer Keen • 450 XP', style: TextStyle(color: Color(0xFFA78BFA), fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, color: Colors.white54),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Supabase Linked Cloud Card
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF10B981).withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Text('🟢 ', style: TextStyle(fontSize: 12)),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Supabase Cloud Sync', style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold, fontSize: 12)),
+                        Text('Project: ${SupabaseService.projectRef} (Active & Healthy)', style: const TextStyle(color: Colors.white54, fontSize: 10)),
+                      ],
+                    ),
+                  ],
+                ),
+                TextButton(
+                  onPressed: () async {
+                    HapticFeedback.lightImpact();
+                    final ok = await SupabaseService.instance.checkConnection();
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(ok ? '🟢 Supabase connected successfully!' : '⚠️ Offline fallback active'),
+                          backgroundColor: ok ? const Color(0xFF10B981) : Colors.amber.shade800,
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text('Test Ping', style: TextStyle(color: Color(0xFF10B981), fontSize: 11, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
           ),
 
           const SizedBox(height: 20),

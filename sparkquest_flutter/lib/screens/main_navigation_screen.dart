@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 import 'explore_screen.dart';
 import 'map_screen.dart';
@@ -6,6 +7,8 @@ import 'matches_chat_screen.dart';
 import 'quests_screen.dart';
 import 'profile_screen.dart';
 import '../widgets/daily_spin_wheel_dialog.dart';
+import '../widgets/date_guard_dialog.dart';
+import '../widgets/spark_pass_dialog.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -142,8 +145,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     return Scaffold(
       backgroundColor: AppTheme.bgDeep,
       appBar: AppBar(
-        titleSpacing: 18,
+        titleSpacing: 12,
         title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             ShaderMask(
               shaderCallback: (bounds) => const LinearGradient(
@@ -153,71 +157,33 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 'SPARKQUEST',
                 style: TextStyle(
                   fontWeight: FontWeight.w900,
-                  fontSize: 20,
-                  letterSpacing: 2,
+                  fontSize: 16,
+                  letterSpacing: 1.2,
                   color: Colors.white,
                 ),
-              ),
-            ),
-            const SizedBox(width: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppTheme.electricViolet.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: AppTheme.electricViolet.withOpacity(0.6)),
-              ),
-              child: const Text(
-                'FLUTTER',
-                style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppTheme.neonCyan),
               ),
             ),
           ],
         ),
         actions: [
-          // Streak Chip
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 10),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppTheme.sparkCoral.withOpacity(0.18),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppTheme.sparkCoral.withOpacity(0.4)),
-            ),
-            child: Row(
-              children: [
-                const Text('🔥 ', style: TextStyle(fontSize: 12)),
-                Text(
-                  '${_streakDays}d (1.25x)',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.sparkCoral,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-
           // Embers Balance Chip
           GestureDetector(
             onTap: _showEmbersStore,
             child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 10),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: AppTheme.questGold.withOpacity(0.18),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppTheme.questGold.withOpacity(0.5)),
               ),
               child: Row(
                 children: [
-                  const Text('✦ ', style: TextStyle(color: AppTheme.questGold, fontSize: 13, fontWeight: FontWeight.bold)),
+                  const Text('✦ ', style: TextStyle(color: AppTheme.questGold, fontSize: 12, fontWeight: FontWeight.bold)),
                   Text(
                     '$_embers',
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: FontWeight.bold,
                       color: AppTheme.questGold,
                     ),
@@ -226,11 +192,37 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 6),
+
+          // Season Spark Pass Button
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(4),
+            icon: const Text('⭐', style: TextStyle(fontSize: 16)),
+            tooltip: 'Season 1 Spark Pass',
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (ctx) => SparkPassDialog(
+                  currentXP: 450,
+                  onRewardClaimed: (val) {
+                    _addEmbers(val);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('🎉 +$val Embers unlocked from Spark Pass!'),
+                        backgroundColor: AppTheme.questGold,
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
 
           // Daily Fortune Wheel Button
           IconButton(
-            icon: const Text('🎡', style: TextStyle(fontSize: 18)),
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(4),
+            icon: const Text('🎡', style: TextStyle(fontSize: 16)),
             tooltip: 'Daily Fortune Wheel',
             onPressed: () {
               showDialog(
@@ -249,11 +241,19 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               );
             },
           ),
-          // Date Shield SOS Button
+
+          // Date Guard & Guardian Angel SOS Button
           IconButton(
-            icon: const Icon(Icons.shield_outlined, color: AppTheme.neonCyan, size: 22),
-            tooltip: 'Date Shield 2.0',
-            onPressed: _openDateShieldModal,
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(4),
+            icon: const Icon(Icons.shield, color: AppTheme.neonCyan, size: 19),
+            tooltip: 'Date Guard Safety Shield',
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (ctx) => const DateGuardDialog(),
+              );
+            },
           ),
           const SizedBox(width: 6),
         ],
