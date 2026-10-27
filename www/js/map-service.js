@@ -311,6 +311,71 @@ const MapService = {
                 }
             }
         }, 15000); // Check every 15 seconds
+    },
+
+    pulseRadar() {
+        if (!this.map) return;
+        const center = this.userMarker ? this.userMarker.getLatLng() : this.map.getCenter();
+
+        if (window.AudioFX) window.AudioFX.playRadarPing();
+        if (window.Haptics) window.Haptics.impact({ style: 'Medium' }).catch(() => {});
+
+        // Add expanding animated radar circle wave
+        let currentRadius = 50;
+        const radarWave = L.circle(center, {
+            color: '#00E5FF',
+            fillColor: '#00E5FF',
+            fillOpacity: 0.25,
+            weight: 2,
+            radius: currentRadius
+        }).addTo(this.map);
+
+        const expandInterval = setInterval(() => {
+            currentRadius += 75;
+            radarWave.setRadius(currentRadius);
+            radarWave.setStyle({
+                fillOpacity: Math.max(0.01, 0.25 - (currentRadius / 1500) * 0.25),
+                opacity: Math.max(0.05, 1 - (currentRadius / 1500))
+            });
+
+            if (currentRadius >= 1200) {
+                clearInterval(expandInterval);
+                this.map.removeLayer(radarWave);
+            }
+        }, 30);
+
+        // Spawn 2 newly discovered bonus Ember drops near user
+        setTimeout(() => {
+            const offsets = [
+                { dLat: 0.002, dLng: 0.0018, type: 'fire', value: 35 },
+                { dLat: -0.0025, dLng: -0.0015, type: 'gem', value: 75 }
+            ];
+            offsets.forEach(off => {
+                const dropLat = center.lat + off.dLat;
+                const dropLng = center.lng + off.dLng;
+                const iconHtml = off.type === 'fire' ? '🔥' : '💎';
+                const pulseClass = off.type === 'fire' ? 'pulse-fire' : 'pulse-gem';
+
+                const customIcon = L.divIcon({
+                    className: `custom-map-pin ${pulseClass}`,
+                    html: `<div class="pin-content">${iconHtml}</div>`,
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 20]
+                });
+
+                const marker = L.marker([dropLat, dropLng], { icon: customIcon }).addTo(this.map);
+                marker.on('click', () => {
+                    if (window.claimMapDrop) {
+                        window.claimMapDrop({ dataset: { value: off.value, type: off.type } });
+                        this.map.removeLayer(marker);
+                    }
+                });
+            });
+
+            if (window.showToast) {
+                window.showToast('📡 Radar Scan: 2 Ember Beacons revealed nearby!', 'earn', '+75🔥');
+            }
+        }, 600);
     }
 };
 

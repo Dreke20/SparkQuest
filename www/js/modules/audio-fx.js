@@ -185,6 +185,36 @@ class AudioFXEngine {
       console.warn('[AudioFX] Level up error:', e);
     }
   }
+
+  // Sonar Radar Sweep Ping: high-tech pulse with echo
+  playRadarPing() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, now); // A5
+      osc.frequency.exponentialRampToValueAtTime(1760, now + 0.15); // A6
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.35);
+
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.18, now + 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.85);
+    } catch (e) {
+      console.warn('[AudioFX] Radar ping error:', e);
+    }
+  }
 }
 
 const AudioFX = new AudioFXEngine();
