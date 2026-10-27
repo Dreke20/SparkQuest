@@ -1,0 +1,47 @@
+# Google Play Store Listing Metadata: SparkQuest
+
+## App Details
+- Title: SparkQuest: Gamified Dating
+- Package Name: com.sparkquest.sparkquest
+- Default Language: English (US)
+- Category: Dating / Social
+- Content Rating: Mature 17+ (Dating)
+
+## Short Description (80 characters max)
+Discover matches, solve co-op quests & explore safe haven dates with AI wingman.
+
+## Full Description (Up to 4,000 characters)
+Welcome to SparkQuest — where dating meets adventure gaming! 🚀
+
+Tired of endless, boring swiping that leads nowhere? SparkQuest transforms dating into an exhilarating journey of real-world discovery, playful collaboration, and verified safe meetups.
+
+🔥 DISCOVERY & MYSTERY BLIND MATCHES
+• Intuitive Swipe Deck: Meet vibrant adventurers and urban explorers nearby with rich personality prompts.
+• Mystery Blind Matches: Strip away surface-level superficiality! Engage in 3-question vibe duels where avatar blur peels back as chemistry builds.
+• 15-Second Voice Sparks: Hear your match’s actual voice before you ever swipe right.
+
+🎮 GAMIFIED CONNECTION & CO-OP QUESTS
+• Co-Op Matched Quests: Team up with matches to solve local trivia duels, explore hidden coffee courtyards, and unlock joint profile achievements.
+• Daily Fortune Spin: Spin the daily 8-slot wheel to win Embers, rewinds, and booster packs.
+• Season 1 Spark Pass: Progress through 30 seasonal tiers of exclusive rewards, avatar frames, and bragging rights.
+
+🛡️ GUARDIAN ANGEL DATE SHIELD & ANTI-CATFISH
+• Safe Haven Partner Venues: Certified dating spots offering 15% discounts and discreet staff support (Angel Shot protocol).
+• Live Date Guard: Set a safety countdown timer when heading out on dates. Auto-prompts check-ins and dispatches emergency SOS alerts to trusted contacts if needed.
+• 3-Step Anti-Catfish Liveness Check: Verify genuine humans with interactive pose matching to earn the prestigious Blue Flame Verified badge.
+• Discreet Fake Call Escape: Gracefully excuse yourself from uncomfortable dates with simulated incoming calls.
+
+✨ SPARKY AI WINGMAN & VIBE HEATMETERS
+• Real-Time Conversation Momentum: Dynamic Heatmeters track chat flow from Cold to Spiking to Date-Ready.
+• 6-Axis Vibe Radar: Compare personality traits (Adventure, Creativity, Wit, Night Owl, Foodie, Ambition) in an interactive spider radar chart.
+• 1-Tap Date Itinerary Generator: Instantly generate curated 3-stop date blueprints with pour-overs, art walks, and rooftop drinks.
+
+👑 SPARKQUEST GOLD VIP PRIVILEGES
+• Unlimited Rewinds on passed profiles.
+• See Who Liked You immediately.
+• 2x Ember Multipliers on all quests and check-ins.
+• Exclusive Animated Avatar Frames (⚡ Cyberpunk Ring, 🔥 Phoenix Flame, 🌌 Galactic Aura, 👑 Neon Crown).
+
+Privacy Policy: https://sparkquest.app/privacy
+Terms of Service: https://sparkquest.app/terms
+Support: support@sparkquest.app

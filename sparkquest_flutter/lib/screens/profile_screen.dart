@@ -4,7 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/app_theme.dart';
 import '../widgets/spark_pass_dialog.dart';
+import '../widgets/auth_dialog.dart';
 import '../services/supabase_service.dart';
+import '../services/iap_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   final int embers;
@@ -276,21 +278,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: const Text('Maybe Later', style: TextStyle(color: AppTheme.textDim)),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
+              HapticFeedback.heavyImpact();
+              final product = IAPService.instance.products.first; // Gold VIP
+              await IAPService.instance.purchase(product);
               setState(() => _isGoldVip = true);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('👑 Welcome to SparkQuest Gold! Enjoy VIP perks.'),
-                  backgroundColor: AppTheme.questGold,
-                ),
-              );
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('👑 Google Play Purchase Confirmed! Welcome to SparkQuest Gold VIP.'),
+                    backgroundColor: AppTheme.questGold,
+                  ),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.questGold,
               foregroundColor: Colors.black,
             ),
-            child: const Text('Unlock Gold (500 ✦)', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text('Subscribe (\$14.99/mo)', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -431,32 +438,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Text('🟢 ', style: TextStyle(fontSize: 12)),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Supabase Cloud', style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold, fontSize: 12)),
+                            Text('Ref: ${SupabaseService.projectRef}', overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white54, fontSize: 10)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text('🟢 ', style: TextStyle(fontSize: 12)),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Supabase Cloud Sync', style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold, fontSize: 12)),
-                        Text('Project: ${SupabaseService.projectRef} (Active & Healthy)', style: const TextStyle(color: Colors.white54, fontSize: 10)),
-                      ],
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AuthDialog(
+                            onAuthenticated: () {
+                              setState(() {});
+                            },
+                          ),
+                        );
+                      },
+                      child: const Text('Auth / SMS', style: TextStyle(color: Color(0xFF06B6D4), fontSize: 11, fontWeight: FontWeight.bold)),
+                    ),
+                    const SizedBox(width: 4),
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      onPressed: () async {
+                        HapticFeedback.lightImpact();
+                        final ok = await SupabaseService.instance.checkConnection();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(ok ? '🟢 Supabase connected successfully!' : '⚠️ Offline fallback active'),
+                              backgroundColor: ok ? const Color(0xFF10B981) : Colors.amber.shade800,
+                            ),
+                          );
+                        }
+                      },
+                      child: const Text('Test Ping', style: TextStyle(color: Color(0xFF10B981), fontSize: 11, fontWeight: FontWeight.bold)),
                     ),
                   ],
-                ),
-                TextButton(
-                  onPressed: () async {
-                    HapticFeedback.lightImpact();
-                    final ok = await SupabaseService.instance.checkConnection();
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(ok ? '🟢 Supabase connected successfully!' : '⚠️ Offline fallback active'),
-                          backgroundColor: ok ? const Color(0xFF10B981) : Colors.amber.shade800,
-                        ),
-                      );
-                    }
-                  },
-                  child: const Text('Test Ping', style: TextStyle(color: Color(0xFF10B981), fontSize: 11, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),

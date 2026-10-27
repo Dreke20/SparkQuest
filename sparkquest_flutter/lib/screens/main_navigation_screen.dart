@@ -9,6 +9,7 @@ import 'profile_screen.dart';
 import '../widgets/daily_spin_wheel_dialog.dart';
 import '../widgets/date_guard_dialog.dart';
 import '../widgets/spark_pass_dialog.dart';
+import '../services/iap_service.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -59,29 +60,90 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             Text('✦ Spark Embers Vault', style: TextStyle(color: AppTheme.questGold, fontSize: 18, fontWeight: FontWeight.bold)),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Your Balance: $_embers Embers', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(height: 6),
-            const Text(
-              'Use Embers to Superlike, unlock radar scan boosts, and reveal mystery blind-date clues.',
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
-            ),
-            const SizedBox(height: 16),
-            _storeOption('💎 100 Embers', 'Free daily grant', () {
-              _addEmbers(100);
-              Navigator.pop(ctx);
-            }),
-            const SizedBox(height: 8),
-            _storeOption('🔥 500 Embers', 'Explorer Pouch', () {
-              _addEmbers(500);
-              Navigator.pop(ctx);
-            }),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Your Balance: $_embers Embers', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 6),
+              const Text(
+                'Use Embers to Superlike, unlock radar scan boosts, and reveal mystery blind-date clues.',
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+              ),
+              const SizedBox(height: 14),
+              _storeOption('🎁 Daily Spark Grant', 'Free daily reward', 'FREE', () {
+                _addEmbers(25);
+                Navigator.pop(ctx);
+                HapticFeedback.lightImpact();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('🎁 +25 Free Embers claimed for today!'),
+                    backgroundColor: Color(0xFF10B981),
+                  ),
+                );
+              }),
+              const SizedBox(height: 8),
+              _storeOption('💎 100 Embers Pouch', 'Google Play In-App Purchase', '\$1.99', () async {
+                Navigator.pop(ctx);
+                HapticFeedback.heavyImpact();
+                final p = IAPService.instance.products.firstWhere((prod) => prod.id == 'sparkquest_embers_100');
+                await IAPService.instance.purchase(p, onEmbersAdded: _addEmbers);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('💎 Purchase Successful! +100 Embers added to vault.'),
+                      backgroundColor: AppTheme.questGold,
+                    ),
+                  );
+                }
+              }),
+              const SizedBox(height: 8),
+              _storeOption('🔥 500 Embers Chest', '20% Bonus included • Best value', '\$6.99', () async {
+                Navigator.pop(ctx);
+                HapticFeedback.heavyImpact();
+                final p = IAPService.instance.products.firstWhere((prod) => prod.id == 'sparkquest_embers_500');
+                await IAPService.instance.purchase(p, onEmbersAdded: _addEmbers);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('🔥 Purchase Successful! +500 Embers added to vault.'),
+                      backgroundColor: AppTheme.sparkCoral,
+                    ),
+                  );
+                }
+              }),
+              const SizedBox(height: 8),
+              _storeOption('⚡ 30m Spotlight Boost', 'Top deck placement for 30 mins', '\$2.99', () async {
+                Navigator.pop(ctx);
+                HapticFeedback.heavyImpact();
+                final p = IAPService.instance.products.firstWhere((prod) => prod.id == 'sparkquest_spotlight_boost');
+                await IAPService.instance.purchase(p);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('⚡ Spotlight Boost Active! You are now featured locally.'),
+                      backgroundColor: Color(0xFFF59E0B),
+                    ),
+                  );
+                }
+              }),
+            ],
+          ),
         ),
         actions: [
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await IAPService.instance.restorePurchases();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('🔄 Google Play purchases restored successfully.')),
+                );
+              }
+            },
+            child: const Text('Restore Purchases', style: TextStyle(color: AppTheme.textDim, fontSize: 11)),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Close', style: TextStyle(color: AppTheme.textDim)),
@@ -91,7 +153,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     );
   }
 
-  Widget _storeOption(String title, String subtitle, VoidCallback onTap) {
+  Widget _storeOption(String title, String subtitle, String price, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
@@ -105,14 +167,26 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
-                Text(subtitle, style: const TextStyle(fontSize: 11, color: AppTheme.textDim)),
-              ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary, fontSize: 13)),
+                  Text(subtitle, style: const TextStyle(fontSize: 10, color: AppTheme.textDim)),
+                ],
+              ),
             ),
-            const Icon(Icons.add_circle, color: AppTheme.questGold),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppTheme.questGold.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                price,
+                style: const TextStyle(color: AppTheme.questGold, fontWeight: FontWeight.bold, fontSize: 11),
+              ),
+            ),
           ],
         ),
       ),
