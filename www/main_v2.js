@@ -879,7 +879,11 @@ function undoSwipe() {
     var last = swipeHistory.pop();
     profiles.unshift(last.profile);
     buildSwipeDeck();
-    showToast('Swipe undone!', 'info');
+    if (window.AudioFX) window.AudioFX.playSwipe('left');
+    try {
+      Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+    } catch (e) {}
+    showToast('Swipe undone! ↩️', 'info');
   }
 }
 
@@ -1130,6 +1134,7 @@ function spinGacha(tier) {
             });
             if (Date.now() < end) requestAnimationFrame(frame);
         }());
+        if (window.AudioFX) window.AudioFX.playMatch();
         Haptics.impact({ style: ImpactStyle.Heavy }).catch(e => {});
     } else {
         // Standard Confetti Burst
@@ -1138,6 +1143,7 @@ function spinGacha(tier) {
             spread: 70,
             origin: { y: 0.6 }
         });
+        if (window.AudioFX) window.AudioFX.playLevelUp();
         Haptics.impact({ style: ImpactStyle.Medium }).catch(e => {});
     }
     
@@ -1401,18 +1407,59 @@ function moderateContent(text) {
 }
 
 function attachMedia() {
-  var messages = document.getElementById('chat-messages');
-  var bubble = document.createElement('div');
-  bubble.className = 'chat-bubble sent';
-  var placeholder = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="150" fill="%231A2235"><rect width="200" height="150"/><text x="50%" y="50%" fill="%2394A3B8" text-anchor="middle" dy=".3em" font-size="14">📷 Photo</text></svg>');
-  bubble.innerHTML = '<div class="chat-bubble-media ai-scanning"><img src="' + placeholder + '" alt="Photo" /></div><span class="bubble-time">Now</span>';
-  messages.appendChild(bubble);
-  messages.scrollTop = messages.scrollHeight;
-  setTimeout(function () {
-    var mediaEl = bubble.querySelector('.chat-bubble-media');
-    if (mediaEl) mediaEl.classList.remove('ai-scanning');
-    showToast('Photo scanned by AI — safe ✓', 'info');
-  }, 2000);
+  let fileInput = document.getElementById('chat-photo-file-input');
+  if (!fileInput) {
+    fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.id = 'chat-photo-file-input';
+    fileInput.accept = 'image/*';
+    fileInput.style.display = 'none';
+    document.body.appendChild(fileInput);
+  }
+
+  fileInput.onchange = function(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      const dataUrl = evt.target.result;
+      const messages = document.getElementById('chat-messages');
+      const bubble = document.createElement('div');
+      bubble.className = 'chat-bubble sent';
+      const now = new Date();
+      const timeStr = (now.getHours() % 12 || 12) + ':' + String(now.getMinutes()).padStart(2, '0');
+
+      bubble.innerHTML = `
+        <div class="chat-bubble-media ai-scanning" onclick="window.openLightbox('${dataUrl}')" style="cursor:pointer;">
+          <img src="${dataUrl}" alt="Photo" style="max-height:220px; width:auto; border-radius:12px; object-fit:cover;" />
+        </div>
+        <span class="bubble-time">${timeStr}</span>
+      `;
+      messages.appendChild(bubble);
+      messages.scrollTop = messages.scrollHeight;
+
+      if (window.AudioFX) window.AudioFX.playPop();
+
+      if (currentChatUser && chatData[currentChatUser]) {
+        chatData[currentChatUser].msgs.push({ media: dataUrl, type: 'sent', time: timeStr });
+      }
+
+      if (window.CoopQuests && currentChatUser) {
+        window.CoopQuests.incrementProgress(currentChatUser, 'msgs', 1);
+      }
+
+      setTimeout(function () {
+        const mediaEl = bubble.querySelector('.chat-bubble-media');
+        if (mediaEl) mediaEl.classList.remove('ai-scanning');
+        showToast('Photo scanned by AI — safe ✓', 'info');
+      }, 1500);
+    };
+    reader.readAsDataURL(file);
+    fileInput.value = '';
+  };
+
+  fileInput.click();
 }
 
 // AI Conversation Starters
@@ -1951,6 +1998,12 @@ function claimQuestReward(card, questId) {
   card.querySelector('.quest-progress-text').textContent = 'Done ✓';
   showToast('Quest Reward Claimed! +' + reward + ' Embers', 'earn', '+' + reward);
   floatingEmber();
+
+  if (window.AudioFX) window.AudioFX.playEmberClaim();
+  confetti({ particleCount: 50, spread: 60, origin: { y: 0.5 } });
+  try {
+    Haptics.notification({ type: 'SUCCESS' }).catch(() => {});
+  } catch (e) {}
 }
 
 function activatePanicButton() {
@@ -2559,6 +2612,11 @@ function startMaskedTimer(seconds) {
   document.getElementById('btn-masked-vibe').innerText = 'Hit the Vibe! ⚡';
   document.getElementById('btn-masked-vibe').style.background = 'var(--primary-color)';
   
+  const promptEl = document.getElementById('masked-room-prompt');
+  if (promptEl) {
+    promptEl.textContent = 'Prompt 1: "What is your most controversial food opinion? 🍕"';
+  }
+
   clearInterval(maskedTimerInterval);
   maskedTimerInterval = setInterval(() => {
     timeLeft--;
@@ -2566,6 +2624,15 @@ function startMaskedTimer(seconds) {
     let s = (timeLeft % 60).toString().padStart(2, '0');
     document.getElementById('masked-timer').innerText = `${m}:${s}`;
     
+    // Dynamic Prompt Rotation every 60 seconds
+    if (timeLeft === 120 && promptEl) {
+      promptEl.textContent = 'Prompt 2: "What is the most spontaneous thing on your bucket list? ✈️"';
+      if (window.AudioFX) window.AudioFX.playPop();
+    } else if (timeLeft === 60 && promptEl) {
+      promptEl.textContent = 'Prompt 3: "Describe your personality using only 3 movie titles. 🎬"';
+      if (window.AudioFX) window.AudioFX.playPop();
+    }
+
     if (timeLeft <= 0) {
       clearInterval(maskedTimerInterval);
       if (!vibeHit) {
@@ -2734,10 +2801,42 @@ async function checkSession() {
   }
 }
 
+function initNetworkMonitor() {
+  function updateNetworkStatus(online) {
+    const banner = document.getElementById('network-status-banner');
+    const text = document.getElementById('network-status-text');
+    const icon = document.getElementById('network-status-icon');
+    if (!banner) return;
+
+    if (!online) {
+      banner.className = 'network-status-banner offline';
+      if (icon) icon.textContent = '⚡';
+      if (text) text.textContent = 'Offline Mode — Actions saved locally, will sync automatically';
+      banner.style.display = 'flex';
+    } else {
+      banner.className = 'network-status-banner online';
+      if (icon) icon.textContent = '🟢';
+      if (text) text.textContent = 'Back Online — Synced with SparkQuest Cloud';
+      banner.style.display = 'flex';
+      setTimeout(() => {
+        banner.style.display = 'none';
+      }, 3500);
+    }
+  }
+
+  window.addEventListener('online', () => updateNetworkStatus(true));
+  window.addEventListener('offline', () => updateNetworkStatus(false));
+
+  if (!navigator.onLine) {
+    updateNetworkStatus(false);
+  }
+}
+
 // Init — Module scripts are deferred, so DOM is already ready
 (async function () {
   try {
     console.log('[APP] Init IIFE started');
+    initNetworkMonitor();
     
     // Check Auth Session First
     await checkSession();

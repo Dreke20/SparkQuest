@@ -264,6 +264,12 @@
       </div>
     </div>
 
+    <!-- Network Status Resilience Banner -->
+    <div id="network-status-banner" class="network-status-banner" style="display:none;">
+      <span id="network-status-icon">⚡</span>
+      <span id="network-status-text">Offline Mode — Actions are saved locally and will sync when connected</span>
+    </div>
+
     <!-- Top Bar -->
     <header class="top-bar">
       <div class="top-bar-left">
@@ -641,8 +647,11 @@
         <p class="screen-subtitle">Find drops & trending spots</p>
       </div>
 
-      <div class="map-container">
+      <div class="map-container" style="position:relative;">
         <div id="spark-map"></div>
+        <button class="map-radar-fab" id="btn-map-radar" onclick="window.MapService.pulseRadar()">
+          <i class="fas fa-satellite-dish"></i> 📡 Pulse Radar
+        </button>
       </div>
     </section>
 
