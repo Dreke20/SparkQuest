@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/chat_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/vibe_radar_dialog.dart';
+import '../widgets/coop_quest_sheet.dart';
+import '../services/supabase_service.dart';
 
 class MatchesChatScreen extends StatefulWidget {
   final VoidCallback onOpenDateShield;
@@ -157,10 +160,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     _messages = List.from(widget.conversation.messages);
   }
 
-  void _sendMessage([String? textToSend]) {
+  void _sendMessage([String? textToSend, bool isVoice = false]) {
     final text = textToSend ?? _msgController.text.trim();
     if (text.isEmpty) return;
 
+    HapticFeedback.lightImpact();
     setState(() {
       _messages.add(ChatMessage(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -170,6 +174,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       ));
     });
     _msgController.clear();
+
+    SupabaseService.instance.sendMessage(
+      matchId: widget.conversation.id,
+      senderId: 'user_me',
+      content: text,
+      isVoice: isVoice,
+    );
   }
 
   void _openDateItinerary() {
@@ -262,6 +273,29 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         ),
         actions: [
           IconButton(
+            icon: const Text('🤝', style: TextStyle(fontSize: 18)),
+            tooltip: 'Co-Op Match Quest',
+            onPressed: () {
+              HapticFeedback.selectionClick();
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (ctx) => CoopQuestSheet(
+                  matchName: widget.conversation.name,
+                  onCompleted: (embers) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('🎉 +$embers Embers from Co-Op Quest!'),
+                        backgroundColor: AppTheme.questGold,
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.analytics_outlined, color: AppTheme.neonCyan),
             tooltip: '6-Axis Vibe Radar',
             onPressed: () => showDialog(
@@ -343,22 +377,54 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               itemCount: _messages.length,
               itemBuilder: (ctx, i) {
                 final m = _messages[i];
+                final isVoice = m.text.contains('🎙️');
                 return Align(
                   alignment: m.isSentByMe ? Alignment.centerRight : Alignment.centerLeft,
                   child: Container(
                     margin: const EdgeInsets.symmetric(vertical: 4),
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
                     decoration: BoxDecoration(
-                      color: m.isSentByMe ? AppTheme.electricViolet : AppTheme.bgCard,
+                      color: isVoice
+                          ? const Color(0xFF1E1B4B)
+                          : m.isSentByMe
+                              ? AppTheme.electricViolet
+                              : AppTheme.bgCard,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: m.isSentByMe ? AppTheme.electricViolet : Colors.white10,
+                        color: isVoice
+                            ? const Color(0xFF8B5CF6)
+                            : m.isSentByMe
+                                ? AppTheme.electricViolet
+                                : Colors.white10,
                       ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
+                        if (isVoice) ...[
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              GestureDetector(
+                                onTap: () => HapticFeedback.selectionClick(),
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF8B5CF6),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.play_arrow, color: Colors.white, size: 16),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text('ılılıllı|l|lllı|', style: TextStyle(color: Color(0xFF06B6D4), fontSize: 16, letterSpacing: 1)),
+                              const SizedBox(width: 8),
+                              const Text('0:09', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                        ],
                         Text(m.text, style: const TextStyle(color: Colors.white, fontSize: 14)),
                         const SizedBox(height: 4),
                         Text(m.time, style: const TextStyle(color: Colors.white54, fontSize: 10)),
@@ -399,6 +465,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             child: SafeArea(
               child: Row(
                 children: [
+                  IconButton(
+                    icon: const Icon(Icons.mic, color: Color(0xFF06B6D4)),
+                    tooltip: 'Send Voice Note',
+                    onPressed: () {
+                      HapticFeedback.mediumImpact();
+                      _sendMessage('🎙️ Voice Note (0:09) "Honestly the espresso tonic there changed my life haha"', true);
+                    },
+                  ),
                   IconButton(
                     icon: const Icon(Icons.camera_alt, color: AppTheme.neonCyan),
                     onPressed: () {

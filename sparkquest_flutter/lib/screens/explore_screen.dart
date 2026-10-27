@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:confetti/confetti.dart';
 import '../models/profile.dart';
@@ -42,6 +43,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   void _swipe(bool isRight) {
     if (_cards.isEmpty) return;
+    HapticFeedback.mediumImpact();
     final top = _cards.removeAt(0);
     _history.add(top);
     _dragOffset = Offset.zero;
@@ -59,6 +61,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       );
       return;
     }
+    HapticFeedback.lightImpact();
     setState(() {
       final last = _history.removeLast();
       _cards.insert(0, last);
@@ -69,6 +72,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   void _showMatchDialog(Profile profile) {
+    HapticFeedback.heavyImpact();
     widget.onEmbersEarned();
     _confettiController.play();
 
