@@ -277,6 +277,8 @@
       </div>
       <div class="top-bar-right">
         <div id="header-streak-mount"></div>
+        <div class="spin-wheel-btn" onclick="window.DailySpinWheelInstance.open()" title="Daily Fortune Wheel" style="cursor:pointer; font-size:1.15rem; padding: 2px 6px;">🎡</div>
+        <div class="vip-gold-btn" onclick="window.VIPCosmeticsInstance.openVIP()" title="SparkQuest Gold VIP" style="cursor:pointer; font-size:1.15rem; padding: 2px 6px;">👑</div>
         <div class="sound-fx-toggle" id="sound-fx-toggle-btn" onclick="window.toggleSoundFX()" title="Toggle Sound FX" style="cursor:pointer; font-size:1.1rem; padding: 2px 6px;">🔊</div>
         <div class="ember-balance" onclick="navigate('wallet')">
           <span class="ember-icon">✦</span>
@@ -302,8 +304,11 @@
 
     <!-- HOME / SWIPE DECK -->
     <section id="screen-home" class="app-screen active">
-      <!-- Dynamic Filter -->
-      <div class="deck-filter" style="padding: 10px 15px; text-align: right;">
+      <!-- Dynamic Filter & Mystery Match Button -->
+      <div class="deck-filter" style="padding: 10px 15px; display:flex; justify-content:space-between; align-items:center;">
+        <button onclick="window.MysteryMatchInstance.open()" style="padding:6px 14px; border-radius:20px; background:linear-gradient(90deg, rgba(123,47,255,0.35), rgba(0,229,255,0.25)); border:1px solid #7B2FFF; color:#00E5FF; font-size:0.8rem; font-weight:bold; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+          <span>🔮</span> Mystery Match
+        </button>
         <select id="profile-filter" onchange="window.applyProfileFilter()" style="padding: 6px 12px; border-radius: 15px; background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--primary-color); font-size: 0.9em;">
           <option value="all">🔍 All Vibes</option>
           <option value="Foodie">🍣 Foodie</option>
@@ -1096,12 +1101,18 @@
           <span class="badge streak" onclick="window.CoopQuests.openStreakModal()" style="cursor:pointer;">🔥 Daily Streak</span>
         </div>
         
-        <div class="profile-action-buttons-row" style="display:flex; gap:10px; justify-content:center; margin: 12px 0;">
+        <div class="profile-action-buttons-row" style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin: 12px 0;">
           <button class="btn-small" onclick="window.LivenessVerification.openVerificationModal()" style="background:rgba(0,229,255,0.15); border:1px solid var(--cyan); color:var(--cyan); padding:8px 14px; border-radius:12px; cursor:pointer; font-size:0.8rem;">
             🛡️ Verify Face (Anti-Catfish)
           </button>
           <button class="btn-small" onclick="window.VoiceSparks.openRecorderModal()" style="background:rgba(255,63,108,0.15); border:1px solid var(--coral); color:var(--coral); padding:8px 14px; border-radius:12px; cursor:pointer; font-size:0.8rem;">
             🎙️ Record Voice Spark
+          </button>
+          <button class="btn-small" onclick="window.VIPCosmeticsInstance.openCosmetics()" style="background:rgba(255,184,0,0.15); border:1px solid #FFB800; color:#FFB800; padding:8px 14px; border-radius:12px; cursor:pointer; font-size:0.8rem;">
+            ✨ Avatar Frames
+          </button>
+          <button class="btn-small" onclick="window.VIPCosmeticsInstance.openVIP()" style="background:rgba(123,47,255,0.15); border:1px solid #7B2FFF; color:#00E5FF; padding:8px 14px; border-radius:12px; cursor:pointer; font-size:0.8rem;">
+            👑 SparkQuest Gold
           </button>
         </div>
         

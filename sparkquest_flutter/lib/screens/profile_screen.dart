@@ -23,6 +23,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _hasVoicePrompt = false;
   int _voiceSeconds = 0;
   Timer? _voiceTimer;
+  String _selectedFrame = 'cyber_cyan';
+  bool _isGoldVip = false;
 
   final List<String?> _photos = [
     'assets/images/alex.png',
@@ -135,6 +137,176 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  void _openCosmeticsModal() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.bgSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          final frames = [
+            {'id': 'cyber_cyan', 'name': '⚡ Cyberpunk Ring', 'color': AppTheme.neonCyan},
+            {'id': 'phoenix_flame', 'name': '🔥 Phoenix Flame', 'color': AppTheme.sparkCoral},
+            {'id': 'galactic_violet', 'name': '🌌 Galactic Aura', 'color': AppTheme.electricViolet},
+            {'id': 'neon_crown', 'name': '👑 Neon Crown Legend', 'color': AppTheme.questGold},
+          ];
+
+          return Padding(
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      '✨ Avatar Glowing Frames',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: AppTheme.textDim),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Select an animated frame for your profile and chat cards.',
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                ...frames.map((f) {
+                  final isSelected = (_selectedFrame == f['id']);
+                  return InkWell(
+                    onTap: () {
+                      setState(() => _selectedFrame = f['id'] as String);
+                      setModalState(() {});
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Equipped ${f['name']}! ✨'),
+                          backgroundColor: f['color'] as Color,
+                        ),
+                      );
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.bgCard,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isSelected ? (f['color'] as Color) : Colors.white10,
+                          width: isSelected ? 2 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: f['color'] as Color, width: 2),
+                                ),
+                                child: const Center(child: Text('👤', style: TextStyle(fontSize: 12))),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                f['name'] as String,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            isSelected ? 'EQUIPPED' : 'EQUIP',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected ? (f['color'] as Color) : AppTheme.textDim,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _openVIPModal() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.bgSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Row(
+          children: [
+            Text('👑 SparkQuest Gold VIP', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.questGold)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Unlock exclusive explorer privileges:', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+            const SizedBox(height: 12),
+            _vipPerk('⏪', 'Unlimited Rewinds on passed cards'),
+            _vipPerk('👁️', 'See who liked your profile instantly'),
+            _vipPerk('✦', '2x Embers from all quests & drops'),
+            _vipPerk('⚡', 'Weekly Spotlight Profile Boost'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Maybe Later', style: TextStyle(color: AppTheme.textDim)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              setState(() => _isGoldVip = true);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('👑 Welcome to SparkQuest Gold! Enjoy VIP perks.'),
+                  backgroundColor: AppTheme.questGold,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.questGold,
+              foregroundColor: Colors.black,
+            ),
+            child: const Text('Unlock Gold (500 ✦)', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _vipPerk(String icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Text(icon, style: const TextStyle(fontSize: 14)),
+          const SizedBox(width: 8),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary))),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -150,7 +322,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
           // Safety Shield Banner
           _buildDateShieldBanner(),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+
+          // VIP Gold & Avatar Frames Buttons Row
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _openCosmeticsModal,
+                  icon: const Icon(Icons.auto_awesome, size: 16, color: AppTheme.questGold),
+                  label: const Text('Avatar Frames', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.bgCard,
+                    foregroundColor: Colors.white,
+                    side: BorderSide(color: AppTheme.questGold.withOpacity(0.4)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _openVIPModal,
+                  icon: const Icon(Icons.workspace_premium, size: 16, color: AppTheme.sparkCoral),
+                  label: Text(_isGoldVip ? 'Gold Active 👑' : 'SparkQuest Gold', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _isGoldVip ? AppTheme.questGold.withOpacity(0.2) : AppTheme.bgCard,
+                    foregroundColor: _isGoldVip ? AppTheme.questGold : Colors.white,
+                    side: BorderSide(color: _isGoldVip ? AppTheme.questGold : AppTheme.sparkCoral.withOpacity(0.4)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 20),
 
           // Liveness Verification Banner / Badge
           _buildVerificationBanner(),
@@ -216,18 +425,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           Stack(
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Image.asset(
-                  'assets/images/alex.png',
-                  width: 74,
-                  height: 74,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    width: 74,
-                    height: 74,
-                    color: AppTheme.bgInput,
-                    child: const Icon(Icons.person, color: AppTheme.neonCyan, size: 40),
+              Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: _selectedFrame == 'phoenix_flame'
+                        ? AppTheme.sparkCoral
+                        : (_selectedFrame == 'neon_crown'
+                            ? AppTheme.questGold
+                            : (_selectedFrame == 'galactic_violet' ? AppTheme.electricViolet : AppTheme.neonCyan)),
+                    width: 2.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (_selectedFrame == 'phoenix_flame'
+                              ? AppTheme.sparkCoral
+                              : (_selectedFrame == 'neon_crown'
+                                  ? AppTheme.questGold
+                                  : (_selectedFrame == 'galactic_violet' ? AppTheme.electricViolet : AppTheme.neonCyan)))
+                          .withOpacity(0.55),
+                      blurRadius: 14,
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(19),
+                  child: Image.asset(
+                    'assets/images/alex.png',
+                    width: 72,
+                    height: 72,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      width: 72,
+                      height: 72,
+                      color: AppTheme.bgInput,
+                      child: const Icon(Icons.person, color: AppTheme.neonCyan, size: 40),
+                    ),
                   ),
                 ),
               ),
@@ -262,8 +496,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    if (_isVerified)
-                      const Icon(Icons.verified, size: 18, color: AppTheme.emeraldGreen)
+                    if (_isGoldVip)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppTheme.questGold.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: AppTheme.questGold),
+                        ),
+                        child: const Text('👑 VIP', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.questGold)),
+                      ),
+                    if (_isVerified) ...[
+                      const SizedBox(width: 4),
+                      const Icon(Icons.verified, size: 18, color: AppTheme.emeraldGreen),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 2),

@@ -184,6 +184,62 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             ],
           ),
         ),
+        // Proximity Beacon Alert
+        Positioned(
+          top: 16,
+          left: 16,
+          right: 16,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppTheme.bgSurface.withOpacity(0.92),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.neonCyan.withOpacity(0.5)),
+              boxShadow: [
+                BoxShadow(color: AppTheme.neonCyan.withOpacity(0.15), blurRadius: 12),
+              ],
+            ),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.asset('assets/images/maya.png', width: 34, height: 34, fit: BoxFit.cover),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '📡 PROXIMITY BEACON DETECTED',
+                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.neonCyan, letterSpacing: 0.8),
+                      ),
+                      Text(
+                        'Maya (92% Match) is 280 ft away!',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                      ),
+                    ],
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Wave sent to Maya! 🌊'), backgroundColor: AppTheme.sparkCoral),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.sparkCoral,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    minimumSize: Size.zero,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Wave 🌊', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          ),
+        ),
         // Pulse Radar Floating Button
         Positioned(
           bottom: 24,
@@ -224,18 +280,51 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           children: [
             Row(
               children: [
-                const Icon(Icons.location_on, color: AppTheme.sparkCoral, size: 28),
-                const SizedBox(width: 8),
-                Text(
-                  venueName,
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.questGold.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.shield, color: AppTheme.questGold, size: 24),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'VERIFIED SAFE HAVEN PARTNER',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.questGold, letterSpacing: 1),
+                      ),
+                      Text(
+                        venueName,
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Trending Date Spot · 4 active sparks checked in nearby',
-              style: TextStyle(color: AppTheme.textSecondary),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.questGold.withOpacity(0.1),
+                border: Border.all(color: AppTheme.questGold.withOpacity(0.4)),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Row(
+                children: [
+                  Text('🎁 ', style: TextStyle(fontSize: 18)),
+                  Expanded(
+                    child: Text(
+                      '15% Off Total Bill (Code: SPARK15) • Angel Shot Protocol Active',
+                      style: TextStyle(color: AppTheme.textPrimary, fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
@@ -247,10 +336,13 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               onPressed: () {
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Checked in at $venueName! 🗺️')),
+                  SnackBar(
+                    content: Text('Checked in at $venueName! 15% discount unlocked. 🛡️'),
+                    backgroundColor: AppTheme.emeraldGreen,
+                  ),
                 );
               },
-              child: const Text('Check In & Drop Pin', style: TextStyle(color: Colors.white)),
+              child: const Text('Check In & Unlock 15% Perk', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
         ),

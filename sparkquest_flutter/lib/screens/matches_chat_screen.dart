@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/chat_model.dart';
 import '../theme/app_theme.dart';
+import '../widgets/vibe_radar_dialog.dart';
 
 class MatchesChatScreen extends StatefulWidget {
   final VoidCallback onOpenDateShield;
@@ -261,6 +262,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.analytics_outlined, color: AppTheme.neonCyan),
+            tooltip: '6-Axis Vibe Radar',
+            onPressed: () => showDialog(
+              context: context,
+              builder: (ctx) => VibeRadarDialog(matchName: widget.conversation.name),
+            ),
+          ),
+          IconButton(
             icon: const Icon(Icons.map_outlined, color: AppTheme.questGold),
             tooltip: 'Plan Date Quest',
             onPressed: _openDateItinerary,
@@ -274,6 +283,48 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       ),
       body: Column(
         children: [
+          // Dynamic Vibe Heatmeter Bar
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            color: AppTheme.bgCard,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Text('⚡ Chemistry: ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.neonCyan)),
+                    Container(
+                      width: 60,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: Colors.white12,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      child: FractionallySizedBox(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: 0.88,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: AppTheme.neonCyan,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Text('88% (Date Ready!)', style: TextStyle(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                InkWell(
+                  onTap: () => showDialog(
+                    context: context,
+                    builder: (ctx) => VibeRadarDialog(matchName: widget.conversation.name),
+                  ),
+                  child: const Text('📊 Vibe Radar', style: TextStyle(fontSize: 11, color: AppTheme.neonCyan, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          ),
           // Co-Op Quest Mini Bar
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

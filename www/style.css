@@ -7039,3 +7039,31 @@ button {
   background: #10b981;
   color: #fff;
 }
+
+/* ===== NEW FEATURE ENHANCEMENTS ===== */
+.spin-wheel-btn:hover, .vip-gold-btn:hover {
+  transform: scale(1.15);
+  filter: drop-shadow(0 0 8px rgba(0,229,255,0.8));
+  transition: transform 0.2s, filter 0.2s;
+}
+
+.avatar-frame-cyber {
+  border: 3px solid #00E5FF !important;
+  box-shadow: 0 0 15px #00E5FF, inset 0 0 8px #00E5FF !important;
+}
+
+.avatar-frame-flame {
+  border: 3px solid #FF3F6C !important;
+  box-shadow: 0 0 18px #FF3F6C, 0 0 30px rgba(255,63,108,0.5) !important;
+}
+
+.avatar-frame-gold {
+  border: 3px solid #FFB800 !important;
+  box-shadow: 0 0 25px #FFB800, 0 0 15px #FF3F6C !important;
+}
+
+@keyframes pulseGlow {
+  0% { box-shadow: 0 0 8px rgba(0, 229, 255, 0.4); }
+  50% { box-shadow: 0 0 22px rgba(0, 229, 255, 0.85); }
+  100% { box-shadow: 0 0 8px rgba(0, 229, 255, 0.4); }
+}

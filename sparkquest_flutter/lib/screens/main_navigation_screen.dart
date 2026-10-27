@@ -5,6 +5,7 @@ import 'map_screen.dart';
 import 'matches_chat_screen.dart';
 import 'quests_screen.dart';
 import 'profile_screen.dart';
+import '../widgets/daily_spin_wheel_dialog.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -227,6 +228,27 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ),
           const SizedBox(width: 6),
 
+          // Daily Fortune Wheel Button
+          IconButton(
+            icon: const Text('🎡', style: TextStyle(fontSize: 18)),
+            tooltip: 'Daily Fortune Wheel',
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (ctx) => DailySpinWheelDialog(
+                  onAwardEmbers: (val) {
+                    _addEmbers(val);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('🎉 +$val Embers added to your vault!'),
+                        backgroundColor: AppTheme.questGold,
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
           // Date Shield SOS Button
           IconButton(
             icon: const Icon(Icons.shield_outlined, color: AppTheme.neonCyan, size: 22),
