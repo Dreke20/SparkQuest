@@ -3,6 +3,7 @@ apply plugin: 'com.android.application'
 android {
     namespace = "com.sparkquest.app"
     compileSdk = rootProject.ext.compileSdkVersion
+    buildToolsVersion = "36.0.0"
     defaultConfig {
         applicationId "com.sparkquest.app"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -16,8 +17,24 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (System.getenv("KEYSTORE_PATH") != null && new File(System.getenv("KEYSTORE_PATH")).exists()) {
+                storeFile file(System.getenv("KEYSTORE_PATH"))
+                storePassword System.getenv("KEYSTORE_PASSWORD")
+                keyAlias System.getenv("KEY_ALIAS")
+                keyPassword System.getenv("KEY_PASSWORD")
+            } else if (file('release-keystore.jks').exists()) {
+                storeFile file('release-keystore.jks')
+                storePassword System.getenv("KEYSTORE_PASSWORD") ?: "android"
+                keyAlias System.getenv("KEY_ALIAS") ?: "sparkquest"
+                keyPassword System.getenv("KEY_PASSWORD") ?: "android"
+            }
+        }
+    }
     buildTypes {
         release {
+            signingConfig signingConfigs.release.storeFile ? signingConfigs.release : signingConfigs.debug
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

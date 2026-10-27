@@ -49,7 +49,7 @@ const AuthService = {
             if (data) {
                 window.embers = data.embers || 325;
                 window.inventory = data.inventory || { boost: 2, superlike: 5 };
-                window.questProgress = data.questProgress;
+                window.questProgress = { ...window.questProgress, ...data.questProgress };
                 window.isPremium = data.isPremium;
 
                 // Trigger UI updates if function exists

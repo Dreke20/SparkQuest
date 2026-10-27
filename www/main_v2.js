@@ -4,10 +4,39 @@ import DB_Service from './js/db-service.js';
 import AuthService from './js/auth-service.js';
 import MapService from './js/map-service.js';
 import WebRTCService from './js/webrtc-service.js';
+import { AdMobService } from './js/admob-service.js';
+import ThemeManager from './js/modules/theme-manager.js';
+import MiniGamesEngine from './js/modules/mini-games.js';
+import DateShield from './js/modules/date-shield.js';
+import AudioFX from './js/modules/audio-fx.js';
+import VoiceSparks from './js/modules/voice-sparks.js';
+import SparkyAI from './js/modules/sparky-ai.js';
+import CoopQuests from './js/modules/coop-quests.js';
+import LivenessVerification from './js/modules/liveness-verification.js';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { PushNotifications } from '@capacitor/push-notifications';
 import interact from 'interactjs';
 import confetti from 'canvas-confetti';
+
+// Expose services to window for global access
+window.DB_Service = DB_Service;
+window.AuthService = AuthService;
+window.MapService = MapService;
+window.WebRTCService = WebRTCService;
+window.AdMobService = AdMobService;
+window.ThemeManager = ThemeManager;
+window.MiniGamesEngine = MiniGamesEngine;
+window.DateShield = DateShield;
+window.AudioFX = AudioFX;
+window.VoiceSparks = VoiceSparks;
+window.SparkyAI = SparkyAI;
+window.CoopQuests = CoopQuests;
+window.LivenessVerification = LivenessVerification;
+window.toggleSoundFX = () => {
+  const isEnabled = AudioFX.toggleMute();
+  const btn = document.getElementById('sound-fx-toggle-btn');
+  if (btn) btn.textContent = isEnabled ? '🔊' : '🔇';
+};
 
 console.log('[Main] Script loaded! Timestamp:', Date.now());
 
@@ -18,20 +47,40 @@ window.inventory = { boost: 2, superlike: 5 };
 window.questProgress = {
   engage1: { current: 7, target: 10, claimed: false },
   engage2: { current: 1, target: 3, claimed: false },
-  engage3: { current: 1, target: 1, claimed: true }
+  engage3: { current: 1, target: 1, claimed: true },
+  engage4: { current: 0, target: 1, claimed: false },
+  engage5: { current: 0, target: 1, claimed: false },
+  engage6: { current: 0, target: 1, claimed: false }
 };
 window.isPremium = false;
 window.currentUserUid = null;
 
-// Profile Data (Static for now, could be in DB later)
-const profiles = [
-  { name: 'Sophia', age: 24, photo: 'img/sophia.png', detail: 'Photographer · 2 mi away', tags: ['🎨 Art', '🏔️ Hiking', '☕ Coffee'], compat: 'high', compatPct: 92, verified: true, voicePrompt: true },
-  { name: 'Alex', age: 27, photo: 'img/alex.png', detail: 'Software Engineer · 5 mi away', tags: ['🎮 Gaming', '🍳 Cooking', '📚 Books'], compat: 'high', compatPct: 87, verified: true, voicePrompt: false },
-  { name: 'Maya', age: 25, photo: 'img/maya.png', detail: 'Yoga Instructor · 3 mi away', tags: ['🧘 Yoga', '🌱 Vegan', '✈️ Travel'], compat: 'medium', compatPct: 78, verified: false, voicePrompt: true },
-  { name: 'Jordan', age: 28, photo: 'img/jordan.png', detail: 'Music Producer · 1 mi away', tags: ['🎵 Music', '🎬 Film', '🍷 Wine'], compat: 'high', compatPct: 94, verified: true, voicePrompt: true },
-  { name: 'Riley', age: 23, photo: 'img/riley.png', detail: 'Med Student · 4 mi away', tags: ['🏃 Running', '🐕 Dogs', '📖 Reading'], compat: 'medium', compatPct: 75, verified: true, voicePrompt: false },
-  { name: 'Taylor', age: 26, photo: 'img/taylor.png', detail: 'Designer · 6 mi away', tags: ['🎨 Design', '☕ Coffee', '🎸 Guitar'], compat: 'high', compatPct: 89, verified: true, voicePrompt: true },
+// Seed Profile Data (for offline fallback & immediate demo richness)
+const seedProfiles = [
+  { id: 'seed_sophia', name: 'Sophia', age: 24, photo: 'img/sophia.png', detail: 'Photographer · 2 mi away', tags: ['🎨 Art', '🏔️ Hiking', '☕ Coffee'], compat: 'high', compatPct: 92, verified: true, voicePrompt: true },
+  { id: 'seed_alex', name: 'Alex', age: 27, photo: 'img/alex.png', detail: 'Software Engineer · 5 mi away', tags: ['🎮 Gaming', '🍳 Cooking', '📚 Books'], compat: 'high', compatPct: 87, verified: true, voicePrompt: false },
+  { id: 'seed_maya', name: 'Maya', age: 25, photo: 'img/maya.png', detail: 'Yoga Instructor · 3 mi away', tags: ['🧘 Yoga', '🌱 Vegan', '✈️ Travel'], compat: 'medium', compatPct: 78, verified: false, voicePrompt: true },
+  { id: 'seed_jordan', name: 'Jordan', age: 28, photo: 'img/jordan.png', detail: 'Music Producer · 1 mi away', tags: ['🎵 Music', '🎬 Film', '🍷 Wine'], compat: 'high', compatPct: 94, verified: true, voicePrompt: true },
+  { id: 'seed_riley', name: 'Riley', age: 23, photo: 'img/riley.png', detail: 'Med Student · 4 mi away', tags: ['🏃 Running', '🐕 Dogs', '📖 Reading'], compat: 'medium', compatPct: 75, verified: true, voicePrompt: false },
+  { id: 'seed_taylor', name: 'Taylor', age: 26, photo: 'img/taylor.png', detail: 'Designer · 6 mi away', tags: ['🎨 Design', '☕ Coffee', '🎸 Guitar'], compat: 'high', compatPct: 89, verified: true, voicePrompt: true },
 ];
+
+let profiles = [...seedProfiles];
+
+async function loadDiscoveryProfiles() {
+  if (window.currentUserUid && window.DB_Service) {
+    try {
+      const liveProfiles = await window.DB_Service.getDiscoveryProfiles(window.currentUserUid);
+      if (liveProfiles && liveProfiles.length > 0) {
+        profiles = [...liveProfiles, ...seedProfiles];
+      }
+    } catch (e) {
+      console.warn('[Discovery] Failed to load live profiles, using seed:', e);
+    }
+  }
+  buildSwipeDeck();
+}
+window.loadDiscoveryProfiles = loadDiscoveryProfiles;
 
 // Gacha Items
 const gachaItems = {
@@ -150,6 +199,9 @@ import { createParticles } from './js/particles.js';
 import SoundService from './js/sound-service.js';
 import PaymentService from './js/payment-service.js';
 
+window.SoundService = SoundService;
+window.PaymentService = PaymentService;
+
 // Debug logging
 console.log('App.js loaded');
 window.onerror = function (msg, url, line, col, error) {
@@ -184,71 +236,6 @@ var cameraMode = 'story'; // 'story' or 'chat'
 // Duplicate navigate function removed. Replaced by global assignment below.
 
 
-// Init — Module scripts are deferred, so DOM is already ready
-(async function () {
-  try {
-    console.log('[APP] Init IIFE started');
-
-    console.log('[DEBUG] Step 1: Particles');
-    createSplashParticles();
-
-    console.log('[DEBUG] Step 2: InviteUI');
-    updateInviteUI();
-
-    console.log('[DEBUG] Step 3: AI Init');
-    // Initialize AI with Demo Key if needed
-    const DEMO_KEY = "AIzaSyDpMUlAvpSDedLPqQMYd9_wQflBMpqhuGk";
-    if (!localStorage.getItem('spark_gemini_api_key') && window.SparkAI) {
-      window.SparkAI.init(DEMO_KEY);
-    }
-
-    console.log('[DEBUG] Step 4: Auth Service Init');
-
-    // Auth Service handles login, user creation, and data subscription
-    const user = await AuthService.init();
-
-    if (user) {
-      console.log('[APP] Auth Service returned user:', user.uid);
-      // Additional UI logic if needed on login?
-      // Most state updates are now handled inside AuthService or callbacks.
-    } else {
-      console.warn('[APP] Auth Service returned null (Offline/Demo Mode)');
-      showToast("Running in Offline Demo Mode", "info");
-    }
-    
-    // Daily Login Check
-    if (window.checkDailyLogin) window.checkDailyLogin();
-    
-    // Register Push Notifications
-    if (window.Capacitor && window.Capacitor.isNativePlatform()) {
-        PushNotifications.requestPermissions().then(result => {
-            if (result.receive === 'granted') {
-                PushNotifications.register();
-            }
-        });
-        
-        PushNotifications.addListener('registration', (token) => {
-            console.log('Push registration success, token: ' + token.value);
-            // We would save this token to Supabase for the user
-        });
-    }
-
-
-    // Listen for settings changes
-    const settingsInput = document.getElementById('settings-api-key');
-    if (settingsInput) {
-      if (window.SparkAI && window.SparkAI.apiKey) {
-        settingsInput.value = window.SparkAI.apiKey;
-      }
-      settingsInput.addEventListener('change', saveApiKey);
-    }
-
-
-  } catch (err) {
-    console.error('[CRITICAL] IIFE Failed:', err);
-  }
-})(); // End Init IIFE
-
 // Chat Event Delegation (Global) - Moved outside async init to ensure immediate attachment
 // Expose functions to window IMMEDIATELY to prevent ReferenceErrors
 window.checkVideoAccess = checkVideoAccess;
@@ -259,6 +246,7 @@ window.showLoginReward = showLoginReward;
 window.claimReward = claimReward;
 window.claimMapDrop = claimMapDrop;
 window.showVenueInfo = showVenueInfo;
+window.watchAdForEmbers = watchAdForEmbers;
 // ... other window assignments will happen below or can be consolidated here
 
 document.addEventListener('click', function (e) {
@@ -485,6 +473,11 @@ function navigate(screen) {
   var navBtn = document.querySelector('.nav-item[data-screen="' + screen + '"]');
   if (navBtn) navBtn.classList.add('active');
 
+  // Render Theme Shop if Shop or Wallet
+  if (screen === 'shop' || screen === 'wallet') {
+    if (window.ThemeManager) window.ThemeManager.renderThemeShop();
+  }
+
   // Trigger RPG Animation if Profile
   if (screen === 'profile') {
     animateRPGStats();
@@ -597,6 +590,7 @@ function claimMapDrop(elOrData) {
     } else {
         showToast('Map Drop claimed! +' + reward + ' Embers', 'earn', '+' + reward);
     }
+    if (window.updateQuestProgress) window.updateQuestProgress('engage5');
     floatingEmber();
     return;
   }
@@ -648,11 +642,15 @@ function showVenueInfo(name) {
 }
 
 // Ember Display
-function updateEmberDisplay() {
+window.updateEmberDisplay = function() {
   var el = document.getElementById('ember-count');
   var wal = document.getElementById('wallet-balance');
-  if (el) el.textContent = embers;
-  if (wal) wal.textContent = embers;
+  if (el) el.textContent = window.embers;
+  if (wal) wal.textContent = window.embers;
+}
+
+function updateEmberDisplay() {
+    window.updateEmberDisplay();
 }
 
 // Swipe Deck
@@ -692,9 +690,7 @@ function buildSwipeDeck() {
     card.style.zIndex = visibleCount - i;
     var voiceHtml = '';
     if (p.voicePrompt) {
-      voiceHtml = '<div class="card-voice-prompt" onclick="event.stopPropagation(); playCardVoice(this)">' +
-        '<div class="mini-wave"><span></span><span></span><span></span><span></span><span></span></div>' +
-        '<span class="vp-label">Voice Prompt</span></div>';
+      voiceHtml = VoiceSparks.renderVoiceSparkPill(p);
     }
     var neonRing = p.compat === 'high' ? '<div class="neon-ring"></div>' : '';
     var verifiedBadge = p.verified ? '<span class="card-verified">✓</span>' : '';
@@ -702,8 +698,14 @@ function buildSwipeDeck() {
     for (var t = 0; t < p.tags.length; t++) {
       tagsHtml += '<span class="card-tag">' + p.tags[t] + '</span>';
     }
-    card.innerHTML = neonRing +
-      '<img class="card-photo" src="' + p.photo + '" alt="' + p.name + '" onclick="event.stopPropagation(); openStory(\'' + p.name.toLowerCase() + '\')" style="pointer-events: auto; cursor: pointer;" />' +
+    var mediaHtml = '';
+    if (p.video) {
+        mediaHtml = '<video class="card-video" src="' + p.video + '" autoplay loop muted playsinline style="position: absolute; width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-lg); pointer-events: none;"></video>';
+    } else {
+        mediaHtml = '<img class="card-photo" src="' + p.photo + '" alt="' + p.name + '" onclick="event.stopPropagation(); openStory(\'' + p.name.toLowerCase() + '\')" style="pointer-events: auto; cursor: pointer;" />';
+    }
+
+    card.innerHTML = neonRing + mediaHtml +
       '<div class="card-gradient"></div>' +
       '<div class="card-compatibility ' + p.compat + '">' + p.compatPct + '% Match</div>' +
       '<div class="card-info">' +
@@ -743,9 +745,12 @@ function setupSwipeGestures(card) {
         var scale = Math.max(0.95, 1 - Math.abs(currentX) / 1000);
         card.style.transform = `translate(${currentX}px, ${currentY}px) rotate(${rotate}deg) scale(${scale})`;
 
-        // Play Swipe Sound (throttled)
+        // Play Swipe Sound & Tactile Haptics (throttled)
         if (Math.abs(currentX) > 50 && Math.abs(currentX - event.dx) <= 50) {
           if (window.SoundService) window.SoundService.playSwipe(currentX > 0 ? 'right' : 'left');
+          try {
+            Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+          } catch (e) {}
         }
 
         // Fade in labels
@@ -766,6 +771,9 @@ function setupSwipeGestures(card) {
       end (event) {
         card.style.transition = 'transform 0.5s cubic-bezier(0.22,1,0.36,1)';
         if (Math.abs(currentX) > 100) {
+          try {
+            Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {});
+          } catch (e) {}
           swipeAction(currentX > 0 ? 'right' : 'left');
           card.style.boxShadow = '';
         } else {
@@ -792,9 +800,13 @@ function swipeAction(direction) {
   if (!topCard) return;
   var p = profList[parseInt(topCard.dataset.index)];
 
-  // DB Record Swipe
+  // Record Swipe to Supabase & Check Mutual Match
   if (window.currentUserUid && window.DB_Service) {
-    window.DB_Service.recordSwipe(window.currentUserUid, p.name, direction);
+    window.DB_Service.recordSwipe(window.currentUserUid, p.id || p.name, direction).then(result => {
+      if (result && result.is_match) {
+        setTimeout(() => { showMatch(p); }, 400);
+      }
+    });
   }
 
   swipeHistory.push({ profile: p, index: parseInt(topCard.dataset.index) });
@@ -808,9 +820,9 @@ function swipeAction(direction) {
     topCard.style.transform = 'translateX(150%) rotate(20deg)';
     topCard.style.opacity = '0';
     
-    // Simulate Mutual Match Logic
-    if (Math.random() > 0.6) {
-        setTimeout(() => { showMatch(p); }, 400);
+    // Fallback simulation for offline demo/seed profiles
+    if ((!p.isLiveUser || !window.currentUserUid) && Math.random() > 0.6) {
+      setTimeout(() => { showMatch(p); }, 500);
     }
     
     if (direction === 'superlike') {
@@ -824,7 +836,6 @@ function swipeAction(direction) {
         return;
       }
     }
-    if (Math.random() > 0.5) setTimeout(function () { showMatch(p); }, 600);
   } else {
     topCard.style.transform = 'translateX(-150%) rotate(-20deg)';
     topCard.style.opacity = '0';
@@ -885,8 +896,11 @@ function showMatch(profile) {
   createParticles(cx, cy, 'heart');
   setTimeout(() => createParticles(cx, cy, 'confetti'), 300);
 
-  // Play Match Sound
+  // Play Match Sound & Burst Haptics
   SoundService.playMatch();
+  try {
+    Haptics.notification({ type: 'SUCCESS' }).catch(() => {});
+  } catch (e) {}
 
   showToast('New match with ' + profile.name + '! 💘', 'earn', '+10');
   if (window.currentUserUid) {
@@ -967,12 +981,28 @@ function acceptLegal() {
 
 function declineLegal() {
   showToast('You must accept the terms to use SparkQuest.', 'spend');
-  alert("SparkQuest requires acceptance of the Terms of Service and Privacy Policy to operate. The app will not allow you to proceed without acceptance.");
 }
 
 function openGachaReveal() { showToast('Use a Reveal to see who liked you!', 'info'); }
 
 // Shop / Payments
+function watchAdForEmbers() {
+  var btn = document.querySelector(`[onclick="watchAdForEmbers()"]`);
+  if (btn) btn.style.pointerEvents = 'none'; // Prevent double clicks
+  
+  AdMobService.showRewardedAd((amount) => {
+    if (window.currentUserUid) {
+      DB_Service.updateEmbers(window.currentUserUid, amount);
+    } else {
+      window.embers += amount;
+      updateEmberDisplay();
+    }
+    showToast(`Ad Complete! You earned +${amount} Embers`, 'earn', `+${amount}`);
+    floatingEmber();
+    if (btn) btn.style.pointerEvents = 'auto';
+  });
+}
+
 function buyItem(itemId) {
   var btn = document.querySelector(`[onclick="buyItem('${itemId}')"]`);
   var originalText = btn ? btn.innerText : '';
@@ -983,8 +1013,12 @@ function buyItem(itemId) {
     btn.style.opacity = '0.7';
   }
 
-  PaymentService.checkout(itemId).then(() => {
-    // In simulation, the Promise resolves when redirect happens.
+  PaymentService.checkout(itemId).finally(() => {
+    if (btn) {
+      btn.innerText = originalText;
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    }
   });
 }
 
@@ -1183,19 +1217,37 @@ function openChatDetail(user) {
       icebreaker.style.display = 'none';
   }
   
+  // Dynamic Why Matched tag insight
+  var userProfile = (profiles && profiles.find(p => p.name.toLowerCase() === user.toLowerCase() || (p.id && p.id.toLowerCase().includes(user.toLowerCase())))) ||
+                    (seedProfiles && seedProfiles.find(p => p.name.toLowerCase() === user.toLowerCase()));
+  var mutualTags = userProfile && userProfile.tags && userProfile.tags.length > 0 
+    ? userProfile.tags.slice(0, 2).join(' & ') 
+    : 'Coffee, Music & Spontaneous Vibes';
+  var whyMatchedHtml = '<div id="why-matched-pill" class="why-matched-pill">⚡ Spark Insight: High shared affinity for ' + mutualTags + '!</div>';
+
+  function updateChatFlowIndicator(msgCount) {
+    var flowEl = document.getElementById('chat-flow-status');
+    if (!flowEl) return;
+    if (msgCount <= 2) {
+      flowEl.innerHTML = '🔥 Spark: Warming Up';
+      flowEl.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+    } else if (msgCount <= 6) {
+      flowEl.innerHTML = '⚡ Spark: Flowing Smoothly';
+      flowEl.style.borderColor = 'var(--cyan)';
+    } else {
+      flowEl.innerHTML = '🔥 Spark: Blazing Hot! 🔥';
+      flowEl.style.borderColor = 'var(--coral)';
+    }
+  }
+
   // Load messages
   // We render local static messages first
-  messages.innerHTML = ''; // Clear first to avoid duplicates if we re-render? Or keep static?
-  // Let's render static first, then append dynamic.
-  // Actually, better to just rely on the subscription if we want real persistence, but for mixed mode:
-
-  // 1. Render static/local messages
   if (data.msgs.length > 0) {
-    // Add a date divider if it's the first load
-    messages.innerHTML = '<div class="chat-date-divider">Previous</div>';
+    messages.innerHTML = whyMatchedHtml + '<div class="chat-date-divider">Previous</div>';
   } else {
-    messages.innerHTML = '<div class="chat-date-divider">Today</div>';
+    messages.innerHTML = whyMatchedHtml + '<div class="chat-date-divider">Today</div>';
   }
+  updateChatFlowIndicator(data.msgs.length);
 
   function renderMsg(m) {
     var bubble = document.createElement('div');
@@ -1237,6 +1289,7 @@ function openChatDetail(user) {
         if (!exists) {
           renderMsg(msg);
           data.msgs.push(msg);
+          updateChatFlowIndicator(data.msgs.length);
         }
       });
       messages.scrollTop = messages.scrollHeight;
@@ -1248,6 +1301,18 @@ function openChatDetail(user) {
     hint.className = 'chat-bubble received';
     hint.innerHTML = '<p>You matched! Say something first ✨</p><span class="bubble-time">Now</span>';
     messages.appendChild(hint);
+  }
+
+  // Mount Co-Op Match Quest banner
+  var coopMount = document.getElementById('coop-quest-mount');
+  if (coopMount && window.CoopQuests) {
+    coopMount.innerHTML = window.CoopQuests.renderCoopBar({ id: user, name: data.name });
+  }
+
+  // Mount Sparky AI Wingman suggestions tray
+  var wingmanMount = document.getElementById('sparky-wingman-mount');
+  if (wingmanMount && window.SparkyAI) {
+    wingmanMount.innerHTML = window.SparkyAI.renderWingmanBar(userProfile || { name: data.name, tags: ['Coffee', 'Adventure'] });
   }
 
   document.getElementById('chat-detail-modal').style.display = 'flex';
@@ -1265,6 +1330,11 @@ function sendMessage() {
 
     input.value = '';
 
+    if (window.AudioFX) window.AudioFX.playPop();
+    if (window.CoopQuests && currentChatUser) {
+      window.CoopQuests.incrementProgress(currentChatUser, 'msgs', 1);
+    }
+
     // If using DB, save it there
     if (window.currentUserUid && window.DB_Service && !window.isAiQuestActive) {
       window.DB_Service.sendMessage(window.currentUserUid, currentChatUser, { text: text, type: 'sent' });
@@ -1278,6 +1348,16 @@ function sendMessage() {
       bubble.innerHTML = '<p>' + text + '</p><span class="bubble-time">' + timeStr + '</span>';
       messages.appendChild(bubble);
       messages.scrollTop = messages.scrollHeight;
+
+      if (chatData[currentChatUser]) {
+        chatData[currentChatUser].msgs.push({ text: text, type: 'sent', time: timeStr });
+        var flowEl = document.getElementById('chat-flow-status');
+        if (flowEl) {
+          var c = chatData[currentChatUser].msgs.length;
+          flowEl.innerHTML = c > 6 ? '🔥 Spark: Blazing Hot! 🔥' : '⚡ Spark: Flowing Smoothly';
+          flowEl.style.borderColor = c > 6 ? 'var(--coral)' : 'var(--cyan)';
+        }
+      }
       
       // If AI Quest is active, process it
       if (window.isAiQuestActive && window.SparkAI && window.SparkAI.generateQuestStep) {
@@ -1344,15 +1424,21 @@ function generateStarters() {
   // Get current match data
   var matchName = currentChatUser ? (currentChatUser.charAt(0).toUpperCase() + currentChatUser.slice(1)) : 'Match';
   var interests = ['travel', 'coffee', 'gaming']; // Mock data
-
-  if (currentChatUser && chatData[currentChatUser] && chatData[currentChatUser].tags) {
-    interests = chatData[currentChatUser].tags;
+  var matchProfile = { name: matchName, tags: interests, bio: '' };
+  
+  if (currentChatUser && chatData[currentChatUser]) {
+    interests = chatData[currentChatUser].tags || interests;
+    matchProfile.tags = interests;
+    matchProfile.bio = chatData[currentChatUser].detail || '';
   }
+  
+  // Mock User Profile for AI context (Normally fetched from DB)
+  var myProfile = { name: 'User', tags: ['music', 'travel', 'food'], bio: 'Looking for someone to explore the city with.' };
 
   // Check if we should generate Icebreakers (empty chat) or Replies (existing chat)
   var history = [];
   if (currentChatUser && chatData[currentChatUser]) {
-    history = chatData[currentChatUser].msgs;
+    history = chatData[currentChatUser].msgs || [];
   }
 
   if (window.SparkAI && window.SparkAI.apiKey) {
@@ -1362,8 +1448,8 @@ function generateStarters() {
       // Generate Reply
       aiPromise = window.SparkAI.generateReply(history.slice(-5), 'Dating app chat');
     } else {
-      // Generate Icebreaker
-      aiPromise = window.SparkAI.generateIcebreakers(matchName, interests);
+      // Generate Icebreaker Context-Aware
+      aiPromise = window.SparkAI.generateIcebreakers(myProfile, matchProfile);
     }
 
     aiPromise.then(function (suggestions) {
@@ -1849,6 +1935,9 @@ function claimQuestReward(card, questId) {
   var reward = 0;
   if (questId === 'engage1') reward = 20;
   if (questId === 'engage2') reward = 30;
+  if (questId === 'engage4') reward = 50;
+  if (questId === 'engage5') reward = 15;
+  if (questId === 'engage6') reward = 40;
 
   if (window.currentUserUid) {
     DB_Service.updateEmbers(window.currentUserUid, reward);
@@ -2413,6 +2502,7 @@ window.startAiQuest = function() {
          window.isAiQuestActive = true;
          window.aiQuestHistory = window.aiQuestHistory || [];
          window.aiQuestHistory.push({ role: 'assistant', content: reply });
+         if (window.updateQuestProgress) window.updateQuestProgress('engage6');
      }).catch(err => {
          showToast('AI Quest generation failed.', 'spend');
      });
@@ -2448,14 +2538,540 @@ function startMaskedSearch() {
     document.getElementById('masked-match-status').innerHTML = '<span style="color:var(--primary-color); font-weight:bold;">Match Found! Connecting audio... 🎭</span>';
     if (window.Haptics) window.Haptics.impact({ style: ImpactStyle.Heavy }).catch(e => {});
     
-    // Jump to live stream to simulate the call
+    // Jump to Active Room
     setTimeout(() => {
       closeModal('masked-spark-modal');
-      navigate('live');
-      showToast('Masked audio connection established. Say hi!', 'earn');
+      document.getElementById('masked-room-modal').style.display = 'flex';
+      startMaskedTimer(180); // 3 minutes
+      WebRTCService.init('masked_spark_room'); // Connect Audio
+      showToast('Masked audio connected. Say hi!', 'earn');
     }, 1500);
     
   }, 3000);
 }
 
+let maskedTimerInterval = null;
+let vibeHit = false;
+
+function startMaskedTimer(seconds) {
+  let timeLeft = seconds;
+  vibeHit = false;
+  document.getElementById('btn-masked-vibe').innerText = 'Hit the Vibe! ⚡';
+  document.getElementById('btn-masked-vibe').style.background = 'var(--primary-color)';
+  
+  clearInterval(maskedTimerInterval);
+  maskedTimerInterval = setInterval(() => {
+    timeLeft--;
+    let m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+    let s = (timeLeft % 60).toString().padStart(2, '0');
+    document.getElementById('masked-timer').innerText = `${m}:${s}`;
+    
+    if (timeLeft <= 0) {
+      clearInterval(maskedTimerInterval);
+      if (!vibeHit) {
+        showToast('Time is up! The spark faded.', 'info');
+        leaveMaskedRoom();
+      }
+    }
+  }, 1000);
+}
+
+function clickMaskedVibe() {
+  vibeHit = true;
+  document.getElementById('btn-masked-vibe').innerText = 'Vibe Hit! Waiting for them... ⏳';
+  document.getElementById('btn-masked-vibe').style.background = 'var(--neon-blue)';
+  if (window.Haptics) window.Haptics.impact({ style: ImpactStyle.Heavy }).catch(e => {});
+  
+  // Simulate the other person hitting vibe 3 seconds later
+  setTimeout(() => {
+    clearInterval(maskedTimerInterval);
+    document.getElementById('masked-timer').innerText = 'IT\'S A MATCH!';
+    document.getElementById('masked-timer').style.color = 'var(--neon-blue)';
+    document.getElementById('masked-match-avatar').innerHTML = '<img src="img/match1.jpg" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" />';
+    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+    if (window.Haptics) window.Haptics.impact({ style: ImpactStyle.Heavy }).catch(e => {});
+    
+    setTimeout(() => {
+      leaveMaskedRoom();
+      showToast('You matched! Continue in chat.', 'earn');
+    }, 4000);
+  }, 3000);
+}
+
+function leaveMaskedRoom() {
+  clearInterval(maskedTimerInterval);
+  closeModal('masked-room-modal');
+  if (WebRTCService.leave) WebRTCService.leave();
+}
+
 window.startMaskedSearch = startMaskedSearch;
+window.clickMaskedVibe = clickMaskedVibe;
+window.leaveMaskedRoom = leaveMaskedRoom;
+// ================== FTUE & AUTHENTICATION ================== //
+window.nextFtueSlide = function(slideNum) {
+  document.querySelectorAll('.ftue-slide').forEach(s => s.style.display = 'none');
+  const nextSlide = document.getElementById(`ftue-slide-${slideNum}`);
+  if (nextSlide) nextSlide.style.display = 'block';
+};
+
+window.requestAppPermissions = async function() {
+  if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+    try {
+      if (window.PushNotifications) await window.PushNotifications.requestPermissions();
+    } catch(e) { console.log(e); }
+  }
+  window.nextFtueSlide(3);
+};
+
+window.requestVerification = function() {
+  document.getElementById('verification-modal').style.display = 'flex';
+};
+
+window.captureVerification = async function() {
+  document.getElementById('verification-scanning').style.display = 'block';
+  showToast("Scanning pose... 🤖", "info");
+  
+  // Simulate AI pose verification taking 3 seconds
+  setTimeout(async () => {
+    document.getElementById('verification-scanning').style.display = 'none';
+    document.getElementById('verification-modal').style.display = 'none';
+    
+    if (window.currentUserUid && window.DB_Service) {
+      await window.DB_Service.updateVerification(window.currentUserUid);
+      window.isVerified = true;
+      document.getElementById('verify-btn').style.display = 'none';
+      document.getElementById('verified-status').style.display = 'block';
+      showToast("Identity Verified! ✅", "earn");
+    }
+  }, 3000);
+};
+
+window.handleAuth = async function(action) {
+  const email = document.getElementById('auth-email').value;
+  const pass = document.getElementById('auth-pass').value;
+  const errorDiv = document.getElementById('auth-error');
+  
+  if (!email || !pass) {
+    errorDiv.innerText = "Please enter email and password.";
+    return;
+  }
+  errorDiv.innerText = "Processing...";
+  
+  try {
+    const { supabase } = await import('./js/supabase-config.js');
+    let res;
+    
+    if (action === 'signup') {
+      res = await supabase.auth.signUp({ email, password: pass });
+    } else {
+      res = await supabase.auth.signInWithPassword({ email, password: pass });
+    }
+    
+    if (res.error) {
+      errorDiv.innerText = res.error.message;
+    } else if (res.data && res.data.user) {
+      // Success!
+      window.currentUserUid = res.data.user.id;
+      if (action === 'signup' && window.DB_Service) {
+        await window.DB_Service.createUser({ id: res.data.user.id, email: email });
+      } else if (window.DB_Service) {
+        let userData = await window.DB_Service.getUserData(res.data.user.id);
+        if (userData && userData.isPremium) window.isPremium = true;
+        if (userData && userData.isVerified) {
+          window.isVerified = true;
+          document.getElementById('verify-btn').style.display = 'none';
+          document.getElementById('verified-status').style.display = 'block';
+        }
+      }
+      document.getElementById('ftue-modal').style.display = 'none';
+      if (window.showToast) window.showToast("Welcome to SparkQuest!", "earn");
+    }
+  } catch (err) {
+    errorDiv.innerText = "Connection error. Please try again.";
+    console.error(err);
+  }
+};
+
+window.toggleNSFW = function(cb) {
+  if (!window.isPremium) {
+    cb.checked = false;
+    showToast('Requires Spark Premium!', 'spend');
+  } else {
+    showToast(cb.checked ? 'NSFW Mode Enabled 😈' : 'NSFW Mode Disabled', 'info');
+  }
+};
+
+window.togglePremiumFeature = function(cb) {
+  if (!window.isPremium) {
+    cb.checked = false;
+    showToast('Requires Spark Premium!', 'spend');
+  }
+};
+
+async function checkSession() {
+  try {
+    const { supabase } = await import('./js/supabase-config.js');
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session && session.user) {
+      window.currentUserUid = session.user.id;
+      
+      if (window.DB_Service) {
+         let userData = await window.DB_Service.getUserData(session.user.id);
+         if (userData && userData.isPremium) window.isPremium = true;
+         if (userData && userData.isVerified) {
+            window.isVerified = true;
+            document.getElementById('verify-btn').style.display = 'none';
+            document.getElementById('verified-status').style.display = 'block';
+         }
+      }
+
+      const ftue = document.getElementById('ftue-modal');
+      if (ftue) ftue.style.display = 'none';
+      console.log("[AUTH] Session restored for", session.user.id);
+    }
+  } catch (e) {
+    console.error("[AUTH] checkSession error:", e);
+  }
+}
+
+// Init — Module scripts are deferred, so DOM is already ready
+(async function () {
+  try {
+    console.log('[APP] Init IIFE started');
+    
+    // Check Auth Session First
+    await checkSession();
+
+    console.log('[DEBUG] Step 1: Particles');
+    createSplashParticles();
+
+    console.log('[DEBUG] Step 2: InviteUI');
+    updateInviteUI();
+    
+    console.log('[DEBUG] Step 2.5: AdMob');
+    await AdMobService.initialize();
+
+    console.log('[DEBUG] Step 2.6: ThemeManager & Streak');
+    if (window.ThemeManager) {
+      window.ThemeManager.init();
+    }
+    const streakMount = document.getElementById('header-streak-mount');
+    if (streakMount && window.CoopQuests) {
+      streakMount.innerHTML = window.CoopQuests.renderHeaderStreakBadge();
+    }
+
+    console.log('[DEBUG] Step 3: AI Init');
+    const userApiKey = localStorage.getItem('spark_ai_api_key') || localStorage.getItem('spark_gemini_api_key');
+    if (userApiKey && window.SparkAI) {
+      window.SparkAI.init(userApiKey);
+    }
+
+    console.log('[DEBUG] Step 4: Auth Service Init');
+
+    // Auth Service handles login, user creation, and data subscription
+    const user = await AuthService.init();
+    await loadDiscoveryProfiles();
+
+    if (user) {
+      console.log('[APP] Auth Service returned user:', user.uid);
+      // Additional UI logic if needed on login?
+      // Most state updates are now handled inside AuthService or callbacks.
+    } else {
+      console.warn('[APP] Auth Service returned null (Offline/Demo Mode)');
+      showToast("Running in Offline Demo Mode", "info");
+    }
+    
+    // Daily Login Check
+    if (window.checkDailyLogin) window.checkDailyLogin();
+    
+    // Register Push Notifications
+    if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+        PushNotifications.requestPermissions().then(result => {
+            if (result.receive === 'granted') {
+                PushNotifications.register();
+            }
+        });
+        
+        PushNotifications.addListener('registration', (token) => {
+            console.log('Push registration success, token: ' + token.value);
+            // We would save this token to Supabase for the user
+        });
+    }
+
+
+    // Listen for settings changes
+    const settingsInput = document.getElementById('settings-api-key');
+    if (settingsInput) {
+      if (window.SparkAI && window.SparkAI.apiKey) {
+        settingsInput.value = window.SparkAI.apiKey;
+      }
+      settingsInput.addEventListener('change', saveApiKey);
+    }
+
+
+  } catch (err) {
+    console.error('[CRITICAL] IIFE Failed:', err);
+  }
+// Photo Grid Functions
+let draggedSlot = null;
+
+function triggerSlotUpload(index) {
+  document.getElementById(`upload-slot-${index}`).click();
+}
+
+function uploadToSlot(event, index) {
+  var file = event.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var slot = document.querySelector(`.photo-slot[data-index="${index}"]`);
+    var img = document.getElementById(`slot-${index}-img`);
+    img.src = e.target.result;
+    img.style.display = 'block';
+    slot.classList.remove('empty');
+    slot.querySelector('.slot-edit').innerText = '✎';
+  };
+  reader.readAsDataURL(file);
+}
+
+function allowDrop(ev) {
+  ev.preventDefault();
+  ev.currentTarget.classList.add('drag-over');
+}
+
+function dragSlot(ev) {
+  draggedSlot = ev.currentTarget;
+  ev.dataTransfer.effectAllowed = 'move';
+}
+
+function dropSlot(ev) {
+  ev.preventDefault();
+  let targetSlot = ev.currentTarget;
+  targetSlot.classList.remove('drag-over');
+  
+  if (draggedSlot && draggedSlot !== targetSlot) {
+    // Swap images between draggedSlot and targetSlot
+    let draggedImg = draggedSlot.querySelector('img');
+    let targetImg = targetSlot.querySelector('img');
+    let draggedSrc = draggedImg.src;
+    let targetSrc = targetImg.src;
+    
+    let draggedIsEmpty = draggedSlot.classList.contains('empty');
+    let targetIsEmpty = targetSlot.classList.contains('empty');
+    
+    // Swap contents
+    if (targetIsEmpty) {
+      draggedImg.src = '';
+      draggedImg.style.display = 'none';
+      draggedSlot.classList.add('empty');
+      draggedSlot.querySelector('.slot-edit').innerText = '+';
+    } else {
+      draggedImg.src = targetSrc;
+      draggedImg.style.display = 'block';
+      draggedSlot.classList.remove('empty');
+      draggedSlot.querySelector('.slot-edit').innerText = '✎';
+    }
+    
+    if (draggedIsEmpty) {
+      targetImg.src = '';
+      targetImg.style.display = 'none';
+      targetSlot.classList.add('empty');
+      targetSlot.querySelector('.slot-edit').innerText = '+';
+    } else {
+      targetImg.src = draggedSrc;
+      targetImg.style.display = 'block';
+      targetSlot.classList.remove('empty');
+      targetSlot.querySelector('.slot-edit').innerText = '✎';
+    }
+  }
+}
+
+// Ensure functions are global
+window.triggerSlotUpload = triggerSlotUpload;
+window.uploadToSlot = uploadToSlot;
+window.allowDrop = allowDrop;
+window.dragSlot = dragSlot;
+window.dropSlot = dropSlot;
+
+// WebRTC Live Stream Functions
+async function joinLiveStream() {
+  const btnJoin = document.getElementById('btn-join-stream');
+  const btnLeave = document.getElementById('btn-leave-stream');
+  if (btnJoin) btnJoin.disabled = true;
+  
+  const uid = await WebRTCService.init('spark_demo_channel');
+  if (uid) {
+    if (btnJoin) btnJoin.style.display = 'none';
+    if (btnLeave) {
+      btnLeave.style.display = 'inline-block';
+      btnLeave.disabled = false;
+    }
+    showToast('Joined Live Stream!', 'info');
+  } else {
+    showToast('Failed to join stream', 'info');
+    if (btnJoin) btnJoin.disabled = false;
+  }
+}
+
+async function leaveLiveStream() {
+  const btnJoin = document.getElementById('btn-join-stream');
+  const btnLeave = document.getElementById('btn-leave-stream');
+  if (btnLeave) btnLeave.disabled = true;
+  
+  if (WebRTCService.leave) {
+    await WebRTCService.leave();
+  }
+  
+  if (btnLeave) btnLeave.style.display = 'none';
+  if (btnJoin) {
+    btnJoin.style.display = 'inline-block';
+    btnJoin.disabled = false;
+  }
+  showToast('Left Live Stream', 'info');
+}
+
+window.joinLiveStream = joinLiveStream;
+window.leaveLiveStream = leaveLiveStream;
+
+// Push Notifications Setup
+async function setupPushNotifications() {
+  if (Capacitor.getPlatform() === 'web') {
+    console.log('[Push] Push notifications not supported on web.');
+    return;
+  }
+  
+  let permStatus = await PushNotifications.checkPermissions();
+  if (permStatus.receive === 'prompt') {
+    permStatus = await PushNotifications.requestPermissions();
+  }
+  if (permStatus.receive !== 'granted') {
+    console.log('[Push] User denied push permissions');
+    return;
+  }
+  
+  await PushNotifications.register();
+  
+  PushNotifications.addListener('registration', token => {
+    console.log('[Push] Registration token: ', token.value);
+    // Ideally save to DB here
+  });
+  
+  PushNotifications.addListener('pushNotificationReceived', notification => {
+    console.log('[Push] Received: ', notification);
+    showToast(notification.title || 'New Match!', 'info', notification.body);
+  });
+  
+  PushNotifications.addListener('pushNotificationActionPerformed', action => {
+    console.log('[Push] Action performed: ', action);
+    // Deep link or navigate
+  });
+}
+
+// ==========================================
+// STORE COMPLIANCE & SAFETY MODERATION (UGC)
+// ==========================================
+window._activeReportTarget = null;
+window._activeReportReason = 'fake';
+
+window.openReportModal = function(target) {
+  window._activeReportTarget = target || (window.currentChatUser ? { name: window.currentChatUser } : 'User');
+  var name = typeof window._activeReportTarget === 'object' ? window._activeReportTarget.name : window._activeReportTarget;
+  var nameEl = document.getElementById('report-target-name');
+  if (nameEl) nameEl.textContent = name;
+  var modal = document.getElementById('report-modal');
+  if (modal) modal.style.display = 'flex';
+};
+
+window.selectReportReason = function(btn, reason) {
+  window._activeReportReason = reason;
+  var container = document.getElementById('report-categories-container');
+  if (container) {
+    container.querySelectorAll('.report-cat').forEach(b => b.classList.remove('selected'));
+  }
+  if (btn) btn.classList.add('selected');
+};
+
+window.submitActiveReport = async function() {
+  var target = window._activeReportTarget;
+  var targetId = typeof target === 'object' ? (target.id || target.name) : target;
+  var reason = window._activeReportReason || 'other';
+  var descEl = document.getElementById('report-desc-input');
+  var details = descEl ? descEl.value.trim() : '';
+
+  if (window.currentUserUid && window.DB_Service) {
+    await window.DB_Service.reportUser(window.currentUserUid, targetId, reason, details);
+  }
+
+  closeModal('report-modal');
+  showToast('Report submitted. Thank you for keeping SparkQuest safe.', 'info');
+  if (descEl) descEl.value = '';
+};
+
+window.blockActiveUser = async function() {
+  var target = window._activeReportTarget;
+  var targetId = typeof target === 'object' ? (target.id || target.name) : target;
+  var targetName = typeof target === 'object' ? target.name : target;
+
+  if (window.currentUserUid && window.DB_Service) {
+    await window.DB_Service.blockUser(window.currentUserUid, targetId);
+  }
+
+  // Remove from discovery deck
+  profiles = profiles.filter(p => (p.id !== targetId && p.name !== targetName));
+  buildSwipeDeck();
+
+  // If currently chatting with this user, close chat
+  if (window.currentChatUser && window.currentChatUser.toLowerCase() === String(targetName).toLowerCase()) {
+    closeChatDetail();
+  }
+
+  closeModal('report-modal');
+  showToast(`Blocked ${targetName}. You will no longer encounter each other.`, 'info');
+};
+
+window.openDeleteAccountModal = function() {
+  closeModal('settings-modal');
+  var modal = document.getElementById('delete-account-modal');
+  if (modal) modal.style.display = 'flex';
+};
+
+window.confirmDeleteAccount = async function() {
+  if (window.currentUserUid && window.DB_Service) {
+    showToast('Deleting account & user data...', 'info');
+    var success = await window.DB_Service.deleteAccount(window.currentUserUid);
+    if (success) {
+      closeModal('delete-account-modal');
+      showToast('Your account and data have been permanently deleted.', 'info');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+      return;
+    }
+  }
+  closeModal('delete-account-modal');
+  showToast('Account data reset.', 'info');
+  localStorage.clear();
+  setTimeout(() => window.location.reload(), 800);
+};
+
+window.downloadUserData = function() {
+  const exportData = {
+    userId: window.currentUserUid,
+    embers: window.embers,
+    inventory: window.inventory,
+    isPremium: window.isPremium,
+    questProgress: window.questProgress,
+    exportTimestamp: new Date().toISOString()
+  };
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `sparkquest-profile-export-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Profile data exported successfully.', 'info');
+};
+
+})(); // End Init IIFE
+
