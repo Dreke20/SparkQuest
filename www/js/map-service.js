@@ -31,21 +31,14 @@ const MapService = {
         }).setView([this.defaultLat, this.defaultLng], 15);
 
         // Dark Mode Map Tiles (CartoDB Dark Matter)
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=cb1_4ero_1_181cc1dc4b739395458d2fff', {
             attribution: '&copy; OpenStreetMap &copy; CartoDB',
             subdomains: 'abcd',
             maxZoom: 19
         }).addTo(this.map);
 
-        // Mock Data
-        this.addMockDrops();
-        this.addMockVenues();
-
         // Simulate User Movement
         this.simulateUserLocation();
-        
-        // Load Live Heatmaps from DB
-        this.loadLiveHeatmaps();
 
         // Fix for map rendering inside hidden tabs/modals
         setTimeout(() => {
@@ -53,11 +46,14 @@ const MapService = {
         }, 100);
     },
 
-    addMockDrops() {
+    addMockDrops(baseLat, baseLng) {
+        baseLat = baseLat || this.defaultLat;
+        baseLng = baseLng || this.defaultLng;
+
         const drops = [
-            { lat: 40.7855, lng: -73.9685, type: 'fire', value: 25 },
-            { lat: 40.7845, lng: -73.9665, type: 'gem', value: 100 },
-            { lat: 40.7850, lng: -73.9680, type: 'neon', value: 500 } // IRL Neon Drop Event
+            { lat: baseLat + 0.0015, lng: baseLng + 0.0015, type: 'fire', value: 25 },
+            { lat: baseLat - 0.0015, lng: baseLng - 0.0015, type: 'gem', value: 100 },
+            { lat: baseLat + 0.0025, lng: baseLng - 0.0005, type: 'neon', value: 500 }
         ];
 
         drops.forEach(drop => {
@@ -102,8 +98,105 @@ const MapService = {
                     
                     if (window.currentUserUid && window.DB_Service) {
                         window.DB_Service.saveCheckIn(window.currentUserUid, venue.name, venue.lat, venue.lng);
-                        // showToast isn't globally available here directly without window, so we assume it is
                         if (window.showToast) window.showToast(`Checked in to ${venue.name}! 🗺️`, 'info');
+                    }
+                });
+        });
+    },
+
+    async fetchNearbyVenues(lat, lng) {
+        try {
+            // Overpass API query for bars, cafes, nightclubs around 2000m
+            // Use 'nwr' (node, way, relation) and 'out center' to get points for building polygons
+            const query = `[out:json];(nwr["amenity"~"cafe|bar|restaurant|pub|nightclub"](around:2000,${lat},${lng}););out center 15;`;
+            
+            const response = await fetch('https://overpass-api.de/api/interpreter', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'data=' + encodeURIComponent(query)
+            });
+
+            if (!response.ok) throw new Error('Overpass API returned ' + response.status);
+            const data = await response.json();
+            
+            if (data && data.elements && data.elements.length > 0) {
+                let foundVenues = 0;
+                data.elements.forEach(el => {
+                    if (el.tags && el.tags.name) {
+                        let icon = "📍";
+                        if (el.tags.amenity === 'cafe') icon = '☕';
+                        if (el.tags.amenity === 'bar' || el.tags.amenity === 'pub') icon = '🍻';
+                        if (el.tags.amenity === 'restaurant') icon = '🍽️';
+                        if (el.tags.amenity === 'nightclub') icon = '🪩';
+
+                        const customIcon = L.divIcon({
+                            className: 'custom-venue-pin',
+                            html: `<div class="venue-icon">${icon}</div><div class="venue-label">${el.tags.name}</div>`,
+                            iconSize: [120, 40],
+                            iconAnchor: [60, 40]
+                        });
+                        
+                        const vLat = el.lat || (el.center && el.center.lat);
+                        const vLon = el.lon || (el.center && el.center.lon);
+
+                        if (vLat && vLon) {
+                            foundVenues++;
+                            L.marker([vLat, vLon], { icon: customIcon }).addTo(this.map)
+                                .on('click', () => {
+                                    if (window.showVenueInfo) window.showVenueInfo(el.tags.name);
+                                    
+                                    if (window.currentUserUid && window.DB_Service) {
+                                        window.DB_Service.saveCheckIn(window.currentUserUid, el.tags.name, vLat, vLon);
+                                        if (window.showToast) window.showToast(`Checked in to ${el.tags.name}! 🗺️`, 'info');
+                                        if (window.updateQuestProgress) window.updateQuestProgress('engage4');
+                                    }
+                                });
+                        }
+                    }
+                });
+                
+                // If the elements didn't have names or lat/lon
+                if (foundVenues === 0) {
+                    this.addMockVenues(lat, lng);
+                }
+            } else {
+                this.addMockVenues(lat, lng);
+            }
+        } catch (e) {
+            console.error('Failed to fetch nearby venues:', e);
+            this.addMockVenues(lat, lng); // Fallback
+        }
+    },
+
+    addMockVenues(baseLat, baseLng) {
+        // If not provided, fallback to default NYC
+        baseLat = baseLat || this.defaultLat;
+        baseLng = baseLng || this.defaultLng;
+        
+        const venues = [
+            { lat: baseLat + 0.001, lng: baseLng - 0.002, name: "Skyline Lounge", icon: "🍸" },
+            { lat: baseLat - 0.002, lng: baseLng + 0.001, name: "The Boathouse", icon: "⛵" },
+            { lat: baseLat + 0.002, lng: baseLng + 0.002, name: "Neon Cafe", icon: "☕" }
+        ];
+
+        venues.forEach(venue => {
+            const customIcon = L.divIcon({
+                className: 'custom-venue-pin',
+                html: `<div class="venue-icon">${venue.icon}</div><div class="venue-label">${venue.name}</div>`,
+                iconSize: [120, 40],
+                iconAnchor: [60, 40]
+            });
+
+            L.marker([venue.lat, venue.lng], { icon: customIcon }).addTo(this.map)
+                .on('click', () => {
+                    if (window.showVenueInfo) window.showVenueInfo(venue.name);
+                    
+                    if (window.currentUserUid && window.DB_Service) {
+                        window.DB_Service.saveCheckIn(window.currentUserUid, venue.name, venue.lat, venue.lng);
+                        if (window.showToast) window.showToast(`Checked in to ${venue.name}! 🗺️`, 'info');
+                        if (window.updateQuestProgress) window.updateQuestProgress('engage4');
                     }
                 });
         });
@@ -128,8 +221,16 @@ const MapService = {
             // Update Marker and Map Center
             this.userMarker.setLatLng([lat, lng]);
             this.map.setView([lat, lng], 15);
+            this.fetchNearbyVenues(lat, lng);
+            this.addMockDrops(lat, lng);
+            this.loadLiveHeatmaps(lat, lng);
+            this.watchProximity(lat, lng);
         } catch(e) {
             console.log("Geolocation error or running on web without permissions", e);
+            this.fetchNearbyVenues(this.defaultLat, this.defaultLng);
+            this.addMockDrops(this.defaultLat, this.defaultLng);
+            this.loadLiveHeatmaps(this.defaultLat, this.defaultLng);
+            this.watchProximity(this.defaultLat, this.defaultLng);
         }
     },
 
@@ -141,27 +242,42 @@ const MapService = {
         }
     },
     
-    loadLiveHeatmaps() {
+    loadLiveHeatmaps(baseLat, baseLng) {
         if (!this.map) return;
         
+        baseLat = baseLat || this.defaultLat;
+        baseLng = baseLng || this.defaultLng;
+
         // Mock stunning heat spots for visual demo
         const heatSpots = [
-            { lat: 40.7850, lng: -73.9680, intensity: 0.8 },
-            { lat: 40.7865, lng: -73.9695, intensity: 0.5 },
-            { lat: 40.7830, lng: -73.9650, intensity: 0.9 },
-            { lat: 40.7845, lng: -73.9710, intensity: 0.7 }
+            { lat: baseLat, lng: baseLng + 0.0002, intensity: 0.8 },
+            { lat: baseLat + 0.0015, lng: baseLng - 0.0015, intensity: 0.5 },
+            { lat: baseLat - 0.002, lng: baseLng + 0.003, intensity: 0.9 },
+            { lat: baseLat - 0.0005, lng: baseLng - 0.0025, intensity: 0.7 }
         ];
 
-        heatSpots.forEach(spot => {
-            L.circle([spot.lat, spot.lng], {
-                color: '#ff3f6c',
-                fillColor: '#ff3f6c',
-                fillOpacity: spot.intensity * 0.4,
-                radius: spot.intensity * 300,
-                weight: 0,
-                className: 'pulse-fire'
+        if (typeof L.heatLayer === 'function') {
+            const heatData = heatSpots.map(spot => [spot.lat, spot.lng, spot.intensity * 20]); // Leaflet heat uses intensity roughly 0.1 to 1.0, but scaling it makes it more visible
+            L.heatLayer(heatData, {
+                radius: 50,
+                blur: 40,
+                maxZoom: 15,
+                max: 1.0,
+                gradient: {0.3: 'blue', 0.5: 'cyan', 0.7: 'lime', 0.8: 'yellow', 1.0: 'red'}
             }).addTo(this.map);
-        });
+        } else {
+            // Fallback if plugin fails to load
+            heatSpots.forEach(spot => {
+                L.circle([spot.lat, spot.lng], {
+                    color: '#ff3f6c',
+                    fillColor: '#ff3f6c',
+                    fillOpacity: spot.intensity * 0.4,
+                    radius: spot.intensity * 300,
+                    weight: 0,
+                    className: 'pulse-fire'
+                }).addTo(this.map);
+            });
+        }
 
         if (window.DB_Service && window.DB_Service.getRecentCheckIns) {
             window.DB_Service.getRecentCheckIns((checkins) => {
@@ -178,6 +294,23 @@ const MapService = {
                 });
             });
         }
+    },
+
+    watchProximity(lat, lng) {
+        // In a real app, this uses Capacitor Background Geolocation
+        // Here we simulate walking closer to a Drop and firing an alert
+        setInterval(() => {
+            if (!this.userMarker) return;
+            // Randomly trigger an alert for demo purposes
+            if (Math.random() < 0.15) {
+                if (window.showToast) {
+                    window.showToast('📍 You are near a Neon Drop!', 'info', 'Tap to reveal');
+                }
+                if (window.Haptics) {
+                    window.Haptics.impact({ style: 'Heavy' }).catch(()=>{});
+                }
+            }
+        }, 15000); // Check every 15 seconds
     }
 };
 

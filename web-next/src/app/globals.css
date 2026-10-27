@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --primary: #ff0080;
+    --accent: #ff8c00;
+    --dark: #121212;
+  }
+}
+
+@layer utilities {
+  .text-primary { color: var(--primary); }
+  .bg-dark { background-color: var(--dark); }
+  .bg-primary { background-color: var(--primary); }
+  
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+}
+
+/* Custom Neon Leaflet Marker styling for the map */
+.neon-pulse-marker {
+  filter: drop-shadow(0 0 10px rgba(255,0,128,0.8));
+}
+.dark-popup .leaflet-popup-content-wrapper, 
+.dark-popup .leaflet-popup-tip {
+  background: #222;
+  color: white;
+}

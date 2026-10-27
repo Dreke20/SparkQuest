@@ -1,10 +1,12 @@
 {
+  "type": "module",
   "scripts": {
     "start": "npx -y http-server www -p 3000 -c-1",
     "dev": "vite",
     "build": "vite build"
   },
   "dependencies": {
+    "@capacitor-community/admob": "^8.2.1",
     "@capacitor/android": "^8.5.3",
     "@capacitor/cli": "^8.5.3",
     "@capacitor/core": "^8.5.3",
