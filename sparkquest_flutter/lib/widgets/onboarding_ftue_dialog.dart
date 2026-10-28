@@ -81,14 +81,28 @@ class _OnboardingFtueDialogState extends State<OnboardingFtueDialog> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'EXPLORER ONBOARDING • STEP ${_step + 1}/3',
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.neonCyan,
-                      letterSpacing: 1.1,
-                    ),
+                  Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: Image.asset(
+                          'assets/images/logo.jpg',
+                          width: 24,
+                          height: 24,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'EXPLORER ONBOARDING • STEP ${_step + 1}/3',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.neonCyan,
+                          letterSpacing: 1.1,
+                        ),
+                      ),
+                    ],
                   ),
                   IconButton(
                     visualDensity: VisualDensity.compact,
