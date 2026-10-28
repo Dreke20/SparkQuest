@@ -538,115 +538,182 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   void _openDateItinerary() {
+    String selectedSlot = 'Thu • 6:30 PM';
+    String selectedVenue = '☕ Neon Roasters (15% Safe Haven Perk)';
+    bool autoArmShield = true;
+
+    final slots = [
+      'Thu • 6:30 PM',
+      'Fri • 8:00 PM',
+      'Sat • 4:00 PM',
+      'Sun • 11:00 AM',
+    ];
+    final venues = [
+      '☕ Neon Roasters (15% Safe Haven Perk)',
+      '🕹️ Emporium Arcade (+50🔥 Bonus)',
+      '🧗‍♂️ Dogpatch Boulders (Co-Op Climb)',
+      '🍸 Skyline Pergola (Rooftop Sunset)',
+    ];
+
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: AppTheme.bgSurface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(
-                  Icons.auto_awesome,
-                  color: AppTheme.questGold,
-                  size: 24,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'SparkQuest Itinerary: ${widget.conversation.name}',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.calendar_month,
+                    color: AppTheme.questGold,
+                    size: 24,
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            _itineraryStep(
-              '☕ 4:30 PM',
-              'Artisan Pour-Over',
-              'Blue Velvet Atelier',
-            ),
-            _itineraryStep(
-              '🎨 5:45 PM',
-              'Indie Gallery Stroll',
-              'Arts District Collective',
-            ),
-            _itineraryStep(
-              '🍸 7:15 PM',
-              'Rooftop Stargazing',
-              'Skyline Pergola',
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.sparkCoral,
-                minimumSize: const Size.fromHeight(48),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Schedule Co-Op Date: ${widget.conversation.name}',
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                '1. Pick a Day & Time',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.neonCyan,
                 ),
               ),
-              onPressed: () {
-                Navigator.pop(ctx);
-                _sendMessage(
-                  '✨ I asked Sparky to plan our first quest! ☕ Pour-over → 🎨 Gallery → 🍸 Rooftop drinks. What do you think?',
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: slots.map((slot) {
+                  final active = selectedSlot == slot;
+                  return ChoiceChip(
+                    label: Text(slot, style: const TextStyle(fontSize: 11.5)),
+                    selected: active,
+                    selectedColor: AppTheme.electricViolet,
+                    backgroundColor: AppTheme.bgCard,
+                    labelStyle: TextStyle(
+                      color: active ? Colors.white : AppTheme.textSecondary,
+                      fontWeight: active ? FontWeight.bold : FontWeight.normal,
+                    ),
+                    onSelected: (_) {
+                      HapticFeedback.selectionClick();
+                      setModalState(() => selectedSlot = slot);
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                '2. Select Verified Safe Haven Venue',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.neonCyan,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ...venues.map((v) {
+                final active = selectedVenue == v;
+                return GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setModalState(() => selectedVenue = v);
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.bgCard,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: active ? AppTheme.questGold : Colors.white10,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            v,
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: active
+                                  ? Colors.white
+                                  : AppTheme.textSecondary,
+                              fontWeight: active
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                        if (active)
+                          const Icon(
+                            Icons.check_circle,
+                            color: AppTheme.questGold,
+                            size: 16,
+                          ),
+                      ],
+                    ),
+                  ),
                 );
-              },
-              child: const Text(
-                'Send Itinerary to Chat',
-                style: TextStyle(color: Colors.white),
+              }),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: autoArmShield,
+                activeThumbColor: AppTheme.neonCyan,
+                onChanged: (val) => setModalState(() => autoArmShield = val),
+                title: const Text(
+                  '🛡️ Auto-arm Date Shield 2.0 Check-in Timer',
+                  style: TextStyle(color: Colors.white, fontSize: 12),
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.sparkCoral,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  widget.onAwardEmbers?.call(25);
+                  _sendMessage(
+                    '📅 [Co-Op Date Invite] Let’s meet $selectedSlot at $selectedVenue! ${autoArmShield ? "(Date Shield Verified 🛡️)" : ""} ✨',
+                  );
+                },
+                icon: const Icon(Icons.send, size: 16),
+                label: const Text(
+                  'Send Date Invite (+25🔥)',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
-  }
-
-  Widget _itineraryStep(String time, String title, String loc) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            time,
-            style: const TextStyle(
-              color: AppTheme.neonCyan,
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text(
-                  loc,
-                  style: const TextStyle(
-                    color: AppTheme.textSecondary,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
