@@ -5,6 +5,7 @@ import 'package:confetti/confetti.dart';
 import '../models/quest.dart';
 import '../theme/app_theme.dart';
 import '../services/quest_progression_service.dart';
+import '../services/storage_service.dart';
 
 class QuestsScreen extends StatefulWidget {
   final int streakDays;
@@ -24,7 +25,7 @@ class _QuestsScreenState extends State<QuestsScreen> {
   late ConfettiController _confettiController;
   bool _streakShieldArmed = true;
   String _selectedSubclass = '🌌 Astral Navigator (+15% Chemistry Boost)';
-  final Set<String> _joinedGuilds = {
+  Set<String> _joinedGuilds = {
     '🏔️ SF Summit Hikers',
     '🕹️ Co-Op Arcade Guild',
   };
@@ -36,6 +37,9 @@ class _QuestsScreenState extends State<QuestsScreen> {
     super.initState();
     QuestProgressionService.instance.loadFromStorage();
     QuestProgressionService.instance.addListener(_onProgressUpdated);
+    _streakShieldArmed = StorageService.instance.isStreakShieldArmed();
+    _selectedSubclass = StorageService.instance.getSelectedSubclass();
+    _joinedGuilds = StorageService.instance.getJoinedGuilds().toSet();
     _confettiController = ConfettiController(
       duration: const Duration(seconds: 2),
     );
@@ -55,12 +59,20 @@ class _QuestsScreenState extends State<QuestsScreen> {
   void _claim(QuestItem quest) {
     if (quest.isClaimed || !quest.isCompleted) return;
     QuestProgressionService.instance.claimQuest(quest.id);
-    widget.onClaimEmber(quest.reward);
+    final hasTacticianBonus = _selectedSubclass.contains('Cyber Tactician');
+    final finalReward = hasTacticianBonus
+        ? (quest.reward * 1.2).round()
+        : quest.reward;
+    widget.onClaimEmber(finalReward);
     _confettiController.play();
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Claimed +${quest.reward} Embers & +50 Season XP! 🎁'),
+        content: Text(
+          hasTacticianBonus
+              ? 'Claimed +$finalReward Embers (+20% Subclass Bonus!) & +50 Season XP! 🎁'
+              : 'Claimed +$finalReward Embers & +50 Season XP! 🎁',
+        ),
         backgroundColor: AppTheme.questGold,
       ),
     );
@@ -135,6 +147,9 @@ class _QuestsScreenState extends State<QuestsScreen> {
                           HapticFeedback.selectionClick();
                           setState(
                             () => _streakShieldArmed = !_streakShieldArmed,
+                          );
+                          StorageService.instance.setStreakShieldArmed(
+                            _streakShieldArmed,
                           );
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
@@ -495,6 +510,7 @@ class _QuestsScreenState extends State<QuestsScreen> {
               children: [
                 Expanded(
                   child: _tavernShopCard(
+                    itemKey: 'rose',
                     icon: '🌹',
                     title: 'Standout Rose',
                     cost: 40,
@@ -504,6 +520,7 @@ class _QuestsScreenState extends State<QuestsScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: _tavernShopCard(
+                    itemKey: 'spotlight',
                     icon: '⚡',
                     title: '1h Spotlight',
                     cost: 60,
@@ -513,6 +530,7 @@ class _QuestsScreenState extends State<QuestsScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: _tavernShopCard(
+                    itemKey: 'streak_freeze',
                     icon: '🛡️',
                     title: 'Streak Freeze',
                     cost: 35,
@@ -610,6 +628,9 @@ class _QuestsScreenState extends State<QuestsScreen> {
                             _joinedGuilds.add(gName);
                           }
                         });
+                        StorageService.instance.saveJoinedGuilds(
+                          _joinedGuilds.toList(),
+                        );
                       },
                       child: Text(
                         joined ? 'Joined ✓' : 'Join Guild',
@@ -644,6 +665,7 @@ class _QuestsScreenState extends State<QuestsScreen> {
                 onTap: () {
                   HapticFeedback.selectionClick();
                   setState(() => _selectedSubclass = sub);
+                  StorageService.instance.saveSelectedSubclass(sub);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('✨ Equipped Subclass Perk: $sub'),
@@ -693,23 +715,41 @@ class _QuestsScreenState extends State<QuestsScreen> {
   }
 
   Widget _tavernShopCard({
+    required String itemKey,
     required String icon,
     required String title,
     required int cost,
     required String desc,
   }) {
+    final owned = StorageService.instance.getInventoryCount(itemKey);
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
+        if (!StorageService.instance.canAffordEmbers(cost)) {
+          HapticFeedback.heavyImpact();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '⚠️ Insufficient Embers! Need $cost🔥 to purchase $title.',
+              ),
+              backgroundColor: AppTheme.sparkCoral,
+            ),
+          );
+          return;
+        }
         HapticFeedback.mediumImpact();
         widget.onClaimEmber(-cost);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '🏪 Purchased $title ($icon) from the Ember Tavern! (-$cost🔥)',
+        await StorageService.instance.addInventoryItem(itemKey, 1);
+        if (mounted) {
+          setState(() {});
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '🏪 Purchased $title ($icon) from the Ember Tavern! (-$cost🔥)',
+              ),
+              backgroundColor: AppTheme.questGold,
             ),
-            backgroundColor: AppTheme.questGold,
-          ),
-        );
+          );
+        }
       },
       child: Container(
         padding: const EdgeInsets.all(12),
@@ -732,9 +772,13 @@ class _QuestsScreenState extends State<QuestsScreen> {
               ),
             ),
             Text(
-              desc,
+              owned > 0 ? 'Owned: $owned' : desc,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppTheme.textDim, fontSize: 10),
+              style: TextStyle(
+                color: owned > 0 ? AppTheme.neonCyan : AppTheme.textDim,
+                fontSize: 10,
+                fontWeight: owned > 0 ? FontWeight.bold : FontWeight.normal,
+              ),
             ),
             const SizedBox(height: 6),
             Container(

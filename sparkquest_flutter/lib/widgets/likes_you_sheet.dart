@@ -2,7 +2,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/profile.dart';
+import '../services/iap_service.dart';
 import '../services/realtime_chat_service.dart';
+import '../services/storage_service.dart';
 import '../theme/app_theme.dart';
 
 class LikesYouSheet extends StatefulWidget {
@@ -20,7 +22,18 @@ class LikesYouSheet extends StatefulWidget {
 }
 
 class _LikesYouSheetState extends State<LikesYouSheet> {
-  final Set<String> _revealedIds = {'jordan'};
+  late Set<String> _revealedIds;
+
+  @override
+  void initState() {
+    super.initState();
+    _revealedIds = StorageService.instance.getRevealedAdmirers().toSet();
+    if (IAPService.instance.isGoldVip) {
+      for (final a in _admirers) {
+        _revealedIds.add(a.id);
+      }
+    }
+  }
 
   final List<Profile> _admirers = const [
     Profile(
@@ -73,13 +86,44 @@ class _LikesYouSheetState extends State<LikesYouSheet> {
     ),
   ];
 
+  void _revealSingle(Profile admirer) {
+    if (!IAPService.instance.isGoldVip) {
+      if (!StorageService.instance.canAffordEmbers(30)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Need 30🔥 Embers (or Gold VIP) to unblur this admirer!'),
+            backgroundColor: AppTheme.sparkCoral,
+          ),
+        );
+        return;
+      }
+      widget.onSpendOrEarnEmbers?.call(-30);
+    }
+    HapticFeedback.selectionClick();
+    setState(() => _revealedIds.add(admirer.id));
+    StorageService.instance.saveRevealedAdmirers(_revealedIds.toList());
+  }
+
   void _revealAll() {
+    if (!IAPService.instance.isGoldVip) {
+      if (!StorageService.instance.canAffordEmbers(75)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Need 75🔥 Embers (or Gold VIP) to unblur all 4 admirers!'),
+            backgroundColor: AppTheme.sparkCoral,
+          ),
+        );
+        return;
+      }
+      widget.onSpendOrEarnEmbers?.call(-75);
+    }
     HapticFeedback.mediumImpact();
     setState(() {
       for (final a in _admirers) {
         _revealedIds.add(a.id);
       }
     });
+    StorageService.instance.saveRevealedAdmirers(_revealedIds.toList());
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('🔮 All Secret Admirers unblurred! Tap any card to match.'),
@@ -167,9 +211,11 @@ class _LikesYouSheetState extends State<LikesYouSheet> {
                     ),
                     onPressed: _revealAll,
                     icon: const Icon(Icons.visibility, size: 15),
-                    label: const Text(
-                      'Unblur All',
-                      style: TextStyle(
+                    label: Text(
+                      IAPService.instance.isGoldVip
+                          ? 'Unblur All (VIP)'
+                          : 'Unblur All (75🔥)',
+                      style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                       ),
@@ -194,8 +240,7 @@ class _LikesYouSheetState extends State<LikesYouSheet> {
                   return GestureDetector(
                     onTap: () {
                       if (!isRevealed) {
-                        HapticFeedback.selectionClick();
-                        setState(() => _revealedIds.add(admirer.id));
+                        _revealSingle(admirer);
                       } else {
                         _matchBack(admirer);
                       }
@@ -223,6 +268,7 @@ class _LikesYouSheetState extends State<LikesYouSheet> {
                             child: Image.asset(
                               admirer.photoAsset,
                               fit: BoxFit.cover,
+                              cacheWidth: 360,
                             ),
                           ),
                           Container(
@@ -324,15 +370,15 @@ class _LikesYouSheetState extends State<LikesYouSheet> {
                                     ),
                                     onPressed: () {
                                       if (!isRevealed) {
-                                        setState(
-                                          () => _revealedIds.add(admirer.id),
-                                        );
+                                        _revealSingle(admirer);
                                       } else {
                                         _matchBack(admirer);
                                       }
                                     },
                                     child: Text(
-                                      isRevealed ? 'Spark Back 💬' : 'Unblur 🔮',
+                                      isRevealed
+                                          ? 'Spark Back 💬'
+                                          : 'Unblur (30🔥)',
                                       style: const TextStyle(
                                         fontSize: 11,
                                         color: Colors.white,
