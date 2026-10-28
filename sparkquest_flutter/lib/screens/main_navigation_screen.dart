@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
@@ -10,6 +11,10 @@ import '../widgets/daily_spin_wheel_dialog.dart';
 import '../widgets/date_guard_dialog.dart';
 import '../widgets/spark_pass_dialog.dart';
 import '../services/iap_service.dart';
+import '../services/storage_service.dart';
+import '../services/realtime_chat_service.dart';
+import '../widgets/notification_banner.dart';
+import '../widgets/biometric_lock_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -21,11 +26,50 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
   int _embers = 325;
-  final int _streakDays = 3;
+  int _streakDays = 3;
+  String? _notificationSender;
+  String? _notificationText;
+  bool _isAppLocked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initStorageAndServices();
+  }
+
+  void _initStorageAndServices() async {
+    await StorageService.instance.init();
+    if (mounted) {
+      setState(() {
+        _embers = StorageService.instance.getEmbers();
+        _streakDays = StorageService.instance.getStreak();
+      });
+    }
+
+    RealtimeChatService.instance.onIncomingNotification = (sender, text) {
+      if (mounted && _currentIndex != 2) {
+        HapticFeedback.mediumImpact();
+        setState(() {
+          _notificationSender = sender;
+          _notificationText = text;
+        });
+        Timer(const Duration(seconds: 4), () {
+          if (mounted && _notificationSender == sender) {
+            setState(() {
+              _notificationSender = null;
+              _notificationText = null;
+            });
+          }
+        });
+      }
+    };
+  }
 
   void _addEmbers(int count) {
     setState(() => _embers += count);
+    StorageService.instance.saveEmbers(_embers);
   }
+
 
   void _openDateShieldModal() {
     showModalBottomSheet(
@@ -213,7 +257,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       ProfileScreen(
         embers: _embers,
         onOpenDateShield: _openDateShieldModal,
+        onTriggerLock: () => setState(() => _isAppLocked = true),
       ),
+
     ];
 
     return Scaffold(
@@ -332,10 +378,39 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           const SizedBox(width: 6),
         ],
       ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: screens,
+      body: Stack(
+        children: [
+          IndexedStack(
+            index: _currentIndex,
+            children: screens,
+          ),
+          if (_notificationSender != null && _notificationText != null)
+            NotificationBanner(
+              sender: _notificationSender!,
+              message: _notificationText!,
+              onTap: () {
+                setState(() {
+                  _notificationSender = null;
+                  _notificationText = null;
+                  _currentIndex = 2; // Jump to Matches & Chat
+                });
+              },
+              onDismiss: () {
+                setState(() {
+                  _notificationSender = null;
+                  _notificationText = null;
+                });
+              },
+            ),
+          if (_isAppLocked)
+            BiometricLockScreen(
+              onUnlocked: () {
+                setState(() => _isAppLocked = false);
+              },
+            ),
+        ],
       ),
+
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: AppTheme.bgSurface,

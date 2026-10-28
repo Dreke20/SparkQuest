@@ -12,7 +12,24 @@ class ChatMessage {
     required this.time,
     required this.isSentByMe,
   });
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'text': text,
+    'mediaAsset': mediaAsset,
+    'time': time,
+    'isSentByMe': isSentByMe,
+  };
+
+  factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
+    id: json['id'] ?? '',
+    text: json['text'] ?? '',
+    mediaAsset: json['mediaAsset'],
+    time: json['time'] ?? '',
+    isSentByMe: json['isSentByMe'] ?? false,
+  );
 }
+
 
 class MatchConversation {
   final String id;
