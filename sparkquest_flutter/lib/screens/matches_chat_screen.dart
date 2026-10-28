@@ -9,6 +9,8 @@ import '../widgets/icebreaker_games_sheet.dart';
 import '../widgets/video_call_screen.dart';
 import '../widgets/story_viewer_dialog.dart';
 import '../widgets/moderation_dialogs.dart';
+import '../services/iap_service.dart';
+import '../services/storage_service.dart';
 import '../services/supabase_service.dart';
 import '../services/realtime_chat_service.dart';
 
@@ -401,12 +403,31 @@ class _MatchesChatScreenState extends State<MatchesChatScreen> {
                       const SizedBox(width: 6),
                       GestureDetector(
                         onTap: () {
+                          final isVip = IAPService.instance.isGoldVip;
+                          if (!isVip &&
+                              !StorageService.instance.canAffordEmbers(20)) {
+                            HapticFeedback.heavyImpact();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  '⚠️ +24h Match Extension costs 20🔥 Embers (or Free with Gold VIP)!',
+                                ),
+                                backgroundColor: AppTheme.sparkCoral,
+                              ),
+                            );
+                            return;
+                          }
+                          if (!isVip) {
+                            widget.onAwardEmbers?.call(-20);
+                          }
                           HapticFeedback.mediumImpact();
                           setState(() => _extendedMatches.add(c.name));
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
-                                '⏱️ Extended ${c.name}’s match timer by +24 hours!',
+                                isVip
+                                    ? '⏱️ VIP Free Extension: ${c.name}’s match timer extended +24h!'
+                                    : '⏱️ Extended ${c.name}’s match timer by +24 hours (-20🔥)!',
                               ),
                               backgroundColor: AppTheme.questGold,
                             ),
@@ -423,7 +444,7 @@ class _MatchesChatScreenState extends State<MatchesChatScreen> {
                             border: Border.all(color: AppTheme.questGold),
                           ),
                           child: const Text(
-                            '⏳ 6h left • Extend +24h',
+                            '⏳ 6h left • Extend (20🔥)',
                             style: TextStyle(
                               fontSize: 9.5,
                               fontWeight: FontWeight.bold,

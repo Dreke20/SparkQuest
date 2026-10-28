@@ -13,6 +13,7 @@ import '../widgets/moderation_dialogs.dart';
 import '../widgets/onboarding_ftue_dialog.dart';
 import '../widgets/profile_detail_sheet.dart';
 import '../widgets/likes_you_sheet.dart';
+import '../services/iap_service.dart';
 import '../services/storage_service.dart';
 import '../services/supabase_service.dart';
 import '../services/realtime_chat_service.dart';
@@ -452,6 +453,20 @@ class _ExploreScreenState extends State<ExploreScreen> {
       ).showSnackBar(const SnackBar(content: Text('No previous card to undo')));
       return;
     }
+    final isVip = IAPService.instance.isGoldVip;
+    if (!isVip && !StorageService.instance.canAffordEmbers(15)) {
+      HapticFeedback.heavyImpact();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('⚠️ Second Chance Rewind costs 15🔥 Embers (or Free with Gold VIP)!'),
+          backgroundColor: AppTheme.sparkCoral,
+        ),
+      );
+      return;
+    }
+    if (!isVip) {
+      widget.onBonusEmbers?.call(-15);
+    }
     HapticFeedback.lightImpact();
     setState(() {
       final last = _history.removeLast();
@@ -459,8 +474,78 @@ class _ExploreScreenState extends State<ExploreScreen> {
       _topCardPhotoIndex = 0;
     });
     ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          isVip
+              ? '⏪ VIP Free Rewind used! Card restored to deck.'
+              : '⏪ Second Chance Rewind (-15🔥)! Card restored to deck.',
+        ),
+      ),
+    );
+  }
+
+  void _superSpark() {
+    if (_cards.isEmpty) return;
+    final hasBardPerk = StorageService.instance
+        .getSelectedSubclass()
+        .contains('Harmonic Bard');
+    if (!hasBardPerk && !StorageService.instance.canAffordEmbers(25)) {
+      HapticFeedback.heavyImpact();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('⚠️ Priority Super-Spark costs 25🔥 Embers!'),
+          backgroundColor: AppTheme.sparkCoral,
+        ),
+      );
+      return;
+    }
+    if (!hasBardPerk) {
+      widget.onBonusEmbers?.call(-25);
+    }
+    final top = _cards.first;
+    RealtimeChatService.instance.sendMessage(
+      top.name,
+      '🌟 Sent a Priority Super-Spark!',
+    );
+    QuestProgressionService.instance.addSeasonXp(15);
+    _swipe(true);
+  }
+
+  Future<void> _activateSpotlightBoost() async {
+    final owned = StorageService.instance.getInventoryCount('spotlight');
+    if (owned > 0) {
+      await StorageService.instance.addInventoryItem('spotlight', -1);
+      HapticFeedback.heavyImpact();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              '⚡ Used 1 Owned Spotlight Boost! Profile 5x amplified for 60m.',
+            ),
+            backgroundColor: AppTheme.electricViolet,
+          ),
+        );
+      }
+      return;
+    }
+    if (!StorageService.instance.canAffordEmbers(60)) {
+      HapticFeedback.heavyImpact();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('⚠️ 1-Hour Spotlight Boost costs 60🔥 Embers!'),
+          backgroundColor: AppTheme.sparkCoral,
+        ),
+      );
+      return;
+    }
+    widget.onBonusEmbers?.call(-60);
+    HapticFeedback.heavyImpact();
+    ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('⏪ Second Chance Rewind used! Card restored to deck.'),
+        content: Text(
+          '⚡ 1-Hour Super Boost Active (-60🔥)! Profile 5x amplified.',
+        ),
+        backgroundColor: AppTheme.electricViolet,
       ),
     );
   }
@@ -570,12 +655,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Widget build(BuildContext context) {
     final userTags = StorageService.instance.getUserVibeTags();
     final userArchetype = StorageService.instance.getUserArchetype();
+    final isFtueDone = _ftueDone || StorageService.instance.isFtueCompleted();
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         children: [
-          if (!_ftueDone)
+          if (!isFtueDone)
             GestureDetector(
               onTap: () {
                 HapticFeedback.selectionClick();
@@ -967,61 +1053,65 @@ class _ExploreScreenState extends State<ExploreScreen> {
               child: Stack(
                 children: [
                   if (_cards.length > 1)
-                    Transform.scale(
-                      scale: 0.94,
-                      child: _buildCardContent(
-                        _cards[1],
-                        isTop: false,
-                        userTags: userTags,
-                        userArchetype: userArchetype,
-                      ),
-                    ),
-                  GestureDetector(
-                    onTapUp: (details) {
-                      final box = context.findRenderObject() as RenderBox?;
-                      final width = box?.size.width ?? 360;
-                      final gallery = _cards.first.effectiveGallery;
-                      // Upper 55% taps cycle through photo story carousel; lower 45% opens deep-dive sheet
-                      if (details.localPosition.dy < 260 &&
-                          gallery.length > 1) {
-                        HapticFeedback.selectionClick();
-                        setState(() {
-                          if (details.localPosition.dx < width / 2) {
-                            _topCardPhotoIndex =
-                                (_topCardPhotoIndex - 1 + gallery.length) %
-                                gallery.length;
-                          } else {
-                            _topCardPhotoIndex =
-                                (_topCardPhotoIndex + 1) % gallery.length;
-                          }
-                        });
-                      } else {
-                        _openProfileDetail(_cards.first);
-                      }
-                    },
-                    onPanUpdate: (details) {
-                      setState(() {
-                        _dragOffset += details.delta;
-                      });
-                    },
-                    onPanEnd: (details) {
-                      if (_dragOffset.dx > 120) {
-                        _swipe(true);
-                      } else if (_dragOffset.dx < -120) {
-                        _swipe(false);
-                      } else {
-                        setState(() => _dragOffset = Offset.zero);
-                      }
-                    },
-                    child: Transform.translate(
-                      offset: _dragOffset,
-                      child: Transform.rotate(
-                        angle: _dragOffset.dx / 400 * (pi / 12),
+                    RepaintBoundary(
+                      child: Transform.scale(
+                        scale: 0.94,
                         child: _buildCardContent(
-                          _cards.first,
-                          isTop: true,
+                          _cards[1],
+                          isTop: false,
                           userTags: userTags,
                           userArchetype: userArchetype,
+                        ),
+                      ),
+                    ),
+                  RepaintBoundary(
+                    child: GestureDetector(
+                      onTapUp: (details) {
+                        final box = context.findRenderObject() as RenderBox?;
+                        final width = box?.size.width ?? 360;
+                        final gallery = _cards.first.effectiveGallery;
+                        // Upper 55% taps cycle through photo story carousel; lower 45% opens deep-dive sheet
+                        if (details.localPosition.dy < 260 &&
+                            gallery.length > 1) {
+                          HapticFeedback.selectionClick();
+                          setState(() {
+                            if (details.localPosition.dx < width / 2) {
+                              _topCardPhotoIndex =
+                                  (_topCardPhotoIndex - 1 + gallery.length) %
+                                  gallery.length;
+                            } else {
+                              _topCardPhotoIndex =
+                                  (_topCardPhotoIndex + 1) % gallery.length;
+                            }
+                          });
+                        } else {
+                          _openProfileDetail(_cards.first);
+                        }
+                      },
+                      onPanUpdate: (details) {
+                        setState(() {
+                          _dragOffset += details.delta;
+                        });
+                      },
+                      onPanEnd: (details) {
+                        if (_dragOffset.dx > 120) {
+                          _swipe(true);
+                        } else if (_dragOffset.dx < -120) {
+                          _swipe(false);
+                        } else {
+                          setState(() => _dragOffset = Offset.zero);
+                        }
+                      },
+                      child: Transform.translate(
+                        offset: _dragOffset,
+                        child: Transform.rotate(
+                          angle: _dragOffset.dx / 400 * (pi / 12),
+                          child: _buildCardContent(
+                            _cards.first,
+                            isTop: true,
+                            userTags: userTags,
+                            userArchetype: userArchetype,
+                          ),
                         ),
                       ),
                     ),
@@ -1066,6 +1156,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     width: 84,
                     height: 102,
                     fit: BoxFit.cover,
+                    cacheWidth: 240,
                   ),
                 ),
               ),
@@ -1151,7 +1242,33 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             ),
                             minimumSize: Size.zero,
                           ),
-                          onPressed: () {
+                          onPressed: () async {
+                            final ownedRoses = StorageService.instance
+                                .getInventoryCount('rose');
+                            if (ownedRoses > 0) {
+                              await StorageService.instance.addInventoryItem(
+                                'rose',
+                                -1,
+                              );
+                            } else {
+                              if (!StorageService.instance.canAffordEmbers(
+                                40,
+                              )) {
+                                HapticFeedback.heavyImpact();
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        '⚠️ Standout Rose costs 40🔥 Embers!',
+                                      ),
+                                      backgroundColor: AppTheme.sparkCoral,
+                                    ),
+                                  );
+                                }
+                                return;
+                              }
+                              widget.onBonusEmbers?.call(-40);
+                            }
                             HapticFeedback.heavyImpact();
                             RealtimeChatService.instance.addMatchFromProfile(p);
                             RealtimeChatService.instance.sendMessage(
@@ -1166,9 +1283,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             '🌹',
                             style: TextStyle(fontSize: 12),
                           ),
-                          label: const Text(
-                            'Send Rose',
-                            style: TextStyle(
+                          label: Text(
+                            StorageService.instance.getInventoryCount('rose') >
+                                    0
+                                ? 'Send Rose (Owned)'
+                                : 'Send Rose (40🔥)',
+                            style: const TextStyle(
                               fontSize: 11.5,
                               fontWeight: FontWeight.bold,
                             ),
@@ -1219,10 +1339,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // Current Carousel Image
+          // Current Carousel Image (decoded at 720px width for smooth 60fps swipe performance)
           Image.asset(
             gallery[activeIdx],
             fit: BoxFit.cover,
+            cacheWidth: 720,
             errorBuilder: (_, _, _) => Container(color: AppTheme.bgSurface),
           ),
           // Gradient Overlay
@@ -1557,12 +1678,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
             size: 60,
             onTap: () => _swipe(false),
           ),
-          // SuperLike
+          // SuperLike (25 Embers or Harmonic Bard Free Perk)
           _circleButton(
             icon: Icons.star,
             color: AppTheme.neonCyan,
             size: 52,
-            onTap: () => _swipe(true),
+            onTap: _superSpark,
           ),
           // Like
           _circleButton(
@@ -1571,20 +1692,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
             size: 60,
             onTap: () => _swipe(true),
           ),
-          // Boost
+          // Boost (60 Embers or 1 Owned Spotlight)
           _circleButton(
             icon: Icons.bolt,
             color: AppTheme.electricViolet,
             size: 48,
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    '⚡ 1-Hour Super Boost Active! Profile 5x amplified.',
-                  ),
-                ),
-              );
-            },
+            onTap: _activateSpotlightBoost,
           ),
         ],
       ),

@@ -12,11 +12,44 @@ class StorageService {
   }
 
   // --- Embers & Economy ---
-  int getEmbers() => _prefs?.getInt('user_embers') ?? 325;
-  Future<void> saveEmbers(int count) async => await _prefs?.setInt('user_embers', count);
+  int getEmbers() => _prefs?.getInt('user_embers') ?? 150;
+  Future<void> saveEmbers(int count) async =>
+      await _prefs?.setInt('user_embers', count < 0 ? 0 : count);
+
+  bool canAffordEmbers(int cost) => getEmbers() >= cost;
+
+  Future<bool> spendEmbers(int cost) async {
+    final current = getEmbers();
+    if (current < cost) return false;
+    await saveEmbers(current - cost);
+    return true;
+  }
+
+  bool isGoldVip() => _prefs?.getBool('user_is_gold_vip') ?? false;
+  Future<void> setGoldVip(bool isVip) async =>
+      await _prefs?.setBool('user_is_gold_vip', isVip);
+
+  bool hasClaimedDailyGrantToday() {
+    final todayKey = DateTime.now().toIso8601String().substring(0, 10);
+    return _prefs?.getString('last_daily_grant_date') == todayKey;
+  }
+
+  Future<void> markDailyGrantClaimedToday() async {
+    final todayKey = DateTime.now().toIso8601String().substring(0, 10);
+    await _prefs?.setString('last_daily_grant_date', todayKey);
+  }
+
+  int getInventoryCount(String itemKey) =>
+      _prefs?.getInt('inv_$itemKey') ?? 0;
+
+  Future<void> addInventoryItem(String itemKey, int delta) async {
+    final next = (getInventoryCount(itemKey) + delta).clamp(0, 999);
+    await _prefs?.setInt('inv_$itemKey', next);
+  }
 
   int getStreak() => _prefs?.getInt('user_streak') ?? 3;
-  Future<void> saveStreak(int streak) async => await _prefs?.setInt('user_streak', streak);
+  Future<void> saveStreak(int streak) async =>
+      await _prefs?.setInt('user_streak', streak);
 
   // --- Security & Biometrics ---
   bool isBiometricLockEnabled() => _prefs?.getBool('biometric_lock_enabled') ?? false;
@@ -245,4 +278,27 @@ class StorageService {
   String getPartyWingman() => _prefs?.getString('party_wingman_name') ?? '';
   Future<void> savePartyWingman(String name) async =>
       await _prefs?.setString('party_wingman_name', name);
+
+  // --- Phase 8–12 Persisted State (Subclass, Guilds, Streak Shield, Match Perks) ---
+  bool isStreakShieldArmed() =>
+      _prefs?.getBool('streak_shield_armed') ?? true;
+  Future<void> setStreakShieldArmed(bool armed) async =>
+      await _prefs?.setBool('streak_shield_armed', armed);
+
+  String getSelectedSubclass() =>
+      _prefs?.getString('selected_subclass') ??
+      '🌌 Astral Navigator (+15% Chemistry Boost)';
+  Future<void> saveSelectedSubclass(String subclass) async =>
+      await _prefs?.setString('selected_subclass', subclass);
+
+  List<String> getJoinedGuilds() =>
+      _prefs?.getStringList('joined_guilds') ??
+      ['🏔️ SF Summit Hikers', '🕹️ Co-Op Arcade Guild'];
+  Future<void> saveJoinedGuilds(List<String> guilds) async =>
+      await _prefs?.setStringList('joined_guilds', guilds);
+
+  List<String> getRevealedAdmirers() =>
+      _prefs?.getStringList('revealed_admirer_ids') ?? ['jordan'];
+  Future<void> saveRevealedAdmirers(List<String> ids) async =>
+      await _prefs?.setStringList('revealed_admirer_ids', ids);
 }

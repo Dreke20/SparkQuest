@@ -152,4 +152,21 @@ void main() {
     await StorageService.instance.saveTeleportCity('Tokyo, Japan');
     expect(StorageService.instance.getTeleportCity(), 'Tokyo, Japan');
   });
+
+  test('Economy & Monetization Balance: spend guards, daily grant & inventory', () async {
+    expect(StorageService.instance.getEmbers(), 150);
+    expect(StorageService.instance.canAffordEmbers(200), isFalse);
+    expect(await StorageService.instance.spendEmbers(200), isFalse);
+    expect(StorageService.instance.getEmbers(), 150);
+
+    expect(await StorageService.instance.spendEmbers(40), isTrue);
+    expect(StorageService.instance.getEmbers(), 110);
+
+    expect(StorageService.instance.hasClaimedDailyGrantToday(), isFalse);
+    await StorageService.instance.markDailyGrantClaimedToday();
+    expect(StorageService.instance.hasClaimedDailyGrantToday(), isTrue);
+
+    await StorageService.instance.addInventoryItem('rose', 2);
+    expect(StorageService.instance.getInventoryCount('rose'), 2);
+  });
 }

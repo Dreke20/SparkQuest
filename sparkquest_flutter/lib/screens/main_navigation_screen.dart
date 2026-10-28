@@ -11,6 +11,7 @@ import 'quests_screen.dart';
 import 'profile_screen.dart';
 import '../widgets/daily_spin_wheel_dialog.dart';
 import '../widgets/date_guard_dialog.dart';
+import '../widgets/onboarding_ftue_dialog.dart';
 import '../widgets/spark_pass_dialog.dart';
 import '../services/iap_service.dart';
 import '../services/storage_service.dart';
@@ -29,7 +30,7 @@ class MainNavigationScreen extends StatefulWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
-  int _embers = 325;
+  int _embers = 150;
   int _streakDays = 3;
   String? _notificationSender;
   String? _notificationText;
@@ -40,6 +41,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     super.initState();
     RealtimeChatService.instance.addListener(_onBadgeStateChanged);
     QuestProgressionService.instance.addListener(_onBadgeStateChanged);
+    IAPService.instance.addListener(_onBadgeStateChanged);
     _initStorageAndServices();
   }
 
@@ -47,6 +49,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   void dispose() {
     RealtimeChatService.instance.removeListener(_onBadgeStateChanged);
     QuestProgressionService.instance.removeListener(_onBadgeStateChanged);
+    IAPService.instance.removeListener(_onBadgeStateChanged);
     super.dispose();
   }
 
@@ -56,11 +59,38 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   void _initStorageAndServices() async {
     await StorageService.instance.init();
+    await IAPService.instance.initialize();
     if (mounted) {
       setState(() {
         _embers = StorageService.instance.getEmbers();
         _streakDays = StorageService.instance.getStreak();
       });
+
+      final isTest = WidgetsBinding.instance.runtimeType.toString().contains('Test');
+      if (!isTest && !StorageService.instance.isFtueCompleted()) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => OnboardingFtueDialog(
+              onCompleted: (bonusEmbers) {
+                _addEmbers(bonusEmbers);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        '🎁 Onboarding Complete! +$bonusEmbers Embers & +100 Season XP unlocked!',
+                      ),
+                      backgroundColor: AppTheme.questGold,
+                    ),
+                  );
+                }
+              },
+            ),
+          );
+        });
+      }
     }
 
     RealtimeChatService.instance.onIncomingNotification = (sender, text) {
@@ -125,8 +155,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     };
   }
 
-  void _addEmbers(int count) {
-    setState(() => _embers += count);
+  void _addEmbers(int count, {bool isRawPurchase = false}) {
+    final effectiveDelta = (count > 0 && !isRawPurchase && IAPService.instance.isGoldVip)
+        ? count * 2
+        : count;
+    setState(() {
+      _embers = (_embers + effectiveDelta).clamp(0, 999999);
+    });
     StorageService.instance.saveEmbers(_embers);
   }
 
@@ -162,14 +197,18 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   void _showEmbersStore() {
+    final dailyClaimed = StorageService.instance.hasClaimedDailyGrantToday();
+    final isVip = IAPService.instance.isGoldVip;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.bgCard,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-        title: const Row(
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
+            const Text(
               '✦ Spark Embers Vault',
               style: TextStyle(
                 color: AppTheme.questGold,
@@ -177,6 +216,23 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 fontWeight: FontWeight.bold,
               ),
             ),
+            if (isVip)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppTheme.questGold.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.questGold),
+                ),
+                child: const Text(
+                  '👑 2x VIP ACTIVE',
+                  style: TextStyle(
+                    color: AppTheme.questGold,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
           ],
         ),
         content: SingleChildScrollView(
@@ -185,7 +241,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Your Balance: $_embers Embers',
+                'Your Balance: $_embers Embers 🔥',
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
@@ -193,30 +249,43 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               ),
               const SizedBox(height: 6),
               const Text(
-                'Use Embers to Superlike, unlock radar scan boosts, and reveal mystery blind-date clues.',
+                'Spend Embers on Super-Sparks (25🔥), Standout Roses (40🔥), Rewinds (15🔥), and Admirer Unblurs (30🔥).',
                 style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
               ),
               const SizedBox(height: 14),
               _storeOption(
-                '🎁 Daily Spark Grant',
-                'Free daily reward',
-                'FREE',
-                () {
+                '🎁 Daily Spark Grant (+25🔥)',
+                dailyClaimed ? 'Come back tomorrow for next grant' : 'Free 1x daily login reward',
+                dailyClaimed ? 'CLAIMED ✓' : 'FREE',
+                () async {
+                  if (dailyClaimed) {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('⏳ Daily Spark Grant already claimed today! Resets at midnight.'),
+                      ),
+                    );
+                    return;
+                  }
+                  await StorageService.instance.markDailyGrantClaimedToday();
                   _addEmbers(25);
+                  if (!ctx.mounted) return;
                   Navigator.pop(ctx);
                   HapticFeedback.lightImpact();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('🎁 +25 Free Embers claimed for today!'),
-                      backgroundColor: Color(0xFF10B981),
-                    ),
-                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('🎁 +25 Free Embers claimed for today!'),
+                        backgroundColor: Color(0xFF10B981),
+                      ),
+                    );
+                  }
                 },
               ),
               const SizedBox(height: 8),
               _storeOption(
-                '💎 100 Embers Pouch',
-                'Google Play In-App Purchase',
+                '✦ Starter Pouch (150 Embers)',
+                'Send 6 Super-Sparks or 3 Standout Roses',
                 '\$1.99',
                 () async {
                   Navigator.pop(ctx);
@@ -226,13 +295,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   );
                   await IAPService.instance.purchase(
                     p,
-                    onEmbersAdded: _addEmbers,
+                    onEmbersAdded: (amt) => _addEmbers(amt, isRawPurchase: true),
                   );
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text(
-                          '💎 Purchase Successful! +100 Embers added to vault.',
+                          '💎 Purchase Successful! +150 Embers added to vault.',
                         ),
                         backgroundColor: AppTheme.questGold,
                       ),
@@ -242,9 +311,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               ),
               const SizedBox(height: 8),
               _storeOption(
-                '🔥 500 Embers Chest',
-                '20% Bonus included • Best value',
-                '\$6.99',
+                '🔥 Adventurer Chest (600 Embers)',
+                'Includes +20% Bonus • Most Popular',
+                '\$5.99',
                 () async {
                   Navigator.pop(ctx);
                   HapticFeedback.heavyImpact();
@@ -253,13 +322,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   );
                   await IAPService.instance.purchase(
                     p,
-                    onEmbersAdded: _addEmbers,
+                    onEmbersAdded: (amt) => _addEmbers(amt, isRawPurchase: true),
                   );
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text(
-                          '🔥 Purchase Successful! +500 Embers added to vault.',
+                          '🔥 Purchase Successful! +600 Embers added to vault.',
                         ),
                         backgroundColor: AppTheme.sparkCoral,
                       ),
@@ -269,8 +338,35 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               ),
               const SizedBox(height: 8),
               _storeOption(
+                '👑 Sovereign Vault (1,500 Embers)',
+                '+50% Bonus Embers + 1 Free Spotlight Boost',
+                '\$12.99',
+                () async {
+                  Navigator.pop(ctx);
+                  HapticFeedback.heavyImpact();
+                  final p = IAPService.instance.products.firstWhere(
+                    (prod) => prod.id == 'sparkquest_embers_1500',
+                  );
+                  await IAPService.instance.purchase(
+                    p,
+                    onEmbersAdded: (amt) => _addEmbers(amt, isRawPurchase: true),
+                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          '👑 Sovereign Vault Unlocked! +1,500 Embers & +1 Boost added.',
+                        ),
+                        backgroundColor: AppTheme.electricViolet,
+                      ),
+                    );
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
+              _storeOption(
                 '⚡ 30m Spotlight Boost',
-                'Top deck placement for 30 mins',
+                '5x local deck priority for 30 mins',
                 '\$2.99',
                 () async {
                   Navigator.pop(ctx);
@@ -291,6 +387,32 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   }
                 },
               ),
+              if (!isVip) ...[
+                const SizedBox(height: 8),
+                _storeOption(
+                  '👑 SparkQuest Gold VIP',
+                  '2x Earned Embers, Free Rewinds & Unblur Admirers',
+                  '\$14.99/mo',
+                  () async {
+                    Navigator.pop(ctx);
+                    HapticFeedback.heavyImpact();
+                    final p = IAPService.instance.products.firstWhere(
+                      (prod) => prod.id == 'sparkquest_gold_monthly',
+                    );
+                    await IAPService.instance.purchase(p);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            '👑 Welcome to SparkQuest Gold VIP! 2x Embers & Unlimited Perks unlocked.',
+                          ),
+                          backgroundColor: AppTheme.questGold,
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ],
             ],
           ),
         ),
@@ -392,7 +514,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   Widget build(BuildContext context) {
     final screens = [
       ExploreScreen(
-        onEmbersEarned: () => _addEmbers(15),
+        onEmbersEarned: () => _addEmbers(10),
         onBonusEmbers: _addEmbers,
         onOpenChat: () => setState(() => _currentIndex = 2),
       ),
