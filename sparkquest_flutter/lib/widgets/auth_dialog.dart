@@ -133,12 +133,20 @@ class _AuthDialogState extends State<AuthDialog> with SingleTickerProviderStateM
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Row(
+                      Row(
                         children: [
-                          Text('🔥', style: TextStyle(fontSize: 22)),
-                          SizedBox(width: 8),
-                          Text(
-                            'Supabase Auth',
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.asset(
+                              'assets/images/logo.jpg',
+                              width: 28,
+                              height: 28,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'SparkQuest Cloud Auth',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 18,

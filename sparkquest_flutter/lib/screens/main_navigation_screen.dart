@@ -419,6 +419,31 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: AppTheme.neonCyan.withValues(alpha: 0.5),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.sparkCoral.withValues(alpha: 0.35),
+                    blurRadius: 8,
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(7),
+                child: Image.asset(
+                  'assets/images/logo.jpg',
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
             ShaderMask(
               shaderCallback: (bounds) => const LinearGradient(
                 colors: [AppTheme.sparkCoral, AppTheme.neonCyan],
