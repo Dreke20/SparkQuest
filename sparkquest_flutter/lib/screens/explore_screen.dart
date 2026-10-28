@@ -74,6 +74,40 @@ class _ExploreScreenState extends State<ExploreScreen> {
         return true;
       }).toList();
     });
+
+    _syncCloudProfiles();
+  }
+
+  Future<void> _syncCloudProfiles() async {
+    final remoteRows = await SupabaseService.instance.fetchProfiles();
+    if (!mounted || remoteRows.isEmpty) return;
+
+    final blocked = StorageService.instance.getBlockedUsers();
+    final minAge = StorageService.instance.getMinAge();
+    final maxAge = StorageService.instance.getMaxAge();
+    final verifiedOnly = StorageService.instance.getVerifiedOnly();
+
+    final remoteProfiles = remoteRows
+        .where((r) => r['user_id']?.toString() != 'user_me')
+        .map(Profile.fromCloudMap)
+        .where((p) {
+          if (blocked.contains(p.id.toLowerCase())) return false;
+          if (p.age < minAge || p.age > maxAge) return false;
+          if (verifiedOnly && !p.isVerified) return false;
+          return !_cards.any(
+            (existing) =>
+                existing.id.toLowerCase() == p.id.toLowerCase() ||
+                existing.name.split(' ').first.toLowerCase() ==
+                    p.name.split(' ').first.toLowerCase(),
+          );
+        })
+        .toList();
+
+    if (remoteProfiles.isNotEmpty && mounted) {
+      setState(() {
+        _cards.addAll(remoteProfiles);
+      });
+    }
   }
 
   @override

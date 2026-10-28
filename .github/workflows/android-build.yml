@@ -109,6 +109,10 @@ jobs:
         working-directory: ./sparkquest_flutter
         run: flutter build appbundle --release
 
+      - name: Build Native Flutter Web / PWA Release
+        working-directory: ./sparkquest_flutter
+        run: flutter build web --release
+
       - name: Upload Native Flutter Release APK
         uses: actions/upload-artifact@v4
         with:
@@ -120,3 +124,9 @@ jobs:
         with:
           name: sparkquest-flutter-release-aab
           path: sparkquest_flutter/build/app/outputs/bundle/release/app-release.aab
+
+      - name: Upload Native Flutter Web Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: sparkquest-flutter-web-release
+          path: sparkquest_flutter/build/web

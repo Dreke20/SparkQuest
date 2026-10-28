@@ -27,10 +27,27 @@ class MatchesChatScreen extends StatefulWidget {
 }
 
 class _MatchesChatScreenState extends State<MatchesChatScreen> {
+  final Map<String, String> _cloudStoryCaptions = {};
+
   @override
   void initState() {
     super.initState();
     RealtimeChatService.instance.addListener(_onServiceUpdated);
+    _loadCloudStories();
+  }
+
+  Future<void> _loadCloudStories() async {
+    final rows = await SupabaseService.instance.fetchStories();
+    if (!mounted || rows.isEmpty) return;
+    setState(() {
+      for (final row in rows) {
+        final name = (row['user_name'] ?? '').toString().split(' ').first.toLowerCase();
+        final caption = (row['caption'] ?? '').toString();
+        if (name.isNotEmpty && caption.isNotEmpty) {
+          _cloudStoryCaptions[name] = caption;
+        }
+      }
+    });
   }
 
   @override
@@ -62,12 +79,14 @@ class _MatchesChatScreenState extends State<MatchesChatScreen> {
 
   void _openStoryViewer(MatchConversation convo) {
     HapticFeedback.selectionClick();
+    final key = convo.name.split(' ').first.toLowerCase();
     showDialog(
       context: context,
       builder: (ctx) => StoryViewerDialog(
         matchName: convo.name,
         photoAsset: convo.photoAsset,
         tags: convo.tags,
+        customCaption: _cloudStoryCaptions[key],
         onReplySent: (replyText) {
           RealtimeChatService.instance.sendMessage(convo.name, replyText);
           ScaffoldMessenger.of(context).showSnackBar(

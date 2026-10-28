@@ -905,6 +905,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 10),
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.neonCyan,
+              minimumSize: const Size.fromHeight(42),
+              side: BorderSide(
+                color: AppTheme.neonCyan.withValues(alpha: 0.45),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () {
+              HapticFeedback.selectionClick();
+              showDialog(
+                context: context,
+                builder: (ctx) => const LegalCenterDialog(),
+              );
+            },
+            icon: const Icon(Icons.policy_outlined, size: 18),
+            label: const Text(
+              'Privacy Policy, Terms & UGC Safety Center',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            ),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
               foregroundColor: AppTheme.sparkCoral,
               minimumSize: const Size.fromHeight(42),
               side: BorderSide(
