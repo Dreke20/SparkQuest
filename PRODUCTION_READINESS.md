@@ -65,6 +65,10 @@ This document outlines the architecture, security hardening, and deployment proc
    - Safe Haven QR Pass (`SPARK-15`), 500m Map Privacy Blur shield, Weather-Smart Golden Hour suggestions, Crossed Paths ("Missed Connections") radar, community venue safety ratings, and Co-Op GPS check-ins.
 5. **Phases 10–12 — Fortress Safety, RPG Guilds, Ember Tavern & Scale (#33–#50)**:
    - 7-Day Streak Calendar with Streak Freeze Shield, Ember Tavern Shop, Adventurer Interest Guilds (`public.guilds`), RPG Class Evolution Skill Tree, Campfire Snooze mode, Contact Exclusion Shield, Wingman Referrals (`SPARK-ALEX-100`), `nearby_profiles` geospatial RPC, and `public.analytics_events` telemetry.
+6. **v2.0.0+4 Polish — Restored Branding, 60fps Optimization & Balanced Monetization**:
+   - Restored the original neon flaming-heart **SparkQuest** logo across `assets/images/logo.jpg`, Android `mipmap-*` launcher icons, `AppBar`, Onboarding FTUE, and Cloud Auth modals.
+   - Added `RepaintBoundary` layers and resolution-aware `cacheWidth` decoding across card decks and grids (~65% lower GPU texture memory).
+   - Balanced the Ember economy (`150🔥` starter balance, `spendEmbers` sufficiency guards, 1x/day Daily Spark Grant cooldown, persistent Tavern Inventory, and `2x` Gold VIP multiplier).
 
 ---
 
@@ -106,12 +110,9 @@ To enable automatic signing on GitHub Actions pushes:
   * *Purchases*: For Embers and subscriptions.
 * **Account Deletion URL**: Google Play requires a publicly accessible web URL explaining how users can request account and data deletion (or directing them to the in-app Delete Account button).
 * **Content Rating Questionnaire**: Complete the IARC questionnaire in Play Console (Social/Dating category, age rating 17+/18+).
-* **In-App Products**: Register your in-app items in Google Play Console under **Monetize -> In-app products** matching the SKUs defined in `PaymentService`:
-  - `com.sparkquest.app.embers100`
-  - `com.sparkquest.app.embers500`
-  - `com.sparkquest.app.embers1200`
-  - `com.sparkquest.app.boost5`
-  - `com.sparkquest.app.superlike10`
-  - `com.sparkquest.app.sub_silver_monthly`
-  - `com.sparkquest.app.sub_gold_monthly`
-  - `com.sparkquest.app.sub_platinum_monthly`
+* **In-App Products**: Register your in-app items in Google Play Console under **Monetize -> In-app products / Subscriptions** matching the SKUs defined in [`iap_service.dart`](file:///c:/Users/dreke/OneDrive/Desktop/SparkQuest/SparkQuest-master/sparkquest_flutter/lib/services/iap_service.dart):
+  - `sparkquest_gold_monthly` (`$14.99/mo` — 2x Earned Embers, Free Rewinds & Unblur Admirers)
+  - `sparkquest_embers_100` (`$1.99` — Starter Pouch of 150 Embers)
+  - `sparkquest_embers_500` (`$5.99` — Adventurer Chest of 600 Embers, +20% Bonus)
+  - `sparkquest_embers_1500` (`$12.99` — Sovereign Vault of 1,500 Embers + 1 Free Boost)
+  - `sparkquest_spotlight_boost` (`$2.99` — 30-Minute Local Deck Spotlight Boost)
