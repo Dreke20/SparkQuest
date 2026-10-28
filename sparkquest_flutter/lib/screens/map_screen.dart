@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import '../services/storage_service.dart';
 import '../services/supabase_service.dart';
 import '../services/quest_progression_service.dart';
+import '../services/realtime_chat_service.dart';
 
 class MapScreen extends StatefulWidget {
   final VoidCallback onEmberFound;
@@ -350,9 +351,16 @@ class _MapScreenState extends State<MapScreen>
                 ),
                 ElevatedButton(
                   onPressed: () {
+                    HapticFeedback.mediumImpact();
+                    RealtimeChatService.instance.sendMessage(
+                      'Maya',
+                      '👋 Waved at your Proximity Beacon (280 ft away)!',
+                    );
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Wave sent to Maya! 🌊'),
+                        content: Text(
+                          'Wave sent to Maya’s chat! 🌊 Check Matches for her reply.',
+                        ),
                         backgroundColor: AppTheme.sparkCoral,
                       ),
                     );

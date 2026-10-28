@@ -284,3 +284,38 @@ BEGIN
     RETURN true;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =========================================================
+-- Phase 5: Storage Buckets, 24h Stories & Call Signals
+-- =========================================================
+INSERT INTO storage.buckets (id, name, public)
+VALUES
+  ('avatars', 'avatars', true),
+  ('stories', 'stories', true),
+  ('voice-notes', 'voice-notes', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+CREATE TABLE IF NOT EXISTS public.stories (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL,
+  user_name TEXT NOT NULL,
+  avatar_url TEXT DEFAULT '',
+  image_url TEXT DEFAULT '',
+  caption TEXT NOT NULL,
+  vibe TEXT DEFAULT '⚡ Active Quest',
+  created_at TIMESTAMPTZ DEFAULT now(),
+  expires_at TIMESTAMPTZ DEFAULT (now() + interval '24 hours')
+);
+
+CREATE TABLE IF NOT EXISTS public.call_signals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  room_id TEXT NOT NULL,
+  caller_id TEXT NOT NULL,
+  caller_name TEXT NOT NULL,
+  caller_avatar TEXT DEFAULT '',
+  callee_id TEXT NOT NULL,
+  call_type TEXT DEFAULT 'video',
+  status TEXT DEFAULT 'ringing',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+

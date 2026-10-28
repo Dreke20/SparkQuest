@@ -133,4 +133,10 @@ void main() {
     expect(cloudProfile.isVerified, isTrue);
     expect(cloudProfile.photoAsset, 'assets/images/alex.png');
   });
+
+  test('StorageService tracks daily fortune wheel free spin cooldown', () async {
+    expect(StorageService.instance.hasUsedFreeDailySpinToday(), isFalse);
+    await StorageService.instance.markFreeDailySpinUsedToday();
+    expect(StorageService.instance.hasUsedFreeDailySpinToday(), isTrue);
+  });
 }

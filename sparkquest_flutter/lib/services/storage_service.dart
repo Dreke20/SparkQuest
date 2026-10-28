@@ -165,4 +165,14 @@ class StorageService {
       await _prefs?.setStringList('rsvped_map_events', list);
     }
   }
+
+  bool hasUsedFreeDailySpinToday() {
+    final todayKey = DateTime.now().toIso8601String().substring(0, 10);
+    return _prefs?.getString('last_daily_spin_date') == todayKey;
+  }
+
+  Future<void> markFreeDailySpinUsedToday() async {
+    final todayKey = DateTime.now().toIso8601String().substring(0, 10);
+    await _prefs?.setString('last_daily_spin_date', todayKey);
+  }
 }
