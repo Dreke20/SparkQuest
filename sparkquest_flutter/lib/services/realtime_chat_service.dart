@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/chat_model.dart';
 import '../models/profile.dart';
 import 'storage_service.dart';
+import 'supabase_service.dart';
 import 'quest_progression_service.dart';
 
 class RealtimeChatService extends ChangeNotifier {
@@ -14,6 +15,11 @@ class RealtimeChatService extends ChangeNotifier {
   List<MatchConversation>? _matchList;
   String? pendingOpenMatchName;
   Function(String sender, String text)? onIncomingNotification;
+
+  /// Phase 5: Live Call Signaling via Supabase Realtime
+  Function(Map<String, dynamic> callSignal)? onIncomingCall;
+  String callSignalState = 'idle'; // 'idle' | 'ringing' | 'connected' | 'declined' | 'ended'
+  String? activeCallRoomId;
 
   List<MatchConversation> getConversations() {
     if (_matchList == null) {
@@ -225,5 +231,78 @@ class RealtimeChatService extends ChangeNotifier {
   void _persist(String matchName) {
     final list = _conversations[matchName]?.map((m) => m.toJson()).toList() ?? [];
     StorageService.instance.saveCachedMessages(matchName, list);
+  }
+
+  // ==========================================
+  // PHASE 5: LIVE CALL SIGNALING
+  // ==========================================
+
+  Future<void> initiateCallSignal({
+    required String matchName,
+    required String matchAvatar,
+    required bool isVoiceOnly,
+  }) async {
+    final roomId = 'spark_call_${matchName.toLowerCase().replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}';
+    activeCallRoomId = roomId;
+    callSignalState = 'ringing';
+    notifyListeners();
+
+    await SupabaseService.instance.createCallSignal(
+      roomId: roomId,
+      callerName: 'Alex Explorer',
+      callerAvatar: matchAvatar,
+      calleeId: matchName,
+      callType: isVoiceOnly ? 'voice' : 'video',
+    );
+
+    Timer(const Duration(milliseconds: 1600), () async {
+      if (activeCallRoomId == roomId && callSignalState == 'ringing') {
+        callSignalState = 'connected';
+        notifyListeners();
+        await SupabaseService.instance.updateCallSignalStatus(
+          roomId: roomId,
+          status: 'accepted',
+        );
+      }
+    });
+  }
+
+  Future<void> endCallSignal() async {
+    final roomId = activeCallRoomId;
+    callSignalState = 'ended';
+    activeCallRoomId = null;
+    notifyListeners();
+    if (roomId != null) {
+      await SupabaseService.instance.updateCallSignalStatus(
+        roomId: roomId,
+        status: 'ended',
+      );
+    }
+  }
+
+  void triggerIncomingCall({
+    required String callerName,
+    required String callerAvatar,
+    bool isVoiceOnly = false,
+  }) {
+    final roomId = 'incoming_${callerName.toLowerCase().replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}';
+    activeCallRoomId = roomId;
+    callSignalState = 'ringing';
+    notifyListeners();
+
+    SupabaseService.instance.createCallSignal(
+      roomId: roomId,
+      callerName: callerName,
+      callerAvatar: callerAvatar,
+      calleeId: SupabaseService.instance.currentUserId ?? 'user_me',
+      callType: isVoiceOnly ? 'voice' : 'video',
+    );
+
+    onIncomingCall?.call({
+      'room_id': roomId,
+      'caller_name': callerName,
+      'caller_avatar': callerAvatar,
+      'is_voice_only': isVoiceOnly,
+    });
   }
 }

@@ -18,6 +18,7 @@ import '../services/realtime_chat_service.dart';
 import '../services/quest_progression_service.dart';
 import '../widgets/notification_banner.dart';
 import '../widgets/biometric_lock_screen.dart';
+import '../widgets/video_call_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -66,6 +67,49 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         });
       }
     };
+
+    RealtimeChatService.instance.onIncomingCall = (signal) {
+      if (!mounted) return;
+      HapticFeedback.heavyImpact();
+      final roomId = signal['room_id']?.toString() ?? 'room_1';
+      final callerName = signal['caller_name']?.toString() ?? 'Maya';
+      final callerAvatar = signal['caller_avatar']?.toString() ?? 'assets/images/maya.png';
+      final isVoiceOnly = signal['is_voice_only'] == true;
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => IncomingCallDialog(
+          roomId: roomId,
+          callerName: callerName,
+          callerAvatar: callerAvatar,
+          isVoiceOnly: isVoiceOnly,
+          onAccept: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => VideoCallScreen(
+                  matchName: callerName,
+                  photoAsset: callerAvatar.startsWith('http')
+                      ? 'assets/images/maya.png'
+                      : callerAvatar,
+                  isVoiceOnly: isVoiceOnly,
+                  onOpenDateShield: _openDateShieldModal,
+                ),
+              ),
+            );
+          },
+          onDecline: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Declined Spark Call from $callerName'),
+                backgroundColor: AppTheme.bgCard,
+              ),
+            );
+          },
+        ),
+      );
+    };
   }
 
   void _addEmbers(int count) {
@@ -87,11 +131,18 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                '📞 Emergency call triggered! Phone ringing in 10s...',
+                '📞 Escape Call armed! Incoming Realtime call in 2s...',
               ),
               backgroundColor: AppTheme.sparkCoral,
             ),
           );
+          Timer(const Duration(seconds: 2), () {
+            RealtimeChatService.instance.triggerIncomingCall(
+              callerName: 'Maya (Roommate SOS)',
+              callerAvatar: 'assets/images/maya.png',
+              isVoiceOnly: true,
+            );
+          });
         },
       ),
     );
