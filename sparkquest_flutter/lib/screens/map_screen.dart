@@ -21,6 +21,7 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen>
     with SingleTickerProviderStateMixin {
   bool _isScanning = false;
+  bool _privacyFuzzActive = true;
   String _selectedCategory = 'all'; // 'all', 'venue', 'drop', 'event'
   late AnimationController _radarController;
   final List<MapDrop> _drops = [
@@ -389,23 +390,108 @@ class _MapScreenState extends State<MapScreen>
             ),
           ),
         ),
-        // Map Category Filter Bar
+        // Map Category Filter Bar + #28 Privacy Fuzzing + #31 Weather Smart Suggestion
         Positioned(
           top: 80,
           left: 16,
           right: 16,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _buildFilterPill('all', '✨ All Radar'),
-                const SizedBox(width: 8),
-                _buildFilterPill('event', '🎉 Live Events'),
-                const SizedBox(width: 8),
-                _buildFilterPill('venue', '🛡️ Safe Havens'),
-                const SizedBox(width: 8),
-                _buildFilterPill('drop', '🔥 Ember Drops'),
-              ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildFilterPill('all', '✨ All Radar'),
+                    const SizedBox(width: 8),
+                    _buildFilterPill('event', '🎉 Live Events'),
+                    const SizedBox(width: 8),
+                    _buildFilterPill('venue', '🛡️ Safe Havens'),
+                    const SizedBox(width: 8),
+                    _buildFilterPill('drop', '🔥 Ember Drops'),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(
+                          () => _privacyFuzzActive = !_privacyFuzzActive,
+                        );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              _privacyFuzzActive
+                                  ? '🛡️ Map Privacy Shield: Coordinates fuzzed to 500m radius'
+                                  : '📍 Exact Venue Check-In Mode active',
+                            ),
+                            backgroundColor: AppTheme.emeraldGreen,
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _privacyFuzzActive
+                              ? AppTheme.emeraldGreen.withValues(alpha: 0.2)
+                              : AppTheme.bgSurface,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: AppTheme.emeraldGreen),
+                        ),
+                        child: Text(
+                          _privacyFuzzActive
+                              ? '🛡️ 500m Privacy Blur'
+                              : '📍 Exact Pin',
+                          style: const TextStyle(
+                            color: AppTheme.emeraldGreen,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.bgSurface.withValues(alpha: 0.88),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: const Text(
+                  '🌤️ 66°F Golden Hour • Top Idea: Rooftop Trivia or Botanical Patio',
+                  style: TextStyle(color: AppTheme.questGold, fontSize: 11),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // #29: Crossing Paths ("Missed Connections") Radar Button
+        Positioned(
+          bottom: 24,
+          left: 16,
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.bgSurface,
+              foregroundColor: Colors.white,
+              side: const BorderSide(color: AppTheme.electricViolet),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(22),
+              ),
+            ),
+            onPressed: _showCrossedPathsModal,
+            icon: const Text('👣', style: TextStyle(fontSize: 15)),
+            label: const Text(
+              '3 Crossed Paths',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
             ),
           ),
         ),
@@ -436,9 +522,110 @@ class _MapScreenState extends State<MapScreen>
     );
   }
 
+  void _showCrossedPathsModal() {
+    HapticFeedback.selectionClick();
+    final crossed = [
+      {
+        'name': 'Sophia',
+        'place': '☕ The Boathouse Cafe • 2 hours ago',
+        'asset': 'assets/images/sophia.png',
+        'count': 'Crossed paths 3x this week',
+      },
+      {
+        'name': 'Jordan',
+        'place': '🎵 Vinyl District Coffee • Yesterday',
+        'asset': 'assets/images/jordan.png',
+        'count': 'Crossed paths 2x this week',
+      },
+      {
+        'name': 'Taylor',
+        'place': '🌳 Dolores Park Overlook • 4 hours ago',
+        'asset': 'assets/images/taylor.png',
+        'count': 'Crossed paths 4x this week',
+      },
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.bgSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '👣 Crossed Paths Radar (Last 24h)',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Adventurers who visited the same Safe Haven neighborhoods as you.',
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+            ),
+            const SizedBox(height: 14),
+            ...crossed.map((c) {
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                  radius: 22,
+                  backgroundImage: AssetImage(c['asset']!),
+                ),
+                title: Text(
+                  c['name']!,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                subtitle: Text(
+                  '${c['place']}\n${c['count']}',
+                  style: const TextStyle(
+                    color: AppTheme.neonCyan,
+                    fontSize: 11.5,
+                  ),
+                ),
+                trailing: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.sparkCoral,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    RealtimeChatService.instance.sendMessage(
+                      c['name']!,
+                      '👣 Just saw we crossed paths at ${c['place']}! Next espresso is on me ☕',
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          '👣 Sent a Crossed-Paths Spark to ${c['name']}!',
+                        ),
+                        backgroundColor: AppTheme.sparkCoral,
+                      ),
+                    );
+                  },
+                  child: const Text('Wave 👋', style: TextStyle(fontSize: 12)),
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showVenueModal(String venueName) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: AppTheme.bgSurface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -469,12 +656,12 @@ class _MapScreenState extends State<MapScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'VERIFIED SAFE HAVEN PARTNER',
+                        'VERIFIED SAFE HAVEN PARTNER • 4.9 ★ SAFETY RATING',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.questGold,
-                          letterSpacing: 1,
+                          letterSpacing: 0.8,
                         ),
                       ),
                       Text(
@@ -488,9 +675,54 @@ class _MapScreenState extends State<MapScreen>
                     ],
                   ),
                 ),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.qr_code_2,
+                    color: Colors.black,
+                    size: 32,
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
+            // #30: Community Vibe Tags
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                '✨ Well-Lit Patio',
+                '🤫 Easy Conversation Noise',
+                '🍹 Great Mocktails',
+                '🛡️ Trained Angel-Shot Staff',
+              ]
+                  .map(
+                    (tag) => Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.bgCard,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: Text(
+                        tag,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+            const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -505,7 +737,7 @@ class _MapScreenState extends State<MapScreen>
                   Text('🎁 ', style: TextStyle(fontSize: 18)),
                   Expanded(
                     child: Text(
-                      '15% Off Total Bill (Code: SPARK15) • Angel Shot Protocol Active',
+                      'QR Pass: SPARK-15 (15% Off Total Bill + Free 2nd Espresso) • Angel Shot Protocol Active',
                       style: TextStyle(
                         color: AppTheme.textPrimary,
                         fontSize: 12,
@@ -516,38 +748,86 @@ class _MapScreenState extends State<MapScreen>
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.sparkCoral,
-                minimumSize: const Size.fromHeight(48),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              onPressed: () {
-                Navigator.pop(ctx);
-                SupabaseService.instance.recordMapCheckin(venueId: venueName);
-                QuestProgressionService.instance.incrementQuest(
-                  'engage4',
-                  xpGain: 40,
-                );
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Checked in at $venueName! 15% discount & +40 XP unlocked. 🛡️',
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.sparkCoral,
+                      minimumSize: const Size.fromHeight(46),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
-                    backgroundColor: AppTheme.emeraldGreen,
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      SupabaseService.instance.recordMapCheckin(
+                        venueId: venueName,
+                      );
+                      QuestProgressionService.instance.incrementQuest(
+                        'engage4',
+                        xpGain: 40,
+                      );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Checked in at $venueName! 15% QR Perk & +40 XP unlocked. 🛡️',
+                          ),
+                          backgroundColor: AppTheme.emeraldGreen,
+                        ),
+                      );
+                    },
+                    child: const Text(
+                      'Solo Check-In (+40 XP)',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
                   ),
-                );
-              },
-              child: const Text(
-                'Check In & Unlock 15% Perk',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
                 ),
-              ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.questGold,
+                      foregroundColor: Colors.black,
+                      minimumSize: const Size.fromHeight(46),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      widget.onEmberFound();
+                      SupabaseService.instance.recordMapCheckin(
+                        venueId: '${venueName}_coop',
+                      );
+                      QuestProgressionService.instance.incrementQuest(
+                        'engage4',
+                        xpGain: 80,
+                      );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            '🤝 Co-Op Date Check-In Verified at $venueName! +50🔥 & +80 XP!',
+                          ),
+                          backgroundColor: AppTheme.questGold,
+                        ),
+                      );
+                    },
+                    child: const Text(
+                      '🤝 Co-Op Check-In (+50🔥)',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

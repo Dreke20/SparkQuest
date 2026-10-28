@@ -139,4 +139,17 @@ void main() {
     await StorageService.instance.markFreeDailySpinUsedToday();
     expect(StorageService.instance.hasUsedFreeDailySpinToday(), isTrue);
   });
+
+  test('Phase 7 to 12: Dynamic chemistry engine & Teleport preferences', () async {
+    final sophia = Profile.seedProfiles.first;
+    final chem = sophia.computeDynamicChemistry(
+      ['☕ Coffee', '🏔️ Hiking'],
+      '🌌 Night Owl Strategist',
+    );
+    expect(chem, greaterThanOrEqualTo(sophia.compatPct));
+    expect(sophia.effectiveGallery.length, greaterThanOrEqualTo(3));
+
+    await StorageService.instance.saveTeleportCity('Tokyo, Japan');
+    expect(StorageService.instance.getTeleportCity(), 'Tokyo, Japan');
+  });
 }

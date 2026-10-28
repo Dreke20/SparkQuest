@@ -33,6 +33,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _biometricEnabled = false;
   bool _ghostModeEnabled = false;
+  bool _campfireSnoozeEnabled = false;
 
   bool _isVerified = false;
   bool _isRecordingVoice = false;
@@ -45,11 +46,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _userOccupation = 'Software Engineer';
   String _userArchetype = '🌌 Night Owl Strategist';
   bool _isGoldVip = false;
+  bool _smartPhotosEnabled = true;
+  List<Map<String, String>> _userPrompts = [];
 
   final List<String?> _photos = [
     'assets/images/alex.png',
-    null,
-    null,
+    'assets/images/quest_coffee.png',
+    'assets/images/quest_arcade.png',
     null,
     null,
     null,
@@ -68,6 +71,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _userBio = StorageService.instance.getUserBio();
     _userOccupation = StorageService.instance.getUserOccupation();
     _userArchetype = StorageService.instance.getUserArchetype();
+    _smartPhotosEnabled = StorageService.instance.isSmartPhotosEnabled();
+    _userPrompts = StorageService.instance.getUserPrompts();
   }
 
   void _openSparkyWingmanModal() {
@@ -745,18 +750,75 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           const SizedBox(height: 24),
 
-          // 6-Photo Grid
+          // 6-Photo Grid + #7 Smart Photo Auto-Optimizer
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'MEDIA GALLERY (6 SLOTS)',
+                style: TextStyle(
+                  fontSize: 12,
+                  letterSpacing: 1.5,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.neonCyan,
+                ),
+              ),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.auto_graph,
+                    size: 14,
+                    color: AppTheme.emeraldGreen,
+                  ),
+                  const SizedBox(width: 4),
+                  const Text(
+                    'Smart Photo Optimizer',
+                    style: TextStyle(
+                      color: AppTheme.emeraldGreen,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Switch(
+                    value: _smartPhotosEnabled,
+                    activeThumbColor: AppTheme.emeraldGreen,
+                    onChanged: (val) async {
+                      HapticFeedback.selectionClick();
+                      await StorageService.instance.setSmartPhotosEnabled(val);
+                      setState(() => _smartPhotosEnabled = val);
+                      if (context.mounted && val) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              '📈 Smart Photos Active: Lead photo auto-ranked (+34% Spark rate)',
+                            ),
+                            backgroundColor: AppTheme.emeraldGreen,
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _buildPhotoGrid(),
+
+          const SizedBox(height: 24),
+
+          // #3: Interactive Prompt Library & Custom Builder
           const Text(
-            'MEDIA GALLERY',
+            'PROFILE SPARK PROMPTS (3 SLOTS)',
             style: TextStyle(
               fontSize: 12,
               letterSpacing: 1.5,
               fontWeight: FontWeight.bold,
-              color: AppTheme.neonCyan,
+              color: AppTheme.sparkCoral,
             ),
           ),
           const SizedBox(height: 12),
-          _buildPhotoGrid(),
+          _buildPromptsEditorSection(),
 
           const SizedBox(height: 24),
 
@@ -791,6 +853,204 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 40),
         ],
       ),
+    );
+  }
+
+  Widget _buildPromptsEditorSection() {
+    const promptLibrary = [
+      'We’ll instantly click if...',
+      'Two truths and a lie 🎭',
+      'My ideal Sunday Co-Op Quest 🛡️',
+      'Green flags I look for 🟢',
+      'Together, we could...',
+      'Unusual skill I bring to a party 🪄',
+      'A life goal of mine is...',
+      'Best travel story in 1 sentence ✈️',
+      'The way to win me over is...',
+      'My go-to karaoke anthem 🎤',
+    ];
+
+    return Column(
+      children: List.generate(_userPrompts.length, (i) {
+        final item = _userPrompts[i];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppTheme.bgCard,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: AppTheme.sparkCoral.withValues(alpha: 0.35),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      item['title'] ?? 'Prompt',
+                      style: const TextStyle(
+                        color: AppTheme.neonCyan,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: () {
+                      String selectedTitle = item['title'] ?? promptLibrary[0];
+                      final controller = TextEditingController(
+                        text: item['answer'] ?? '',
+                      );
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: AppTheme.bgSurface,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(24),
+                          ),
+                        ),
+                        builder: (ctx) => StatefulBuilder(
+                          builder: (ctx, setSheetState) {
+                            return Padding(
+                              padding: EdgeInsets.only(
+                                left: 20,
+                                right: 20,
+                                top: 20,
+                                bottom:
+                                    MediaQuery.of(ctx).viewInsets.bottom + 24,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    '✨ Customize Profile Prompt',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: Row(
+                                      children: promptLibrary.map((pTitle) {
+                                        final chosen = selectedTitle == pTitle;
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                            right: 8,
+                                          ),
+                                          child: ChoiceChip(
+                                            label: Text(pTitle),
+                                            selected: chosen,
+                                            selectedColor: AppTheme.neonCyan,
+                                            backgroundColor: AppTheme.bgCard,
+                                            labelStyle: TextStyle(
+                                              color: chosen
+                                                  ? Colors.black
+                                                  : Colors.white,
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            onSelected: (_) {
+                                              setSheetState(
+                                                () => selectedTitle = pTitle,
+                                              );
+                                            },
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  TextField(
+                                    controller: controller,
+                                    maxLines: 3,
+                                    style: const TextStyle(color: Colors.white),
+                                    decoration: InputDecoration(
+                                      hintText: 'Write your answer...',
+                                      filled: true,
+                                      fillColor: AppTheme.bgInput,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                        borderSide: BorderSide.none,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton.icon(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppTheme.sparkCoral,
+                                        foregroundColor: Colors.white,
+                                        minimumSize: const Size.fromHeight(46),
+                                      ),
+                                      onPressed: () async {
+                                        final updated =
+                                            List<Map<String, String>>.from(
+                                              _userPrompts,
+                                            );
+                                        updated[i] = {
+                                          'title': selectedTitle,
+                                          'answer': controller.text.trim(),
+                                        };
+                                        await StorageService.instance
+                                            .saveUserPrompts(updated);
+                                        setState(() => _userPrompts = updated);
+                                        if (ctx.mounted) Navigator.pop(ctx);
+                                      },
+                                      icon: const Icon(Icons.check),
+                                      label: const Text('Save Prompt'),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                    icon: const Icon(
+                      Icons.edit,
+                      size: 13,
+                      color: AppTheme.sparkCoral,
+                    ),
+                    label: const Text(
+                      'Edit',
+                      style: TextStyle(
+                        color: AppTheme.sparkCoral,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                item['answer'] ?? '',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13.5,
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ),
+        );
+      }),
     );
   }
 
@@ -878,6 +1138,94 @@ class _ProfileScreenState extends State<ProfileScreen> {
             },
           ),
 
+          const Divider(color: Colors.white10, height: 20),
+          // #37: Snooze / Campfire Rest Mode
+          _buildSecuritySwitchRow(
+            title: 'Campfire Snooze Mode 🔥',
+            subtitle: 'Pause new discovery for 24h while keeping active chats',
+            value: _campfireSnoozeEnabled,
+            activeColor: AppTheme.questGold,
+            onChanged: (val) {
+              HapticFeedback.selectionClick();
+              setState(() => _campfireSnoozeEnabled = val);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    val
+                        ? '🔥 Campfire Snooze Active: Resting for 24h (chats remain open)'
+                        : '⚡ Back on the Trail! Discovery resumed.',
+                  ),
+                  backgroundColor: val
+                      ? AppTheme.questGold
+                      : AppTheme.emeraldGreen,
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(height: 10),
+          // #38: Block Known Contacts
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white70,
+              minimumSize: const Size.fromHeight(42),
+              side: const BorderSide(color: Colors.white24),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () {
+              HapticFeedback.selectionClick();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    '📇 Contact Exclusion Shield Active: Exes & coworkers hidden from deck.',
+                  ),
+                  backgroundColor: AppTheme.electricViolet,
+                ),
+              );
+            },
+            icon: const Icon(Icons.contacts_outlined, size: 17),
+            label: const Text(
+              'Hide From Known Phone/Email Contacts',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            ),
+          ),
+          const SizedBox(height: 10),
+          // #45: Invite-a-Wingman Referral Card
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.questGold,
+              minimumSize: const Size.fromHeight(42),
+              side: BorderSide(
+                color: AppTheme.questGold.withValues(alpha: 0.5),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () {
+              HapticFeedback.mediumImpact();
+              Clipboard.setData(
+                const ClipboardData(
+                  text: 'https://sparkquest.app/invite/SPARK-ALEX-100',
+                ),
+              );
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    '🎉 Referral Link Copied (SPARK-ALEX-100)! Earn +100🔥 when a friend joins.',
+                  ),
+                  backgroundColor: AppTheme.questGold,
+                ),
+              );
+            },
+            icon: const Icon(Icons.group_add_outlined, size: 18),
+            label: const Text(
+              'Recruit a Wingman (Code: SPARK-ALEX-100 • +100🔥)',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            ),
+          ),
           const SizedBox(height: 10),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(

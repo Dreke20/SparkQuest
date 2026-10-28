@@ -28,6 +28,7 @@ class MatchesChatScreen extends StatefulWidget {
 
 class _MatchesChatScreenState extends State<MatchesChatScreen> {
   final Map<String, String> _cloudStoryCaptions = {};
+  final Set<String> _extendedMatches = {};
 
   @override
   void initState() {
@@ -345,13 +346,21 @@ class _MatchesChatScreenState extends State<MatchesChatScreen> {
                 const Divider(color: Colors.white10, height: 1),
             itemBuilder: (ctx, i) {
               final c = conversations[i];
+              final msgs = RealtimeChatService.instance.getMessages(
+                c.name,
+                c.messages,
+              );
+              final isYourTurn =
+                  msgs.isEmpty || !msgs.last.isSentByMe || c.unreadCount > 0;
+              final isExpiring = i == conversations.length - 1 &&
+                  !_extendedMatches.contains(c.name);
+
               return ListTile(
                 leading: CircleAvatar(
                   radius: 26,
                   backgroundImage: AssetImage(c.photoAsset),
                 ),
                 title: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       c.name,
@@ -360,6 +369,71 @@ class _MatchesChatScreenState extends State<MatchesChatScreen> {
                         color: Colors.white,
                       ),
                     ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isYourTurn
+                            ? AppTheme.sparkCoral.withValues(alpha: 0.2)
+                            : Colors.white10,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isYourTurn
+                              ? AppTheme.sparkCoral
+                              : Colors.white24,
+                        ),
+                      ),
+                      child: Text(
+                        isYourTurn ? '⚡ Your Turn' : '✓ Sent',
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.bold,
+                          color: isYourTurn
+                              ? AppTheme.sparkCoral
+                              : AppTheme.textDim,
+                        ),
+                      ),
+                    ),
+                    if (isExpiring) ...[
+                      const SizedBox(width: 6),
+                      GestureDetector(
+                        onTap: () {
+                          HapticFeedback.mediumImpact();
+                          setState(() => _extendedMatches.add(c.name));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                '⏱️ Extended ${c.name}’s match timer by +24 hours!',
+                              ),
+                              backgroundColor: AppTheme.questGold,
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.questGold.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppTheme.questGold),
+                          ),
+                          child: const Text(
+                            '⏳ 6h left • Extend +24h',
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.questGold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                    const Spacer(),
                     Text(
                       c.time,
                       style: const TextStyle(
@@ -428,6 +502,9 @@ class ChatDetailScreen extends StatefulWidget {
 class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final TextEditingController _msgController = TextEditingController();
   late List<ChatMessage> _messages;
+  final Map<int, String> _messageReactions = {};
+  String? _replyingToText;
+  bool _weMetConfirmed = false;
 
   @override
   void initState() {
@@ -457,10 +534,15 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   void _sendMessage([String? textToSend, bool isVoice = false]) {
-    final text = textToSend ?? _msgController.text.trim();
-    if (text.isEmpty) return;
+    final rawText = textToSend ?? _msgController.text.trim();
+    if (rawText.isEmpty) return;
+
+    final text = _replyingToText != null
+        ? '↩️ "$_replyingToText"\n$rawText'
+        : rawText;
 
     HapticFeedback.lightImpact();
+    setState(() => _replyingToText = null);
     RealtimeChatService.instance.sendMessage(widget.conversation.name, text);
     _msgController.clear();
 
@@ -469,6 +551,64 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       senderId: 'user_me',
       content: text,
       isVoice: isVoice,
+    );
+  }
+
+  void _showReactionAndReplyMenu(int index, ChatMessage msg) {
+    HapticFeedback.selectionClick();
+    const emojis = ['❤️', '🔥', '😂', '⚡', '🙌'];
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.bgSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: emojis.map((e) {
+                  return GestureDetector(
+                    onTap: () {
+                      HapticFeedback.mediumImpact();
+                      setState(() => _messageReactions[index] = e);
+                      Navigator.pop(ctx);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.bgCard,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: Text(e, style: const TextStyle(fontSize: 24)),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 14),
+              ListTile(
+                leading: const Icon(Icons.reply, color: AppTheme.neonCyan),
+                title: const Text(
+                  'Quote & Reply to Message',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  setState(() => _replyingToText = msg.text);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -898,28 +1038,72 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               ],
             ),
           ),
-          // Co-Op Quest Mini Bar
+          // Co-Op Quest Mini Bar + #25 "We Met!" Post-Date Check-In
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             color: AppTheme.bgSurface,
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  '🤝 Co-Op Quest: ',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                    color: AppTheme.questGold,
+                const Flexible(
+                  child: Text(
+                    '🤝 Co-Op Quest: Send 5 messages · +25🔥',
+                    style: TextStyle(fontSize: 11.5, color: Colors.white70),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const Text(
-                  'Send 5 messages (4/5) · +25🔥',
-                  style: TextStyle(fontSize: 12, color: Colors.white70),
+                InkWell(
+                  onTap: _weMetConfirmed
+                      ? null
+                      : () {
+                          HapticFeedback.heavyImpact();
+                          setState(() => _weMetConfirmed = true);
+                          widget.onAwardEmbers?.call(50);
+                          _sendMessage(
+                            '🎉 Confirmed "We Met IRL!" Co-Op Date Check-In (+50🔥)',
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                '🎉 We Met IRL Confirmed! +50 Embers & +100 Season XP awarded!',
+                              ),
+                              backgroundColor: AppTheme.emeraldGreen,
+                            ),
+                          );
+                        },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _weMetConfirmed
+                          ? AppTheme.emeraldGreen.withValues(alpha: 0.25)
+                          : AppTheme.questGold.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _weMetConfirmed
+                            ? AppTheme.emeraldGreen
+                            : AppTheme.questGold,
+                      ),
+                    ),
+                    child: Text(
+                      _weMetConfirmed ? '✓ We Met IRL' : '🎉 We Met? (+50🔥)',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.bold,
+                        color: _weMetConfirmed
+                            ? AppTheme.emeraldGreen
+                            : AppTheme.questGold,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
-          // Messages List
+          // Messages List (#17 Reactions, Long-Press Reply & #18 Read Receipts)
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.all(16),
@@ -927,92 +1111,146 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               itemBuilder: (ctx, i) {
                 final m = _messages[i];
                 final isVoice = m.text.contains('🎙️');
+                final reaction = _messageReactions[i];
                 return Align(
                   alignment: m.isSentByMe
                       ? Alignment.centerRight
                       : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                    constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.width * 0.78,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isVoice
-                          ? const Color(0xFF1E1B4B)
-                          : m.isSentByMe
-                          ? AppTheme.electricViolet
-                          : AppTheme.bgCard,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isVoice
-                            ? const Color(0xFF8B5CF6)
-                            : m.isSentByMe
-                            ? AppTheme.electricViolet
-                            : Colors.white10,
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                  child: GestureDetector(
+                    onDoubleTap: () {
+                      HapticFeedback.mediumImpact();
+                      setState(() => _messageReactions[i] = '❤️');
+                    },
+                    onLongPress: () => _showReactionAndReplyMenu(i, m),
+                    child: Stack(
+                      clipBehavior: Clip.none,
                       children: [
-                        if (isVoice) ...[
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
+                        Container(
+                          margin: EdgeInsets.only(
+                            top: 4,
+                            bottom: reaction != null ? 14 : 4,
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          constraints: BoxConstraints(
+                            maxWidth: MediaQuery.of(context).size.width * 0.78,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isVoice
+                                ? const Color(0xFF1E1B4B)
+                                : m.isSentByMe
+                                ? AppTheme.electricViolet
+                                : AppTheme.bgCard,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isVoice
+                                  ? const Color(0xFF8B5CF6)
+                                  : m.isSentByMe
+                                  ? AppTheme.electricViolet
+                                  : Colors.white10,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              GestureDetector(
-                                onTap: () => HapticFeedback.selectionClick(),
-                                child: Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF8B5CF6),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.play_arrow,
-                                    color: Colors.white,
-                                    size: 16,
-                                  ),
+                              if (isVoice) ...[
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () =>
+                                          HapticFeedback.selectionClick(),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFF8B5CF6),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.play_arrow,
+                                          color: Colors.white,
+                                          size: 16,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'ılılıllı|l|lllı|',
+                                      style: TextStyle(
+                                        color: Color(0xFF06B6D4),
+                                        fontSize: 16,
+                                        letterSpacing: 1,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      '0:09',
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                              ],
+                              Text(
+                                m.text,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'ılılıllı|l|lllı|',
-                                style: TextStyle(
-                                  color: Color(0xFF06B6D4),
-                                  fontSize: 16,
-                                  letterSpacing: 1,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                '0:09',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 11,
-                                ),
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    m.time,
+                                    style: const TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                  if (m.isSentByMe) ...[
+                                    const SizedBox(width: 4),
+                                    const Text(
+                                      '✓✓ Read',
+                                      style: TextStyle(
+                                        color: AppTheme.neonCyan,
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ],
                           ),
-                          const SizedBox(height: 4),
-                        ],
-                        Text(
-                          m.text,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                          ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          m.time,
-                          style: const TextStyle(
-                            color: Colors.white54,
-                            fontSize: 10,
+                        if (reaction != null)
+                          Positioned(
+                            bottom: 2,
+                            right: m.isSentByMe ? 8 : null,
+                            left: m.isSentByMe ? null : 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppTheme.bgSurface,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.white24),
+                              ),
+                              child: Text(
+                                reaction,
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ),
@@ -1054,8 +1292,38 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 ),
               ),
             ),
-          // Sparky AI Wingman Suggestions Chips
-
+          // #17: Quoted Reply Banner
+          if (_replyingToText != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              color: AppTheme.bgCard,
+              child: Row(
+                children: [
+                  const Icon(Icons.reply, size: 15, color: AppTheme.neonCyan),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Replying to: "$_replyingToText"',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 11.5,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => setState(() => _replyingToText = null),
+                    child: const Icon(
+                      Icons.close,
+                      size: 15,
+                      color: AppTheme.textDim,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          // #22: Context-Aware Sparky AI Wingman Suggestions Chips
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             color: AppTheme.bgDeep,
@@ -1072,9 +1340,15 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        _suggestionChip('Ask about favorite coffee spot ☕'),
+                        _suggestionChip(
+                          widget.conversation.tags.isNotEmpty
+                              ? 'Best ${widget.conversation.tags.first} spot in town?'
+                              : 'Ask about favorite coffee spot ☕',
+                        ),
                         _suggestionChip('Challenge to a trivia duel 🎮'),
-                        _suggestionChip('What’s the story behind your bio? ✨'),
+                        _suggestionChip(
+                          '2 Truths & a Lie with ${widget.conversation.name} 🎭',
+                        ),
                       ],
                     ),
                   ),
@@ -1109,19 +1383,88 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                       Icons.camera_alt,
                       color: AppTheme.neonCyan,
                     ),
-                    tooltip: 'Send Photo (Uploads to Supabase Storage)',
-                    onPressed: () async {
-                      HapticFeedback.mediumImpact();
-                      final photoUrl = await SupabaseService.instance
-                          .uploadAssetToBucket(
-                            bucket: 'stories',
-                            assetPath: 'assets/images/alex.png',
-                            customFileName: 'chat_photo.png',
-                          );
-                      _sendMessage(
-                        photoUrl != null
-                            ? '📷 [Photo Uploaded to Cloud Storage ✨]'
-                            : '📷 [Photo attached]',
+                    tooltip: 'Send Photo or View-Once Snap',
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      showModalBottomSheet(
+                        context: context,
+                        backgroundColor: AppTheme.bgSurface,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(22),
+                          ),
+                        ),
+                        builder: (ctx) => SafeArea(
+                          child: Padding(
+                            padding: const EdgeInsets.all(18),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ListTile(
+                                  leading: const Icon(
+                                    Icons.photo_camera,
+                                    color: AppTheme.neonCyan,
+                                  ),
+                                  title: const Text(
+                                    '📸 Send Cloud Photo',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  subtitle: const Text(
+                                    'Uploads to Supabase Storage',
+                                    style: TextStyle(
+                                      color: AppTheme.textDim,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  onTap: () async {
+                                    Navigator.pop(ctx);
+                                    final photoUrl = await SupabaseService
+                                        .instance
+                                        .uploadAssetToBucket(
+                                          bucket: 'stories',
+                                          assetPath: 'assets/images/alex.png',
+                                          customFileName: 'chat_photo.png',
+                                        );
+                                    _sendMessage(
+                                      photoUrl != null
+                                          ? '📷 [Photo Uploaded to Cloud Storage ✨]'
+                                          : '📷 [Photo attached]',
+                                    );
+                                  },
+                                ),
+                                ListTile(
+                                  leading: const Icon(
+                                    Icons.local_fire_department,
+                                    color: AppTheme.sparkCoral,
+                                  ),
+                                  title: const Text(
+                                    '🔥 Send View-Once Snap (Private Shield)',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  subtitle: const Text(
+                                    'Auto-blurs & disappears after 1 view',
+                                    style: TextStyle(
+                                      color: AppTheme.textDim,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  onTap: () {
+                                    Navigator.pop(ctx);
+                                    _sendMessage(
+                                      '🔥 [View-Once Snap • Tap to Unblur (Protected by Safety Shield 🛡️)]',
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       );
                     },
                   ),
