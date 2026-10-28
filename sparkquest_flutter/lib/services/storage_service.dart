@@ -175,4 +175,74 @@ class StorageService {
     final todayKey = DateTime.now().toIso8601String().substring(0, 10);
     await _prefs?.setString('last_daily_spin_date', todayKey);
   }
+
+  // --- Phase 7: Rich Profiles, Prompts, Teleport, Dealbreakers & 2v2 Party ---
+  List<Map<String, String>> getUserPrompts() {
+    final raw = _prefs?.getString('user_custom_prompts');
+    if (raw == null) {
+      return [
+        {
+          'title': 'We’ll instantly click if...',
+          'answer':
+              'You’re down for spontaneous coffee quests, rooftop trivia, or rating the best street tacos in the city 🌮✨',
+        },
+        {
+          'title': 'Two truths and a lie 🎭',
+          'answer':
+              '1. I’ve hiked Half Dome at sunrise.\n2. I never lose at Mario Kart Rainbow Road.\n3. I’ve never tried boba.',
+        },
+        {
+          'title': 'My ideal Sunday Co-Op Quest 🛡️',
+          'answer':
+              'Farmers market espresso followed by Golden Gate Park trails and evening board games.',
+        },
+      ];
+    }
+    try {
+      final list = jsonDecode(raw) as List;
+      return list
+          .map(
+            (e) => {
+              'title': (e['title'] ?? '').toString(),
+              'answer': (e['answer'] ?? '').toString(),
+            },
+          )
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> saveUserPrompts(List<Map<String, String>> prompts) async {
+    await _prefs?.setString('user_custom_prompts', jsonEncode(prompts));
+  }
+
+  bool isSmartPhotosEnabled() =>
+      _prefs?.getBool('smart_photos_enabled') ?? true;
+  Future<void> setSmartPhotosEnabled(bool enabled) async =>
+      await _prefs?.setBool('smart_photos_enabled', enabled);
+
+  String getSelectedIntent() =>
+      _prefs?.getString('filter_intent') ?? 'All Intents';
+  Future<void> saveSelectedIntent(String intent) async =>
+      await _prefs?.setString('filter_intent', intent);
+
+  bool isDealbreakerStrict() =>
+      _prefs?.getBool('filter_dealbreaker_strict') ?? false;
+  Future<void> setDealbreakerStrict(bool strict) async =>
+      await _prefs?.setBool('filter_dealbreaker_strict', strict);
+
+  String getTeleportCity() =>
+      _prefs?.getString('teleport_city') ?? 'San Francisco, CA';
+  Future<void> saveTeleportCity(String city) async =>
+      await _prefs?.setString('teleport_city', city);
+
+  bool isFreeTonightFilter() =>
+      _prefs?.getBool('filter_free_tonight') ?? false;
+  Future<void> setFreeTonightFilter(bool active) async =>
+      await _prefs?.setBool('filter_free_tonight', active);
+
+  String getPartyWingman() => _prefs?.getString('party_wingman_name') ?? '';
+  Future<void> savePartyWingman(String name) async =>
+      await _prefs?.setString('party_wingman_name', name);
 }

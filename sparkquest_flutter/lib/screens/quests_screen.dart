@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:confetti/confetti.dart';
 
 import '../models/quest.dart';
@@ -21,6 +22,12 @@ class QuestsScreen extends StatefulWidget {
 
 class _QuestsScreenState extends State<QuestsScreen> {
   late ConfettiController _confettiController;
+  bool _streakShieldArmed = true;
+  String _selectedSubclass = '🌌 Astral Navigator (+15% Chemistry Boost)';
+  final Set<String> _joinedGuilds = {
+    '🏔️ SF Summit Hikers',
+    '🕹️ Co-Op Arcade Guild',
+  };
 
   List<QuestItem> get _quests => QuestProgressionService.instance.quests;
 
@@ -77,7 +84,7 @@ class _QuestsScreenState extends State<QuestsScreen> {
         ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Streak Banner
+            // Streak Banner + #44 7-Day Streak Calendar & Streak Shield
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -92,51 +99,118 @@ class _QuestsScreenState extends State<QuestsScreen> {
                   color: AppTheme.questGold.withValues(alpha: 0.4),
                 ),
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('🔥', style: TextStyle(fontSize: 36)),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${widget.streakDays}-Day Spark Streak',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
+                  Row(
+                    children: [
+                      const Text('🔥', style: TextStyle(fontSize: 36)),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${widget.streakDays}-Day Spark Streak',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '1.25x Multiplier • Season Pass: ${QuestProgressionService.instance.seasonXp} XP ⭐',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.questGold,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '1.25x Multiplier • Season Pass: ${QuestProgressionService.instance.seasonXp} XP ⭐',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppTheme.questGold,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppTheme.questGold,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text(
-                      'Claimed',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
                       ),
-                    ),
+                      GestureDetector(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          setState(
+                            () => _streakShieldArmed = !_streakShieldArmed,
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                _streakShieldArmed
+                                    ? '🛡️ Streak Freeze Armed: Your streak is protected for 24h!'
+                                    : '⚠️ Streak Freeze Disarmed',
+                              ),
+                              backgroundColor: AppTheme.neonCyan,
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _streakShieldArmed
+                                ? AppTheme.neonCyan
+                                : AppTheme.bgCard,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            _streakShieldArmed ? '🛡️ Protected' : 'Arm Shield',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: _streakShieldArmed
+                                  ? Colors.black
+                                  : Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: List.generate(7, (i) {
+                      final dayNum = i + 1;
+                      final done = dayNum <= widget.streakDays;
+                      final isChest = dayNum == 7;
+                      return Container(
+                        width: 38,
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        decoration: BoxDecoration(
+                          color: done
+                              ? AppTheme.questGold.withValues(alpha: 0.25)
+                              : AppTheme.bgCard,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: done ? AppTheme.questGold : Colors.white12,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              isChest ? '🎁' : (done ? '🔥' : '•'),
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                            Text(
+                              'D$dayNum',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: done
+                                    ? AppTheme.questGold
+                                    : AppTheme.textDim,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
                   ),
                 ],
               ),
@@ -406,10 +480,281 @@ class _QuestsScreenState extends State<QuestsScreen> {
                 ],
               ),
             ),
+            const SizedBox(height: 24),
+            // #43: Ember Tavern Shop
+            const Text(
+              'Ember Tavern Shop 🏪',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _tavernShopCard(
+                    icon: '🌹',
+                    title: 'Standout Rose',
+                    cost: 40,
+                    desc: '2x Match Chance',
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _tavernShopCard(
+                    icon: '⚡',
+                    title: '1h Spotlight',
+                    cost: 60,
+                    desc: '5x Profile Views',
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _tavernShopCard(
+                    icon: '🛡️',
+                    title: 'Streak Freeze',
+                    cost: 35,
+                    desc: 'Protect 7D Streak',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            // #42: Interest Guilds / Adventurer Clubs
+            const Text(
+              'Adventurer Interest Guilds 🛡️',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...[
+              {
+                'name': '🏔️ SF Summit Hikers',
+                'members': '412 Adventurers • Weekend Trail Quests',
+              },
+              {
+                'name': '🕹️ Co-Op Arcade Guild',
+                'members': '628 Adventurers • Friday Boss Battles',
+              },
+              {
+                'name': '☕ Espresso Alchemists',
+                'members': '519 Adventurers • Third-Wave Cafe Crawls',
+              },
+              {
+                'name': '🎨 Indie Gallery Hoppers',
+                'members': '284 Adventurers • First Thursday Art Walks',
+              },
+            ].map((g) {
+              final gName = g['name']!;
+              final joined = _joinedGuilds.contains(gName);
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.bgCard,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: joined ? AppTheme.neonCyan : Colors.white10,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            gName,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13.5,
+                            ),
+                          ),
+                          Text(
+                            g['members']!,
+                            style: const TextStyle(
+                              color: AppTheme.textDim,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: joined
+                            ? AppTheme.neonCyan.withValues(alpha: 0.15)
+                            : Colors.transparent,
+                        foregroundColor:
+                            joined ? AppTheme.neonCyan : Colors.white70,
+                        side: BorderSide(
+                          color: joined ? AppTheme.neonCyan : Colors.white24,
+                        ),
+                      ),
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        setState(() {
+                          if (joined) {
+                            _joinedGuilds.remove(gName);
+                          } else {
+                            _joinedGuilds.add(gName);
+                          }
+                        });
+                      },
+                      child: Text(
+                        joined ? 'Joined ✓' : 'Join Guild',
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 24),
+            // #41: RPG Class Evolution & Subclass Skill Tree
+            const Text(
+              'RPG Class Evolution Tree (Lv. 5 Perks) ✨',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...[
+              '🌌 Astral Navigator (+15% Chemistry Boost)',
+              '⚡ Cyber Tactician (+20% Quest Embers)',
+              '🎵 Harmonic Bard (1 Free Super-Spark / Day)',
+            ].map((sub) {
+              final active = _selectedSubclass == sub;
+              return GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => _selectedSubclass = sub);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('✨ Equipped Subclass Perk: $sub'),
+                      backgroundColor: AppTheme.electricViolet,
+                    ),
+                  );
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.bgCard,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: active ? AppTheme.questGold : Colors.white10,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          sub,
+                          style: TextStyle(
+                            color: active ? AppTheme.questGold : Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      if (active)
+                        const Icon(
+                          Icons.check_circle,
+                          color: AppTheme.questGold,
+                          size: 18,
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            }),
             const SizedBox(height: 16),
           ],
         ),
       ],
+    );
+  }
+
+  Widget _tavernShopCard({
+    required String icon,
+    required String title,
+    required int cost,
+    required String desc,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.mediumImpact();
+        widget.onClaimEmber(-cost);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '🏪 Purchased $title ($icon) from the Ember Tavern! (-$cost🔥)',
+            ),
+            backgroundColor: AppTheme.questGold,
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppTheme.bgCard,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.questGold.withValues(alpha: 0.35)),
+        ),
+        child: Column(
+          children: [
+            Text(icon, style: const TextStyle(fontSize: 24)),
+            const SizedBox(height: 6),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 11.5,
+              ),
+            ),
+            Text(
+              desc,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppTheme.textDim, fontSize: 10),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppTheme.questGold,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '$cost🔥',
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

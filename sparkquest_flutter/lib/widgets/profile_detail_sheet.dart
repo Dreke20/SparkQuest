@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/profile.dart';
+import '../services/storage_service.dart';
 import '../theme/app_theme.dart';
 
-class ProfileDetailSheet extends StatelessWidget {
+class ProfileDetailSheet extends StatefulWidget {
   final Profile profile;
   final Function(String promptTitle, String replyText) onSparkPrompt;
   final VoidCallback onLike;
@@ -16,6 +18,18 @@ class ProfileDetailSheet extends StatelessWidget {
     required this.onLike,
     required this.onPass,
   });
+
+  @override
+  State<ProfileDetailSheet> createState() => _ProfileDetailSheetState();
+}
+
+class _ProfileDetailSheetState extends State<ProfileDetailSheet> {
+  int _photoIndex = 0;
+  bool _isPlayingVoice = false;
+  int _voiceCountdown = 18;
+  Timer? _voiceTimer;
+  bool _isPlayingAnthem = false;
+  int? _selectedPollIndex;
 
   List<Map<String, String>> get _prompts => [
     {
@@ -30,9 +44,43 @@ class ProfileDetailSheet extends StatelessWidget {
     },
     {
       'title': 'Ideal first Co-Op Quest 🛡️',
-      'answer': profile.voicePromptText,
+      'answer': widget.profile.voicePromptText,
     },
   ];
+
+  @override
+  void dispose() {
+    _voiceTimer?.cancel();
+    super.dispose();
+  }
+
+  void _toggleVoicePlay() {
+    HapticFeedback.selectionClick();
+    if (_isPlayingVoice) {
+      _voiceTimer?.cancel();
+      setState(() => _isPlayingVoice = false);
+    } else {
+      setState(() {
+        _isPlayingVoice = true;
+        _voiceCountdown = 18;
+      });
+      _voiceTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!mounted) {
+          timer.cancel();
+          return;
+        }
+        if (_voiceCountdown <= 1) {
+          timer.cancel();
+          setState(() {
+            _isPlayingVoice = false;
+            _voiceCountdown = 18;
+          });
+        } else {
+          setState(() => _voiceCountdown--);
+        }
+      });
+    }
+  }
 
   void _showPromptReplyDialog(
     BuildContext context,
@@ -40,7 +88,7 @@ class ProfileDetailSheet extends StatelessWidget {
     String promptAnswer,
   ) {
     final controller = TextEditingController(
-      text: 'Loved your prompt "$promptTitle"! Count me in 🔥',
+      text: 'Loved your "$promptTitle"! Count me in 🔥',
     );
     showDialog(
       context: context,
@@ -51,7 +99,7 @@ class ProfileDetailSheet extends StatelessWidget {
           side: const BorderSide(color: AppTheme.neonCyan),
         ),
         title: Text(
-          'Spark ${profile.name}’s Prompt ✨',
+          'Spark ${widget.profile.name}’s Prompt ✨',
           style: const TextStyle(
             color: Colors.white,
             fontSize: 17,
@@ -123,7 +171,7 @@ class ProfileDetailSheet extends StatelessWidget {
               final reply = controller.text.trim();
               Navigator.pop(ctx);
               Navigator.pop(context);
-              onSparkPrompt(
+              widget.onSparkPrompt(
                 promptTitle,
                 reply.isEmpty ? 'Loved your prompt! ✨' : reply,
               );
@@ -138,10 +186,20 @@ class ProfileDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final profile = widget.profile;
+    final gallery = profile.effectiveGallery;
+    final userTags = StorageService.instance.getUserVibeTags();
+    final userArchetype = StorageService.instance.getUserArchetype();
+    final dynamicPct = profile.computeDynamicChemistry(userTags, userArchetype);
+    final synergyReasons = profile.computeSynergyReasons(
+      userTags,
+      userArchetype,
+    );
+
     return DraggableScrollableSheet(
-      initialChildSize: 0.86,
-      minChildSize: 0.6,
-      maxChildSize: 0.95,
+      initialChildSize: 0.90,
+      minChildSize: 0.65,
+      maxChildSize: 0.96,
       expand: false,
       builder: (context, scrollController) {
         return Container(
@@ -164,84 +222,243 @@ class ProfileDetailSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              // Hero Photo & Badges
+              // #1: Multi-Photo & Video Loop Carousel
               ClipRRect(
                 borderRadius: BorderRadius.circular(24),
-                child: Stack(
-                  children: [
-                    Image.asset(
-                      profile.photoAsset,
-                      height: 290,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Container(
-                        height: 290,
-                        color: AppTheme.bgCard,
-                        child: const Icon(
-                          Icons.person,
-                          size: 64,
-                          color: Colors.white54,
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: 12,
-                      right: 12,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.75),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: AppTheme.emeraldGreen),
-                        ),
-                        child: Text(
-                          '⚡ ${profile.compatPct}% Chemistry',
-                          style: const TextStyle(
-                            color: AppTheme.emeraldGreen,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                child: GestureDetector(
+                  onTapUp: (details) {
+                    final width = MediaQuery.of(context).size.width - 40;
+                    HapticFeedback.selectionClick();
+                    setState(() {
+                      if (details.localPosition.dx < width / 2) {
+                        _photoIndex = (_photoIndex - 1 + gallery.length) %
+                            gallery.length;
+                      } else {
+                        _photoIndex = (_photoIndex + 1) % gallery.length;
+                      }
+                    });
+                  },
+                  child: Stack(
+                    children: [
+                      Image.asset(
+                        gallery[_photoIndex],
+                        height: 320,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => Container(
+                          height: 320,
+                          color: AppTheme.bgCard,
+                          child: const Icon(
+                            Icons.person,
+                            size: 64,
+                            color: Colors.white54,
                           ),
                         ),
                       ),
-                    ),
-                    Positioned(
-                      bottom: 12,
-                      left: 14,
-                      child: Row(
-                        children: [
-                          Text(
-                            '${profile.name}, ${profile.age}',
+                      // Story Progress Bars at Top
+                      Positioned(
+                        top: 10,
+                        left: 14,
+                        right: 14,
+                        child: Row(
+                          children: List.generate(gallery.length, (i) {
+                            return Expanded(
+                              child: Container(
+                                height: 3.5,
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: i == _photoIndex
+                                      ? AppTheme.neonCyan
+                                      : Colors.white38,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                            );
+                          }),
+                        ),
+                      ),
+                      if (_photoIndex > 0)
+                        Positioned(
+                          top: 22,
+                          left: 14,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.72),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: AppTheme.neonCyan),
+                            ),
+                            child: Text(
+                              _photoIndex == 1
+                                  ? '🎬 Live Quest Loop • Tap right →'
+                                  : '📸 Adventure Snapshot ${_photoIndex + 1}/${gallery.length}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      Positioned(
+                        top: 22,
+                        right: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.78),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: AppTheme.emeraldGreen),
+                          ),
+                          child: Text(
+                            '⚡ $dynamicPct% Chemistry',
                             style: const TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
+                              color: AppTheme.emeraldGreen,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          if (profile.isVerified)
-                            const Icon(
-                              Icons.verified,
-                              color: AppTheme.neonCyan,
-                              size: 22,
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 12,
+                        left: 14,
+                        right: 14,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  '${profile.name}, ${profile.age}',
+                                  style: const TextStyle(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                if (profile.isVerified)
+                                  const Icon(
+                                    Icons.verified,
+                                    color: AppTheme.neonCyan,
+                                    size: 22,
+                                  ),
+                              ],
                             ),
-                        ],
+                            if (profile.isFreeTonight)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.questGold.withValues(
+                                    alpha: 0.9,
+                                  ),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: const Text(
+                                  '⚡ Free Tonight',
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // #4: Relationship Intent & RPG Class Badges
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${profile.occupation} • ${profile.distance} • ${profile.pronouns}',
+                      style: const TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 13.5,
                       ),
                     ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 11,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.electricViolet.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppTheme.electricViolet),
+                    ),
+                    child: Text(
+                      profile.rpgClass,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 11,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.emeraldGreen.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: AppTheme.emeraldGreen.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    child: Text(
+                      profile.relationshipIntent,
+                      style: const TextStyle(
+                        color: AppTheme.emeraldGreen,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              // #5: Horizontal Vitals & Lifestyle Strip
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _vitalChip('📏 ${profile.height}'),
+                    _vitalChip(profile.zodiac),
+                    _vitalChip('🗣️ ${profile.languages}'),
+                    ...profile.lifestyleVitals.map(_vitalChip),
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
-              Text(
-                '${profile.occupation} • ${profile.distance}',
-                style: const TextStyle(
-                  color: AppTheme.textSecondary,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
+              // Vibe Tags
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
@@ -270,8 +487,298 @@ class ProfileDetailSheet extends StatelessWidget {
                     )
                     .toList(),
               ),
-              const SizedBox(height: 18),
-              // RPG Class Synergy Card
+              const SizedBox(height: 16),
+              // #2: 30-Second Playable Voice Prompt Card
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppTheme.bgCard,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: _isPlayingVoice
+                        ? AppTheme.neonCyan
+                        : Colors.white12,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: _toggleVoicePlay,
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: AppTheme.neonCyan.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppTheme.neonCyan),
+                        ),
+                        child: Icon(
+                          _isPlayingVoice ? Icons.pause : Icons.play_arrow,
+                          color: AppTheme.neonCyan,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '🎙️ Voice Prompt (${_isPlayingVoice ? "${_voiceCountdown}s" : "0:18"})',
+                            style: const TextStyle(
+                              color: AppTheme.neonCyan,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            profile.voicePromptText,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: List.generate(18, (index) {
+                              final active = _isPlayingVoice &&
+                                  index <= (18 - _voiceCountdown);
+                              return Expanded(
+                                child: Container(
+                                  height: (index % 3 == 0) ? 14 : 8,
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 1.5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: active
+                                        ? AppTheme.neonCyan
+                                        : Colors.white24,
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                              );
+                            }),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              // #6: Music Anthem / "Quest Theme Song" Card
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFF1DB954).withValues(alpha: 0.16),
+                      AppTheme.bgCard,
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: const Color(0xFF1DB954).withValues(alpha: 0.45),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() => _isPlayingAnthem = !_isPlayingAnthem);
+                      },
+                      child: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1DB954).withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFF1DB954)),
+                        ),
+                        child: Icon(
+                          _isPlayingAnthem ? Icons.graphic_eq : Icons.music_note,
+                          color: const Color(0xFF1DB954),
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '🎵 QUEST THEME ANTHEM',
+                            style: TextStyle(
+                              color: Color(0xFF1DB954),
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${profile.anthemTitle} — ${profile.anthemArtist}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        _showPromptReplyDialog(
+                          context,
+                          'Quest Anthem: ${profile.anthemTitle}',
+                          '${profile.anthemTitle} by ${profile.anthemArtist}',
+                        );
+                      },
+                      child: const Text(
+                        'Spark 🎵',
+                        style: TextStyle(
+                          color: Color(0xFF1DB954),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              // #8: Interactive Poll Prompt ("My Ideal Sunday" / Vote to Spark)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.bgCard,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: AppTheme.questGold.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.poll_outlined,
+                          color: AppTheme.questGold,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'INTERACTIVE POLL • ${profile.pollQuestion}',
+                            style: const TextStyle(
+                              color: AppTheme.questGold,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    ...List.generate(profile.pollOptions.length, (i) {
+                      final option = profile.pollOptions[i];
+                      final isChosen = _selectedPollIndex == i;
+                      final pct = i == 0 ? 48 : (i == 1 ? 35 : 17);
+                      return GestureDetector(
+                        onTap: () {
+                          HapticFeedback.mediumImpact();
+                          setState(() => _selectedPollIndex = i);
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isChosen
+                                ? AppTheme.questGold.withValues(alpha: 0.2)
+                                : AppTheme.bgSurface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isChosen
+                                  ? AppTheme.questGold
+                                  : Colors.white12,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  option,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: isChosen
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                  ),
+                                ),
+                              ),
+                              if (_selectedPollIndex != null)
+                                Text(
+                                  '$pct%',
+                                  style: TextStyle(
+                                    color: isChosen
+                                        ? AppTheme.questGold
+                                        : AppTheme.textDim,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                    if (_selectedPollIndex != null)
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.questGold,
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                          ),
+                          onPressed: () {
+                            final chosen =
+                                profile.pollOptions[_selectedPollIndex!];
+                            Navigator.pop(context);
+                            widget.onSparkPrompt(
+                              profile.pollQuestion,
+                              'Voted for "$chosen" — when are we going? 🙌',
+                            );
+                          },
+                          icon: const Icon(Icons.send, size: 15),
+                          label: const Text(
+                            'Send Vote & Spark Match',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              // #16: Dynamic Compatibility & RPG Class Synergy Card
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -293,7 +800,7 @@ class ProfileDetailSheet extends StatelessWidget {
                         ),
                         SizedBox(width: 8),
                         Text(
-                          'RPG CLASS SYNERGY BREAKDOWN',
+                          'DYNAMIC SYNERGY & CLASS BREAKDOWN',
                           style: TextStyle(
                             color: AppTheme.questGold,
                             fontWeight: FontWeight.bold,
@@ -304,9 +811,38 @@ class ProfileDetailSheet extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    _synergyBar('Adventure Tempo', 0.92, AppTheme.neonCyan),
-                    _synergyBar('Banter & Humor', 0.88, AppTheme.sparkCoral),
+                    _synergyBar(
+                      'Adventure Tempo',
+                      (dynamicPct / 100).clamp(0.7, 0.99),
+                      AppTheme.neonCyan,
+                    ),
+                    _synergyBar('Banter & Humor', 0.90, AppTheme.sparkCoral),
                     _synergyBar('Co-Op Quest Style', 0.95, AppTheme.questGold),
+                    const SizedBox(height: 8),
+                    ...synergyReasons.map(
+                      (r) => Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.check_circle,
+                              color: AppTheme.emeraldGreen,
+                              size: 14,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                r,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 11.5,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -412,7 +948,7 @@ class ProfileDetailSheet extends StatelessWidget {
                       ),
                       onPressed: () {
                         Navigator.pop(context);
-                        onPass();
+                        widget.onPass();
                       },
                       icon: const Icon(Icons.close),
                       label: const Text('Pass'),
@@ -431,7 +967,7 @@ class ProfileDetailSheet extends StatelessWidget {
                       ),
                       onPressed: () {
                         Navigator.pop(context);
-                        onLike();
+                        widget.onLike();
                       },
                       icon: const Icon(Icons.favorite),
                       label: const Text(
@@ -446,6 +982,22 @@ class ProfileDetailSheet extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Widget _vitalChip(String label) {
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppTheme.bgCard,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(color: Colors.white, fontSize: 12),
+      ),
     );
   }
 
