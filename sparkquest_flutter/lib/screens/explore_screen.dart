@@ -11,6 +11,8 @@ import '../widgets/mystery_blind_match_dialog.dart';
 import '../widgets/discovery_filter_sheet.dart';
 import '../widgets/moderation_dialogs.dart';
 import '../widgets/onboarding_ftue_dialog.dart';
+import '../widgets/profile_detail_sheet.dart';
+import '../widgets/likes_you_sheet.dart';
 import '../services/storage_service.dart';
 import '../services/supabase_service.dart';
 import '../services/realtime_chat_service.dart';
@@ -134,6 +136,53 @@ class _ExploreScreenState extends State<ExploreScreen> {
       QuestProgressionService.instance.incrementQuest('engage1', xpGain: 15);
       _showMatchDialog(top);
     }
+  }
+
+  void _openProfileDetail(Profile profile) {
+    HapticFeedback.selectionClick();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => ProfileDetailSheet(
+        profile: profile,
+        onLike: () => _swipe(true),
+        onPass: () => _swipe(false),
+        onSparkPrompt: (promptTitle, replyText) {
+          HapticFeedback.heavyImpact();
+          if (_cards.isNotEmpty && _cards.first.id == profile.id) {
+            _cards.removeAt(0);
+            _history.add(profile);
+            setState(() {});
+          }
+          widget.onEmbersEarned();
+          QuestProgressionService.instance.incrementQuest(
+            'engage1',
+            xpGain: 25,
+          );
+          RealtimeChatService.instance.addMatchFromProfile(profile);
+          RealtimeChatService.instance.sendMessage(
+            profile.name,
+            '💬 Replied to "$promptTitle": $replyText',
+          );
+          RealtimeChatService.instance.pendingOpenMatchName = profile.name;
+          widget.onOpenChat();
+        },
+      ),
+    );
+  }
+
+  void _openLikesYouVault() {
+    HapticFeedback.selectionClick();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => LikesYouSheet(
+        onOpenChat: widget.onOpenChat,
+        onSpendOrEarnEmbers: widget.onBonusEmbers,
+      ),
+    );
   }
 
   void _rewind() {
@@ -408,7 +457,38 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           style: TextStyle(
                             color: AppTheme.neonCyan,
                             fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                            fontSize: 11.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                InkWell(
+                  onTap: _openLikesYouVault,
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.sparkCoral.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: AppTheme.sparkCoral.withValues(alpha: 0.55),
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('💘 ', style: TextStyle(fontSize: 11)),
+                        Text(
+                          '4 Liked You',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11.5,
                           ),
                         ),
                       ],
@@ -477,6 +557,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   ),
                 // Top Card with Gesture Detector
                 GestureDetector(
+                  onTap: () => _openProfileDetail(top),
                   onPanUpdate: (details) {
                     setState(() {
                       _dragOffset += details.delta;

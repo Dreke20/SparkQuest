@@ -292,7 +292,224 @@ class _QuestsScreenState extends State<QuestsScreen> {
                 ],
               ),
             ),
+            const SizedBox(height: 24),
+            // Achievements Trophy Case
+            const Text(
+              'Achievements Trophy Case 🏆',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _achievementBadge(
+                  icon: '⚡',
+                  title: 'First Spark',
+                  unlocked: true,
+                ),
+                _achievementBadge(
+                  icon: '🎮',
+                  title: 'Arcade Champ',
+                  unlocked: true,
+                ),
+                _achievementBadge(
+                  icon: '🛡️',
+                  title: 'Safe Haven VIP',
+                  unlocked: true,
+                ),
+                _achievementBadge(
+                  icon: '🎙️',
+                  title: 'Voice Pioneer',
+                  unlocked: true,
+                ),
+                _achievementBadge(
+                  icon: '🔮',
+                  title: 'Blind Matcher',
+                  unlocked: false,
+                ),
+                _achievementBadge(
+                  icon: '👑',
+                  title: '7-Day Legend',
+                  unlocked: false,
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            // Weekly City Leaderboard
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'San Francisco Weekly Leaderboard',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                Text(
+                  'Top 3 win +250🔥',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.questGold,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppTheme.bgCard,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white10),
+              ),
+              child: Column(
+                children: [
+                  _leaderboardRow(
+                    rank: 1,
+                    name: 'Chloe Sterling',
+                    xp: 1250,
+                    avatar: 'assets/images/riley.png',
+                    isMe: false,
+                  ),
+                  const Divider(color: Colors.white10, height: 16),
+                  _leaderboardRow(
+                    rank: 2,
+                    name: 'Kaelen Mercer',
+                    xp: 980,
+                    avatar: 'assets/images/jordan.png',
+                    isMe: false,
+                  ),
+                  const Divider(color: Colors.white10, height: 16),
+                  _leaderboardRow(
+                    rank: 3,
+                    name: 'Maya Lin',
+                    xp: 780,
+                    avatar: 'assets/images/maya.png',
+                    isMe: false,
+                  ),
+                  const Divider(color: Colors.white10, height: 16),
+                  _leaderboardRow(
+                    rank: 4,
+                    name: 'You (Alex Explorer)',
+                    xp: QuestProgressionService.instance.seasonXp,
+                    avatar: 'assets/images/alex.png',
+                    isMe: true,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
           ],
+        ),
+      ],
+    );
+  }
+
+  Widget _achievementBadge({
+    required String icon,
+    required String title,
+    required bool unlocked,
+  }) {
+    return Container(
+      width: 102,
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: BoxDecoration(
+        color: unlocked ? AppTheme.bgCard : AppTheme.bgSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: unlocked
+              ? AppTheme.questGold.withValues(alpha: 0.5)
+              : Colors.white10,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            unlocked ? icon : '🔒',
+            style: const TextStyle(fontSize: 22),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: unlocked ? FontWeight.bold : FontWeight.normal,
+              color: unlocked ? Colors.white : AppTheme.textDim,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _leaderboardRow({
+    required int rank,
+    required String name,
+    required int xp,
+    required String avatar,
+    required bool isMe,
+  }) {
+    final badgeColor = rank == 1
+        ? AppTheme.questGold
+        : (rank == 2
+              ? AppTheme.neonCyan
+              : (rank == 3 ? AppTheme.sparkCoral : AppTheme.textSecondary));
+    return Row(
+      children: [
+        Container(
+          width: 24,
+          alignment: Alignment.center,
+          child: Text(
+            '#$rank',
+            style: TextStyle(
+              color: badgeColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        CircleAvatar(
+          radius: 16,
+          backgroundImage: AssetImage(avatar),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            name,
+            style: TextStyle(
+              color: isMe ? AppTheme.neonCyan : Colors.white,
+              fontWeight: isMe ? FontWeight.bold : FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: isMe
+                ? AppTheme.neonCyan.withValues(alpha: 0.15)
+                : AppTheme.bgInput,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            '$xp XP ⭐',
+            style: TextStyle(
+              color: isMe ? AppTheme.neonCyan : AppTheme.questGold,
+              fontWeight: FontWeight.bold,
+              fontSize: 11.5,
+            ),
+          ),
         ),
       ],
     );
