@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+
 import '../theme/app_theme.dart';
 import '../services/storage_service.dart';
 
@@ -69,7 +70,7 @@ class _BiometricLockScreenState extends State<BiometricLockScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.bgDeep.withOpacity(0.96),
+      backgroundColor: AppTheme.bgDeep.withValues(alpha: 0.96),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -89,14 +90,21 @@ class _BiometricLockScreenState extends State<BiometricLockScreen> {
 
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.sparkCoral.withOpacity(0.4),
+                          color: AppTheme.sparkCoral.withValues(alpha: 0.4),
                           blurRadius: 20,
                           spreadRadius: 2,
                         ),
                       ],
                     ),
-                    child: const Icon(Icons.lock_rounded, size: 36, color: Colors.white),
-                  ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
+                    child: const Icon(
+                      Icons.lock_rounded,
+                      size: 36,
+                      color: Colors.white,
+                    ),
+                  ).animate().scale(
+                    duration: 400.ms,
+                    curve: Curves.easeOutBack,
+                  ),
                   const SizedBox(height: 18),
                   const Text(
                     'SparkQuest Security',
@@ -110,7 +118,10 @@ class _BiometricLockScreenState extends State<BiometricLockScreen> {
                   const SizedBox(height: 6),
                   const Text(
                     'Enter your 4-digit PIN or scan fingerprint',
-                    style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppTheme.textSecondary,
+                    ),
                   ),
                   const SizedBox(height: 28),
 
@@ -126,12 +137,18 @@ class _BiometricLockScreenState extends State<BiometricLockScreen> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: isFilled
-                              ? (_isError ? Colors.redAccent : AppTheme.questGold)
+                              ? (_isError
+                                    ? Colors.redAccent
+                                    : AppTheme.questGold)
                               : Colors.white24,
                           boxShadow: isFilled
                               ? [
                                   BoxShadow(
-                                    color: (_isError ? Colors.redAccent : AppTheme.questGold).withOpacity(0.5),
+                                    color:
+                                        (_isError
+                                                ? Colors.redAccent
+                                                : AppTheme.questGold)
+                                            .withValues(alpha: 0.5),
                                     blurRadius: 8,
                                     spreadRadius: 1,
                                   ),
@@ -171,9 +188,15 @@ class _BiometricLockScreenState extends State<BiometricLockScreen> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: AppTheme.bgCard,
-                            border: Border.all(color: AppTheme.questGold.withOpacity(0.4)),
+                            border: Border.all(
+                              color: AppTheme.questGold.withValues(alpha: 0.4),
+                            ),
                           ),
-                          child: const Icon(Icons.fingerprint, color: AppTheme.questGold, size: 34),
+                          child: const Icon(
+                            Icons.fingerprint,
+                            color: AppTheme.questGold,
+                            size: 34,
+                          ),
                         ),
                       ),
                       _buildKeypadButton('0'),
@@ -190,7 +213,11 @@ class _BiometricLockScreenState extends State<BiometricLockScreen> {
                             color: AppTheme.bgCard,
                             border: Border.all(color: Colors.white12),
                           ),
-                          child: const Icon(Icons.backspace_outlined, color: AppTheme.textSecondary, size: 22),
+                          child: const Icon(
+                            Icons.backspace_outlined,
+                            color: AppTheme.textSecondary,
+                            size: 22,
+                          ),
                         ),
                       ),
                     ],
@@ -198,10 +225,18 @@ class _BiometricLockScreenState extends State<BiometricLockScreen> {
                   const SizedBox(height: 24),
                   TextButton.icon(
                     onPressed: _simulateBiometricScan,
-                    icon: const Icon(Icons.fingerprint, color: AppTheme.questGold, size: 20),
+                    icon: const Icon(
+                      Icons.fingerprint,
+                      color: AppTheme.questGold,
+                      size: 20,
+                    ),
                     label: const Text(
                       'Tap to Unlock with Biometrics',
-                      style: TextStyle(color: AppTheme.questGold, fontSize: 13, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        color: AppTheme.questGold,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],

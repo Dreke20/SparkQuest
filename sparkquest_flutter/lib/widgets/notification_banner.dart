@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+
 import '../theme/app_theme.dart';
 
 class NotificationBanner extends StatelessWidget {
@@ -35,12 +36,14 @@ class NotificationBanner extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: AppTheme.bgCard.withOpacity(0.96),
+              color: AppTheme.bgCard.withValues(alpha: 0.96),
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppTheme.sparkCoral.withOpacity(0.4)),
+              border: Border.all(
+                color: AppTheme.sparkCoral.withValues(alpha: 0.4),
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.5),
+                  color: Colors.black.withValues(alpha: 0.5),
                   blurRadius: 18,
                   offset: const Offset(0, 6),
                 ),
@@ -55,13 +58,16 @@ class NotificationBanner extends StatelessWidget {
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
                       colors: [AppTheme.sparkCoral, AppTheme.electricViolet],
-
                     ),
                   ),
                   alignment: Alignment.center,
                   child: Text(
                     sender.isNotEmpty ? sender[0] : 'S',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -75,11 +81,18 @@ class NotificationBanner extends StatelessWidget {
                         children: [
                           Text(
                             sender,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: AppTheme.textPrimary,
+                            ),
                           ),
                           const Text(
                             'Just now',
-                            style: TextStyle(fontSize: 10, color: AppTheme.textDim),
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: AppTheme.textDim,
+                            ),
                           ),
                         ],
                       ),
@@ -88,21 +101,31 @@ class NotificationBanner extends StatelessWidget {
                         message,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: AppTheme.sparkCoral.withOpacity(0.18),
+                    color: AppTheme.sparkCoral.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Text(
                     'Reply',
-                    style: TextStyle(color: AppTheme.sparkCoral, fontWeight: FontWeight.bold, fontSize: 11),
+                    style: TextStyle(
+                      color: AppTheme.sparkCoral,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                    ),
                   ),
                 ),
               ],
@@ -110,6 +133,11 @@ class NotificationBanner extends StatelessWidget {
           ),
         ),
       ),
-    ).animate().slideY(begin: -1.2, end: 0, duration: 350.ms, curve: Curves.easeOutBack);
+    ).animate().slideY(
+      begin: -1.2,
+      end: 0,
+      duration: 350.ms,
+      curve: Curves.easeOutBack,
+    );
   }
 }

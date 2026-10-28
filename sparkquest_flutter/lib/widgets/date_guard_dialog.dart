@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -16,8 +17,9 @@ class _DateGuardDialogState extends State<DateGuardDialog> {
   int _secondsRemaining = 3600;
   Timer? _timer;
   late String _venue;
-  final TextEditingController _contactController =
-      TextEditingController(text: '+1 (555) 839-2049');
+  final TextEditingController _contactController = TextEditingController(
+    text: '+1 (555) 839-2049',
+  );
 
   final List<String> _venues = [
     'Neon Roasters (Safe Haven)',
@@ -84,10 +86,15 @@ class _DateGuardDialogState extends State<DateGuardDialog> {
               Navigator.pop(ctx);
               _triggerEmergencySOS();
             },
-            child: const Text('Send SOS', style: TextStyle(color: Colors.redAccent)),
+            child: const Text(
+              'Send SOS',
+              style: TextStyle(color: Colors.redAccent),
+            ),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+            ),
             onPressed: () {
               Navigator.pop(ctx);
               setState(() => _isActive = false);
@@ -137,9 +144,18 @@ class _DateGuardDialogState extends State<DateGuardDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Mom / Roommate is calling...', style: TextStyle(color: Colors.white, fontSize: 16)),
+            Text(
+              'Mom / Roommate is calling...',
+              style: TextStyle(color: Colors.white, fontSize: 16),
+            ),
             SizedBox(height: 6),
-            Text('"Hey! Something urgent came up at the apartment!"', style: TextStyle(color: Colors.white54, fontStyle: FontStyle.italic)),
+            Text(
+              '"Hey! Something urgent came up at the apartment!"',
+              style: TextStyle(
+                color: Colors.white54,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
           ],
         ),
         actions: [
@@ -149,7 +165,9 @@ class _DateGuardDialogState extends State<DateGuardDialog> {
             child: const Text('Decline'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.greenAccent.shade700),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.greenAccent.shade700,
+            ),
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Accept & Excuse Self'),
           ),
@@ -218,7 +236,9 @@ class _DateGuardDialogState extends State<DateGuardDialog> {
                   decoration: BoxDecoration(
                     color: const Color(0xFF06B6D4).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFF06B6D4).withValues(alpha: 0.4)),
+                    border: Border.all(
+                      color: const Color(0xFF06B6D4).withValues(alpha: 0.4),
+                    ),
                   ),
                   child: Column(
                     children: [
@@ -244,7 +264,10 @@ class _DateGuardDialogState extends State<DateGuardDialog> {
                       const SizedBox(height: 4),
                       Text(
                         'Venue: $_venue',
-                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
@@ -263,7 +286,11 @@ class _DateGuardDialogState extends State<DateGuardDialog> {
                           setState(() => _isActive = false);
                           _timer?.cancel();
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("I'm safe! Date Guard disarmed. 👍")),
+                            const SnackBar(
+                              content: Text(
+                                "I'm safe! Date Guard disarmed. 👍",
+                              ),
+                            ),
                           );
                         },
                         icon: const Icon(Icons.check_circle_outline),
@@ -274,7 +301,10 @@ class _DateGuardDialogState extends State<DateGuardDialog> {
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.amber.shade800,
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 14,
+                        ),
                       ),
                       onPressed: _triggerFakeCall,
                       child: const Row(
@@ -301,20 +331,33 @@ class _DateGuardDialogState extends State<DateGuardDialog> {
                 // Setup State UI
                 const Text(
                   'Select Verified Date Spot',
-                  style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 DropdownButtonFormField<String>(
-                  value: _venues.contains(_venue) ? _venue : _venues.first,
+                  initialValue: _venues.contains(_venue)
+                      ? _venue
+                      : _venues.first,
                   dropdownColor: const Color(0xFF1A1F38),
                   style: const TextStyle(color: Colors.white, fontSize: 13),
                   decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     filled: true,
                     fillColor: Colors.white.withValues(alpha: 0.05),
                   ),
-                  items: _venues.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+                  items: _venues
+                      .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                      .toList(),
                   onChanged: (val) {
                     if (val != null) setState(() => _venue = val);
                   },
@@ -323,7 +366,11 @@ class _DateGuardDialogState extends State<DateGuardDialog> {
 
                 const Text(
                   'Safety Timer Duration',
-                  style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -336,9 +383,14 @@ class _DateGuardDialogState extends State<DateGuardDialog> {
                         setState(() => _selectedMinutes = mins);
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
-                          color: selected ? const Color(0xFF06B6D4) : Colors.white.withValues(alpha: 0.06),
+                          color: selected
+                              ? const Color(0xFF06B6D4)
+                              : Colors.white.withValues(alpha: 0.06),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
@@ -357,18 +409,31 @@ class _DateGuardDialogState extends State<DateGuardDialog> {
 
                 const Text(
                   'Emergency Contact (SMS)',
-                  style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 TextField(
                   controller: _contactController,
                   style: const TextStyle(color: Colors.white, fontSize: 13),
                   decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     filled: true,
                     fillColor: Colors.white.withValues(alpha: 0.05),
-                    prefixIcon: const Icon(Icons.phone, color: Color(0xFF06B6D4), size: 18),
+                    prefixIcon: const Icon(
+                      Icons.phone,
+                      color: Color(0xFF06B6D4),
+                      size: 18,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 18),
@@ -378,7 +443,9 @@ class _DateGuardDialogState extends State<DateGuardDialog> {
                     backgroundColor: const Color(0xFF06B6D4),
                     foregroundColor: Colors.black,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                   onPressed: _startGuard,
                   child: const Text(

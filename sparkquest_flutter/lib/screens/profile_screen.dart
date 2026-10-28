@@ -1,14 +1,18 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+
 import '../theme/app_theme.dart';
 import '../widgets/spark_pass_dialog.dart';
 import '../widgets/auth_dialog.dart';
 import '../services/supabase_service.dart';
 import '../services/iap_service.dart';
 import '../services/storage_service.dart';
-import '../widgets/biometric_lock_screen.dart';
+import '../services/quest_progression_service.dart';
+import '../widgets/sparky_ai_wingman_sheet.dart';
+import '../widgets/moderation_dialogs.dart';
 
 class ProfileScreen extends StatefulWidget {
   final int embers;
@@ -36,6 +40,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   int _voiceSeconds = 0;
   Timer? _voiceTimer;
   String _selectedFrame = 'cyber_cyan';
+  String _userBio =
+      'Building cool apps by day, chasing rooftop sunsets & co-op quests by night ✨';
+  String _userOccupation = 'Software Engineer';
+  String _userArchetype = '🌌 Night Owl Strategist';
   bool _isGoldVip = false;
 
   final List<String?> _photos = [
@@ -50,13 +58,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _loadProfilePrefs();
+  }
+
+  void _loadProfilePrefs() {
     _biometricEnabled = StorageService.instance.isBiometricLockEnabled();
     _ghostModeEnabled = StorageService.instance.isGhostMode();
+    _selectedFrame = StorageService.instance.getSelectedFrame();
+    _userBio = StorageService.instance.getUserBio();
+    _userOccupation = StorageService.instance.getUserOccupation();
+    _userArchetype = StorageService.instance.getUserArchetype();
+  }
+
+  void _openSparkyWingmanModal() {
+    HapticFeedback.selectionClick();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => SparkyAiWingmanSheet(
+        onBioUpdated: () {
+          setState(() {
+            _loadProfilePrefs();
+          });
+        },
+      ),
+    );
   }
 
   @override
   void dispose() {
-
     _voiceTimer?.cancel();
     super.dispose();
   }
@@ -114,11 +145,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.bgCard,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Text('🛡️ Date Shield Emergency Call'),
-          ],
-        ),
+        title: const Row(children: [Text('🛡️ Date Shield Emergency Call')]),
         content: const Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -137,7 +164,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: AppTheme.textDim)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppTheme.textDim),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -149,7 +179,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.sparkCoral),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.sparkCoral,
+            ),
             child: const Text('Start 10s Timer'),
           ),
         ],
@@ -167,10 +199,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModalState) {
           final frames = [
-            {'id': 'cyber_cyan', 'name': '⚡ Cyberpunk Ring', 'color': AppTheme.neonCyan},
-            {'id': 'phoenix_flame', 'name': '🔥 Phoenix Flame', 'color': AppTheme.sparkCoral},
-            {'id': 'galactic_violet', 'name': '🌌 Galactic Aura', 'color': AppTheme.electricViolet},
-            {'id': 'neon_crown', 'name': '👑 Neon Crown Legend', 'color': AppTheme.questGold},
+            {
+              'id': 'cyber_cyan',
+              'name': '⚡ Cyberpunk Ring',
+              'color': AppTheme.neonCyan,
+            },
+            {
+              'id': 'phoenix_flame',
+              'name': '🔥 Phoenix Flame',
+              'color': AppTheme.sparkCoral,
+            },
+            {
+              'id': 'galactic_violet',
+              'name': '🌌 Galactic Aura',
+              'color': AppTheme.electricViolet,
+            },
+            {
+              'id': 'neon_crown',
+              'name': '👑 Neon Crown Legend',
+              'color': AppTheme.questGold,
+            },
           ];
 
           return Padding(
@@ -184,7 +232,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     const Text(
                       '✨ Avatar Glowing Frames',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                      ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.close, color: AppTheme.textDim),
@@ -202,7 +254,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   final isSelected = (_selectedFrame == f['id']);
                   return InkWell(
                     onTap: () {
-                      setState(() => _selectedFrame = f['id'] as String);
+                      final frameId = f['id'] as String;
+                      StorageService.instance.saveSelectedFrame(frameId);
+                      setState(() => _selectedFrame = frameId);
                       setModalState(() {});
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
@@ -213,12 +267,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     },
                     child: Container(
                       margin: const EdgeInsets.only(bottom: 10),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
                         color: AppTheme.bgCard,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: isSelected ? (f['color'] as Color) : Colors.white10,
+                          color: isSelected
+                              ? (f['color'] as Color)
+                              : Colors.white10,
                           width: isSelected ? 2 : 1,
                         ),
                       ),
@@ -232,14 +291,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 height: 28,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: f['color'] as Color, width: 2),
+                                  border: Border.all(
+                                    color: f['color'] as Color,
+                                    width: 2,
+                                  ),
                                 ),
-                                child: const Center(child: Text('👤', style: TextStyle(fontSize: 12))),
+                                child: const Center(
+                                  child: Text(
+                                    '👤',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                ),
                               ),
                               const SizedBox(width: 12),
                               Text(
                                 f['name'] as String,
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: AppTheme.textPrimary,
+                                ),
                               ),
                             ],
                           ),
@@ -248,7 +319,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              color: isSelected ? (f['color'] as Color) : AppTheme.textDim,
+                              color: isSelected
+                                  ? (f['color'] as Color)
+                                  : AppTheme.textDim,
                             ),
                           ),
                         ],
@@ -272,14 +345,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Row(
           children: [
-            Text('👑 SparkQuest Gold VIP', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.questGold)),
+            Text(
+              '👑 SparkQuest Gold VIP',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: AppTheme.questGold,
+              ),
+            ),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Unlock exclusive explorer privileges:', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+            const Text(
+              'Unlock exclusive explorer privileges:',
+              style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+            ),
             const SizedBox(height: 12),
             _vipPerk('⏪', 'Unlimited Rewinds on passed cards'),
             _vipPerk('👁️', 'See who liked your profile instantly'),
@@ -290,7 +372,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Maybe Later', style: TextStyle(color: AppTheme.textDim)),
+            child: const Text(
+              'Maybe Later',
+              style: TextStyle(color: AppTheme.textDim),
+            ),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -302,7 +387,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('👑 Google Play Purchase Confirmed! Welcome to SparkQuest Gold VIP.'),
+                    content: Text(
+                      '👑 Google Play Purchase Confirmed! Welcome to SparkQuest Gold VIP.',
+                    ),
                     backgroundColor: AppTheme.questGold,
                   ),
                 );
@@ -312,7 +399,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               backgroundColor: AppTheme.questGold,
               foregroundColor: Colors.black,
             ),
-            child: const Text('Subscribe (\$14.99/mo)', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Subscribe (\$14.99/mo)',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -326,7 +416,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           Text(icon, style: const TextStyle(fontSize: 14)),
           const SizedBox(width: 8),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary))),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary),
+            ),
+          ),
         ],
       ),
     );
@@ -355,13 +450,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: _openCosmeticsModal,
-                  icon: const Icon(Icons.auto_awesome, size: 16, color: AppTheme.questGold),
-                  label: const Text('Avatar Frames', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  icon: const Icon(
+                    Icons.auto_awesome,
+                    size: 16,
+                    color: AppTheme.questGold,
+                  ),
+                  label: const Text(
+                    'Avatar Frames',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.bgCard,
                     foregroundColor: Colors.white,
-                    side: BorderSide(color: AppTheme.questGold.withOpacity(0.4)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    side: BorderSide(
+                      color: AppTheme.questGold.withValues(alpha: 0.4),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),
@@ -370,13 +476,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: _openVIPModal,
-                  icon: const Icon(Icons.workspace_premium, size: 16, color: AppTheme.sparkCoral),
-                  label: Text(_isGoldVip ? 'Gold Active 👑' : 'SparkQuest Gold', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  icon: const Icon(
+                    Icons.workspace_premium,
+                    size: 16,
+                    color: AppTheme.sparkCoral,
+                  ),
+                  label: Text(
+                    _isGoldVip ? 'Gold Active 👑' : 'SparkQuest Gold',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _isGoldVip ? AppTheme.questGold.withOpacity(0.2) : AppTheme.bgCard,
-                    foregroundColor: _isGoldVip ? AppTheme.questGold : Colors.white,
-                    side: BorderSide(color: _isGoldVip ? AppTheme.questGold : AppTheme.sparkCoral.withOpacity(0.4)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    backgroundColor: _isGoldVip
+                        ? AppTheme.questGold.withValues(alpha: 0.2)
+                        : AppTheme.bgCard,
+                    foregroundColor: _isGoldVip
+                        ? AppTheme.questGold
+                        : Colors.white,
+                    side: BorderSide(
+                      color: _isGoldVip
+                          ? AppTheme.questGold
+                          : AppTheme.sparkCoral.withValues(alpha: 0.4),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),
@@ -393,10 +519,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               showDialog(
                 context: context,
                 builder: (ctx) => SparkPassDialog(
-                  currentXP: 450,
+                  currentXP: QuestProgressionService.instance.seasonXp,
                   onRewardClaimed: (val) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('🎉 +$val Embers from Spark Pass!')),
+                      SnackBar(
+                        content: Text('🎉 +$val Embers from Spark Pass!'),
+                      ),
                     );
                   },
                 ),
@@ -407,30 +535,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    const Color(0xFF8B5CF6).withOpacity(0.2),
-                    const Color(0xFFEC4899).withOpacity(0.2),
+                    const Color(0xFF8B5CF6).withValues(alpha: 0.2),
+                    const Color(0xFFEC4899).withValues(alpha: 0.2),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFF8B5CF6).withOpacity(0.4)),
+                border: Border.all(
+                  color: const Color(0xFF8B5CF6).withValues(alpha: 0.4),
+                ),
               ),
               child: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF8B5CF6).withOpacity(0.3),
+                      color: const Color(0xFF8B5CF6).withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Text('⭐', style: TextStyle(fontSize: 20)),
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Season 1: Spark Pass (30 Tiers)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white)),
-                        Text('Level 4: Explorer Keen • 450 XP', style: TextStyle(color: Color(0xFFA78BFA), fontSize: 12)),
+                        const Text(
+                          'Season 1: Spark Pass (30 Tiers)',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Text(
+                          'Explorer Pass • ${QuestProgressionService.instance.seasonXp} XP ⭐',
+                          style: const TextStyle(
+                            color: Color(0xFFA78BFA),
+                            fontSize: 12,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -446,9 +589,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: const Color(0xFF10B981).withOpacity(0.08),
+              color: const Color(0xFF10B981).withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+              border: Border.all(
+                color: const Color(0xFF10B981).withValues(alpha: 0.3),
+              ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -461,8 +606,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Supabase Cloud', style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold, fontSize: 12)),
-                            Text('Ref: ${SupabaseService.projectRef}', overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white54, fontSize: 10)),
+                            const Text(
+                              'Supabase Cloud',
+                              style: TextStyle(
+                                color: Color(0xFF10B981),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                            Text(
+                              'Ref: ${SupabaseService.projectRef}',
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white54,
+                                fontSize: 10,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -490,7 +649,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         );
                       },
-                      child: const Text('Auth / SMS', style: TextStyle(color: Color(0xFF06B6D4), fontSize: 11, fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'Auth / SMS',
+                        style: TextStyle(
+                          color: Color(0xFF06B6D4),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 4),
                     TextButton(
@@ -501,17 +667,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       onPressed: () async {
                         HapticFeedback.lightImpact();
-                        final ok = await SupabaseService.instance.checkConnection();
+                        final ok = await SupabaseService.instance
+                            .checkConnection();
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text(ok ? '🟢 Supabase connected successfully!' : '⚠️ Offline fallback active'),
-                              backgroundColor: ok ? const Color(0xFF10B981) : Colors.amber.shade800,
+                              content: Text(
+                                ok
+                                    ? '🟢 Supabase connected successfully!'
+                                    : '⚠️ Offline fallback active',
+                              ),
+                              backgroundColor: ok
+                                  ? const Color(0xFF10B981)
+                                  : Colors.amber.shade800,
                             ),
                           );
                         }
                       },
-                      child: const Text('Test Ping', style: TextStyle(color: Color(0xFF10B981), fontSize: 11, fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'Test Ping',
+                        style: TextStyle(
+                          color: Color(0xFF10B981),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -562,7 +742,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 24),
 
           // Security & Privacy Settings
-
           const Text(
             'SECURITY & PRIVACY',
             style: TextStyle(
@@ -594,9 +773,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.security_rounded, color: AppTheme.neonCyan, size: 20),
+              const Icon(
+                Icons.security_rounded,
+                color: AppTheme.neonCyan,
+                size: 20,
+              ),
               const SizedBox(width: 8),
-              const Text('Device Security & Privacy', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white)),
+              const Text(
+                'Device Security & Privacy',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: Colors.white,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -612,9 +802,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(val ? '🔒 Biometric Lock Activated' : '🔓 Biometric Lock Disabled'),
+                    content: Text(
+                      val
+                          ? '🔒 Biometric Lock Activated'
+                          : '🔓 Biometric Lock Disabled',
+                    ),
                     duration: const Duration(seconds: 2),
-                    backgroundColor: val ? const Color(0xFF10B981) : Colors.grey.shade800,
+                    backgroundColor: val
+                        ? const Color(0xFF10B981)
+                        : Colors.grey.shade800,
                   ),
                 );
               }
@@ -633,9 +829,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(val ? '👻 Ghost Mode Active: Hidden from public deck' : '✨ Ghost Mode Off: Visible to all nearby explorers'),
+                    content: Text(
+                      val
+                          ? '👻 Ghost Mode Active: Hidden from public deck'
+                          : '✨ Ghost Mode Off: Visible to all nearby explorers',
+                    ),
                     duration: const Duration(seconds: 2),
-                    backgroundColor: val ? AppTheme.electricViolet : Colors.grey.shade800,
+                    backgroundColor: val
+                        ? AppTheme.electricViolet
+                        : Colors.grey.shade800,
                   ),
                 );
               }
@@ -650,7 +852,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               minimumSize: const Size.fromHeight(42),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: AppTheme.questGold.withOpacity(0.4)),
+                side: BorderSide(
+                  color: AppTheme.questGold.withValues(alpha: 0.4),
+                ),
               ),
             ),
 
@@ -659,7 +863,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
               widget.onTriggerLock?.call();
             },
             icon: const Icon(Icons.fingerprint, size: 18),
-            label: const Text('Lock App Now (Test Biometrics)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            label: const Text(
+              'Lock App Now (Test Biometrics)',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.sparkCoral,
+              minimumSize: const Size.fromHeight(42),
+              side: BorderSide(
+                color: AppTheme.sparkCoral.withValues(alpha: 0.45),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () {
+              HapticFeedback.selectionClick();
+              showDialog(
+                context: context,
+                builder: (ctx) => DeleteAccountDialog(
+                  onAccountDeleted: () {
+                    setState(() {
+                      _loadProfilePrefs();
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          '🗑️ Account data & local preferences wiped.',
+                        ),
+                        backgroundColor: AppTheme.sparkCoral,
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+            icon: const Icon(Icons.delete_forever, size: 18),
+            label: const Text(
+              'Delete Account & Wipe Data (Play Store Policy)',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            ),
           ),
         ],
       ),
@@ -680,15 +926,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
               const SizedBox(height: 2),
-              Text(subtitle, style: const TextStyle(fontSize: 11, color: AppTheme.textDim)),
+              Text(
+                subtitle,
+                style: const TextStyle(fontSize: 11, color: AppTheme.textDim),
+              ),
             ],
           ),
         ),
         Switch(
           value: value,
-          activeColor: activeColor,
+          activeThumbColor: activeColor,
           onChanged: onChanged,
         ),
       ],
@@ -696,16 +952,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildUserHeroCard() {
-
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppTheme.bgCard,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppTheme.sparkCoral.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.sparkCoral.withValues(alpha: 0.3)),
         gradient: LinearGradient(
           colors: [
-            AppTheme.sparkCoral.withOpacity(0.12),
+            AppTheme.sparkCoral.withValues(alpha: 0.12),
             AppTheme.bgCard,
           ],
           begin: Alignment.topLeft,
@@ -724,18 +979,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     color: _selectedFrame == 'phoenix_flame'
                         ? AppTheme.sparkCoral
                         : (_selectedFrame == 'neon_crown'
-                            ? AppTheme.questGold
-                            : (_selectedFrame == 'galactic_violet' ? AppTheme.electricViolet : AppTheme.neonCyan)),
+                              ? AppTheme.questGold
+                              : (_selectedFrame == 'galactic_violet'
+                                    ? AppTheme.electricViolet
+                                    : AppTheme.neonCyan)),
                     width: 2.5,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: (_selectedFrame == 'phoenix_flame'
-                              ? AppTheme.sparkCoral
-                              : (_selectedFrame == 'neon_crown'
-                                  ? AppTheme.questGold
-                                  : (_selectedFrame == 'galactic_violet' ? AppTheme.electricViolet : AppTheme.neonCyan)))
-                          .withOpacity(0.55),
+                      color:
+                          (_selectedFrame == 'phoenix_flame'
+                                  ? AppTheme.sparkCoral
+                                  : (_selectedFrame == 'neon_crown'
+                                        ? AppTheme.questGold
+                                        : (_selectedFrame == 'galactic_violet'
+                                              ? AppTheme.electricViolet
+                                              : AppTheme.neonCyan)))
+                              .withValues(alpha: 0.55),
                       blurRadius: 14,
                     ),
                   ],
@@ -747,11 +1007,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     width: 72,
                     height: 72,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    errorBuilder: (_, _, _) => Container(
                       width: 72,
                       height: 72,
                       color: AppTheme.bgInput,
-                      child: const Icon(Icons.person, color: AppTheme.neonCyan, size: 40),
+                      child: const Icon(
+                        Icons.person,
+                        color: AppTheme.neonCyan,
+                        size: 40,
+                      ),
                     ),
                   ),
                 ),
@@ -766,7 +1030,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: AppTheme.emeraldGreen,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.verified, size: 14, color: Colors.white),
+                    child: const Icon(
+                      Icons.verified,
+                      size: 14,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
             ],
@@ -789,38 +1057,111 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(width: 6),
                     if (_isGoldVip)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
-                          color: AppTheme.questGold.withOpacity(0.2),
+                          color: AppTheme.questGold.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(color: AppTheme.questGold),
                         ),
-                        child: const Text('👑 VIP', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.questGold)),
+                        child: const Text(
+                          '👑 VIP',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.questGold,
+                          ),
+                        ),
                       ),
                     if (_isVerified) ...[
                       const SizedBox(width: 4),
-                      const Icon(Icons.verified, size: 18, color: AppTheme.emeraldGreen),
+                      const Icon(
+                        Icons.verified,
+                        size: 18,
+                        color: AppTheme.emeraldGreen,
+                      ),
                     ],
                   ],
                 ),
                 const SizedBox(height: 2),
-                const Text(
-                  'Software Engineer • Explorer Lv. 7',
-                  style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                Text(
+                  '$_userOccupation • Explorer Lv. 7',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  _userBio,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    color: Colors.white70,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                InkWell(
+                  onTap: _openSparkyWingmanModal,
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.electricViolet.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: AppTheme.neonCyan.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.auto_awesome,
+                          size: 13,
+                          color: AppTheme.questGold,
+                        ),
+                        SizedBox(width: 5),
+                        Text(
+                          'Edit Bio & AI Coach',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.neonCyan,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: AppTheme.questGold.withOpacity(0.15),
+                        color: AppTheme.questGold.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text('✦ ', style: TextStyle(color: AppTheme.questGold, fontSize: 12)),
+                          const Text(
+                            '✦ ',
+                            style: TextStyle(
+                              color: AppTheme.questGold,
+                              fontSize: 12,
+                            ),
+                          ),
                           Text(
                             '${widget.embers} Embers',
                             style: const TextStyle(
@@ -834,9 +1175,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: AppTheme.sparkCoral.withOpacity(0.15),
+                        color: AppTheme.sparkCoral.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Text(
@@ -864,7 +1208,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       decoration: BoxDecoration(
         color: AppTheme.bgSurface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.electricViolet.withOpacity(0.4)),
+        border: Border.all(
+          color: AppTheme.electricViolet.withValues(alpha: 0.4),
+        ),
       ),
       child: Column(
         children: [
@@ -873,10 +1219,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppTheme.electricViolet.withOpacity(0.2),
+                  color: AppTheme.electricViolet.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.shield_outlined, color: AppTheme.electricViolet, size: 24),
+                child: const Icon(
+                  Icons.shield_outlined,
+                  color: AppTheme.electricViolet,
+                  size: 24,
+                ),
               ),
               const SizedBox(width: 14),
               const Expanded(
@@ -893,7 +1243,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     Text(
                       'Live GPS sharing & discrete safety triggers',
-                      style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -906,11 +1259,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: widget.onOpenDateShield,
-                  icon: const Icon(Icons.location_on, size: 16, color: AppTheme.neonCyan),
-                  label: const Text('Share Live Location', style: TextStyle(fontSize: 12, color: AppTheme.neonCyan)),
+                  icon: const Icon(
+                    Icons.location_on,
+                    size: 16,
+                    color: AppTheme.neonCyan,
+                  ),
+                  label: const Text(
+                    'Share Live Location',
+                    style: TextStyle(fontSize: 12, color: AppTheme.neonCyan),
+                  ),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: AppTheme.neonCyan),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
@@ -922,11 +1284,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.sparkCoral,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ],
-          )
+          ),
         ],
       ),
     );
@@ -937,11 +1301,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: _isVerified
-            ? AppTheme.emeraldGreen.withOpacity(0.12)
+            ? AppTheme.emeraldGreen.withValues(alpha: 0.12)
             : AppTheme.bgSurface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: _isVerified ? AppTheme.emeraldGreen : AppTheme.neonCyan.withOpacity(0.4),
+          color: _isVerified
+              ? AppTheme.emeraldGreen
+              : AppTheme.neonCyan.withValues(alpha: 0.4),
         ),
       ),
       child: Row(
@@ -949,7 +1315,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: (_isVerified ? AppTheme.emeraldGreen : AppTheme.neonCyan).withOpacity(0.15),
+              color: (_isVerified ? AppTheme.emeraldGreen : AppTheme.neonCyan)
+                  .withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -964,7 +1331,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _isVerified ? 'Profile Verified' : 'Anti-Catfish Liveness Check',
+                  _isVerified
+                      ? 'Profile Verified'
+                      : 'Anti-Catfish Liveness Check',
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
@@ -972,10 +1341,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 Text(
-                  _isVerified
-                      ? '3D face scan verified • Trust score 100%'
-                      : 'Take a 3-step live selfie check to earn your blue tick',
-                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                  _isVerified ? '3D face scan verified • Trust score 100%' : 'Take a 3-step live selfie check to earn your blue tick',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -987,10 +1357,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.neonCyan,
                 foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
               ),
-              child: const Text('Verify', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              child: const Text(
+                'Verify',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              ),
             ),
         ],
       ),
@@ -1003,7 +1381,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       decoration: BoxDecoration(
         color: AppTheme.bgSurface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.electricViolet.withOpacity(0.35)),
+        border: Border.all(
+          color: AppTheme.electricViolet.withValues(alpha: 0.35),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1026,27 +1406,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 8),
           const Text(
             '"My secret, completely useless talent 🪄"',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimary,
+            ),
           ),
           const SizedBox(height: 12),
           if (_isRecordingVoice)
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppTheme.sparkCoral.withOpacity(0.15),
+                color: AppTheme.sparkCoral.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: AppTheme.sparkCoral),
               ),
               child: Row(
                 children: [
                   Container(
-                    width: 12,
-                    height: 12,
-                    decoration: const BoxDecoration(
-                      color: AppTheme.sparkCoral,
-                      shape: BoxShape.circle,
-                    ),
-                  ).animate(onPlay: (controller) => controller.repeat(reverse: true)).scale(
+                        width: 12,
+                        height: 12,
+                        decoration: const BoxDecoration(
+                          color: AppTheme.sparkCoral,
+                          shape: BoxShape.circle,
+                        ),
+                      )
+                      .animate(
+                        onPlay: (controller) =>
+                            controller.repeat(reverse: true),
+                      )
+                      .scale(
                         begin: const Offset(1, 1),
                         end: const Offset(1.5, 1.5),
                         duration: 600.ms,
@@ -1054,7 +1443,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(width: 10),
                   Text(
                     'Recording... 00:${_voiceSeconds.toString().padLeft(2, '0')} / 00:15',
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.sparkCoral),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.sparkCoral,
+                    ),
                   ),
                 ],
               ),
@@ -1068,11 +1460,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.play_circle_fill, color: AppTheme.neonCyan, size: 28),
+                  Icon(
+                    Icons.play_circle_fill,
+                    color: AppTheme.neonCyan,
+                    size: 28,
+                  ),
                   SizedBox(width: 8),
-                  Text('Voice snippet saved (0:12)', style: TextStyle(color: AppTheme.neonCyan, fontSize: 13)),
+                  Text(
+                    'Voice snippet saved (0:12)',
+                    style: TextStyle(color: AppTheme.neonCyan, fontSize: 13),
+                  ),
                   Spacer(),
-                  Icon(Icons.check_circle, color: AppTheme.emeraldGreen, size: 18),
+                  Icon(
+                    Icons.check_circle,
+                    color: AppTheme.emeraldGreen,
+                    size: 18,
+                  ),
                 ],
               ),
             ),
@@ -1080,12 +1483,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ElevatedButton.icon(
             onPressed: _toggleVoiceRecording,
             icon: Icon(_isRecordingVoice ? Icons.stop : Icons.mic),
-            label: Text(_isRecordingVoice ? 'Stop & Save Spark' : (_hasVoicePrompt ? 'Re-record Prompt' : 'Record Voice Prompt')),
+            label: Text(
+              _isRecordingVoice
+                  ? 'Stop & Save Spark'
+                  : (_hasVoicePrompt
+                        ? 'Re-record Prompt'
+                        : 'Record Voice Prompt'),
+            ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: _isRecordingVoice ? AppTheme.sparkCoral : AppTheme.electricViolet,
+              backgroundColor: _isRecordingVoice
+                  ? AppTheme.sparkCoral
+                  : AppTheme.electricViolet,
               foregroundColor: Colors.white,
               minimumSize: const Size(double.infinity, 44),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
         ],
@@ -1115,9 +1528,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Image.asset(
                   photo,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
+                  errorBuilder: (_, _, _) => Container(
                     color: AppTheme.bgInput,
-                    child: const Icon(Icons.person, color: AppTheme.textSecondary),
+                    child: const Icon(
+                      Icons.person,
+                      color: AppTheme.textSecondary,
+                    ),
                   ),
                 ),
                 Positioned(
@@ -1129,7 +1545,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: Colors.black54,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.check, size: 14, color: AppTheme.neonCyan),
+                    child: const Icon(
+                      Icons.check,
+                      size: 14,
+                      color: AppTheme.neonCyan,
+                    ),
                   ),
                 ),
                 if (index == 0)
@@ -1138,12 +1558,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     left: 0,
                     right: 0,
                     child: Container(
-                      color: AppTheme.sparkCoral.withOpacity(0.85),
+                      color: AppTheme.sparkCoral.withValues(alpha: 0.85),
                       padding: const EdgeInsets.symmetric(vertical: 2),
                       child: const Text(
                         'MAIN',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
@@ -1155,7 +1579,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return InkWell(
           onTap: () {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Select image from Gallery or Camera')),
+              const SnackBar(
+                content: Text('Select image from Gallery or Camera'),
+              ),
             );
           },
           borderRadius: BorderRadius.circular(14),
@@ -1164,16 +1590,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: AppTheme.bgSurface,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: AppTheme.neonCyan.withOpacity(0.25),
+                color: AppTheme.neonCyan.withValues(alpha: 0.25),
                 style: BorderStyle.solid,
               ),
             ),
             child: const Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.add_photo_alternate_outlined, color: AppTheme.neonCyan, size: 28),
+                Icon(
+                  Icons.add_photo_alternate_outlined,
+                  color: AppTheme.neonCyan,
+                  size: 28,
+                ),
                 SizedBox(height: 4),
-                Text('Add', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                Text(
+                  'Add',
+                  style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                ),
               ],
             ),
           ),
@@ -1184,10 +1617,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildAttributesCard() {
     final attributes = [
-      {'label': 'Archetype', 'val': '🌌 Night Owl Strategist', 'color': AppTheme.electricViolet},
-      {'label': 'Quest Rank', 'val': '🛡️ Platinum Explorer Lv. 7', 'color': AppTheme.questGold},
-      {'label': 'Dating Mode', 'val': '🔥 Serious Sparks & Escapades', 'color': AppTheme.sparkCoral},
-      {'label': 'Love Language', 'val': '✨ Quality Time & Co-op Gaming', 'color': AppTheme.neonCyan},
+      {
+        'label': 'Archetype',
+        'val': _userArchetype,
+        'color': AppTheme.electricViolet,
+      },
+      {
+        'label': 'Quest Rank',
+        'val': '🛡️ Platinum Explorer Lv. 7',
+        'color': AppTheme.questGold,
+      },
+      {
+        'label': 'Dating Mode',
+        'val': '🔥 Serious Sparks & Escapades',
+        'color': AppTheme.sparkCoral,
+      },
+      {
+        'label': 'Love Language',
+        'val': '✨ Quality Time & Co-op Gaming',
+        'color': AppTheme.neonCyan,
+      },
     ];
 
     return Container(
@@ -1195,7 +1644,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       decoration: BoxDecoration(
         color: AppTheme.bgSurface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.questGold.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.questGold.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: attributes.map((attr) {
@@ -1206,7 +1655,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 Text(
                   attr['label'] as String,
-                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                  style: const TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 13,
+                  ),
                 ),
                 Text(
                   attr['val'] as String,
@@ -1231,10 +1683,12 @@ class _LivenessVerificationModal extends StatefulWidget {
   const _LivenessVerificationModal({required this.onVerified});
 
   @override
-  State<_LivenessVerificationModal> createState() => _LivenessVerificationModalState();
+  State<_LivenessVerificationModal> createState() =>
+      _LivenessVerificationModalState();
 }
 
-class _LivenessVerificationModalState extends State<_LivenessVerificationModal> {
+class _LivenessVerificationModalState
+    extends State<_LivenessVerificationModal> {
   int _step = 0;
   bool _flash = false;
 
@@ -1291,12 +1745,16 @@ class _LivenessVerificationModalState extends State<_LivenessVerificationModal> 
               children: [
                 const Text(
                   '3D Anti-Catfish Scan',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimary,
+                  ),
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Icons.close, color: AppTheme.textDim),
-                )
+                ),
               ],
             ),
             const SizedBox(height: 20),
@@ -1308,13 +1766,10 @@ class _LivenessVerificationModalState extends State<_LivenessVerificationModal> 
               decoration: BoxDecoration(
                 color: AppTheme.bgCard,
                 borderRadius: BorderRadius.circular(140),
-                border: Border.all(
-                  color: AppTheme.neonCyan,
-                  width: 3,
-                ),
+                border: Border.all(color: AppTheme.neonCyan, width: 3),
                 boxShadow: [
                   BoxShadow(
-                    color: AppTheme.neonCyan.withOpacity(0.35),
+                    color: AppTheme.neonCyan.withValues(alpha: 0.35),
                     blurRadius: 20,
                     spreadRadius: 2,
                   ),
@@ -1323,21 +1778,25 @@ class _LivenessVerificationModalState extends State<_LivenessVerificationModal> 
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  Text(
-                    cur['icon']!,
-                    style: const TextStyle(fontSize: 80),
-                  ),
+                  Text(cur['icon']!, style: const TextStyle(fontSize: 80)),
                   Positioned(
                     top: 20,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black54,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         'Step ${_step + 1} of 3',
-                        style: const TextStyle(color: AppTheme.neonCyan, fontSize: 12, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          color: AppTheme.neonCyan,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -1348,13 +1807,20 @@ class _LivenessVerificationModalState extends State<_LivenessVerificationModal> 
             const SizedBox(height: 24),
             Text(
               cur['title']!,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textPrimary,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               cur['instruction']!,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+              style: const TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 14,
+              ),
             ),
             const SizedBox(height: 28),
 
@@ -1364,11 +1830,16 @@ class _LivenessVerificationModalState extends State<_LivenessVerificationModal> 
                 backgroundColor: AppTheme.neonCyan,
                 foregroundColor: Colors.black,
                 minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
               child: Text(
                 _step == 2 ? 'Complete Scan 📸' : 'Next Step ➜',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
             ),
           ],
