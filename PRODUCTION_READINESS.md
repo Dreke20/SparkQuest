@@ -48,12 +48,23 @@ This document outlines the architecture, security hardening, and deployment proc
 
 ### Phase 4: Release Pipeline & Build Automation
 1. **Gradle Release Signing**:
-   - Configured `signingConfigs.release` in [android/app/build.gradle](file:///c:/Users/dreke/OneDrive/Desktop/SparkQuest/SparkQuest-master/android/app/build.gradle) with environment variable support (`KEYSTORE_PATH`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`).
+   - Configured `signingConfigs.release` in [sparkquest_flutter/android/app/build.gradle.kts](file:///c:/Users/dreke/OneDrive/Desktop/SparkQuest/SparkQuest-master/sparkquest_flutter/android/app/build.gradle.kts) with `upload-keystore.jks`.
 2. **GitHub Actions CI/CD** ([.github/workflows/android-build.yml](file:///c:/Users/dreke/OneDrive/Desktop/SparkQuest/SparkQuest-master/.github/workflows/android-build.yml)):
-   - Automatically builds both:
-     - **Debug APK** (`app-debug.apk`) for immediate testing and direct installation.
-     - **Production Android App Bundle** (`app-release.aab`) required for submission to Google Play Console.
-   - Automatically decodes and signs with repository keystore secrets when configured.
+   - Automatically runs `flutter analyze`, `flutter test`, and builds both the signed Release APK (`app-release.apk`) and Google Play App Bundle (`app-release.aab`).
+
+---
+
+### Phases 5–12: Native Flutter v2.0 Top-Tier Dating App Upgrade (50 Improvements)
+1. **Phase 5 & 6 — Cloud Storage, Live Call Signaling & Web PWA**:
+   - Provisioned Supabase Storage buckets (`'avatars'`, `'stories'`, `'voice-notes'`) and live `public.call_signals` ringing/accept/decline flows in [supabase_service.dart](file:///c:/Users/dreke/OneDrive/Desktop/SparkQuest/SparkQuest-master/sparkquest_flutter/lib/services/supabase_service.dart).
+2. **Phase 7 — Rich Profiles & Discovery Power-Ups (#1–#16)**:
+   - Multi-photo story carousels, 18s playable voice prompts, music anthems, interactive 3-option poll prompts, Vitals & Intent badges, Standouts ✨ tab, Daily AI Fate Pairing, 2v2 Double-Date Party Queue, Free Tonight ⚡ filter, and Passport/Teleport Mode 🌍.
+3. **Phase 8 — Next-Gen Chat, AI Wingman & Co-Op Social (#17–#25)**:
+   - Double-tap & long-press emoji reactions (`❤️`, `🔥`, `😂`, `⚡`, `🙌`), quote-reply threading, `✓✓ Read` receipts, `⚡ Your Turn` badges, 72h match expiry + `+24h Extend`, context-aware AI Wingman chips, View-Once Snaps, and `"We Met IRL! (+50🔥)"` post-date check-ins.
+4. **Phase 9 — Real-World Map, Venue QR Perks & Crossed Paths (#26–#32)**:
+   - Safe Haven QR Pass (`SPARK-15`), 500m Map Privacy Blur shield, Weather-Smart Golden Hour suggestions, Crossed Paths ("Missed Connections") radar, community venue safety ratings, and Co-Op GPS check-ins.
+5. **Phases 10–12 — Fortress Safety, RPG Guilds, Ember Tavern & Scale (#33–#50)**:
+   - 7-Day Streak Calendar with Streak Freeze Shield, Ember Tavern Shop, Adventurer Interest Guilds (`public.guilds`), RPG Class Evolution Skill Tree, Campfire Snooze mode, Contact Exclusion Shield, Wingman Referrals (`SPARK-ALEX-100`), `nearby_profiles` geospatial RPC, and `public.analytics_events` telemetry.
 
 ---
 

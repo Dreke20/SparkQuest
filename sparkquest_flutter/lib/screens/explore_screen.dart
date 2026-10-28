@@ -156,6 +156,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
       targetId: top.id,
       direction: isRight ? 'right' : 'left',
     );
+    SupabaseService.instance.logAnalyticsEvent(
+      eventName: isRight ? 'spark_sent' : 'profile_passed',
+      properties: {'target_id': top.id, 'city': _teleportCity},
+    );
 
     if (isRight) {
       RealtimeChatService.instance.addMatchFromProfile(top);
@@ -299,28 +303,29 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
-                    children: [
-                      'Alex (Night Owl Strategist)',
-                      'Jordan (Maverick Bard)',
-                    ].map((w) {
-                      final active = selectedWingman == w;
-                      return ChoiceChip(
-                        label: Text(w),
-                        selected: active,
-                        selectedColor: AppTheme.neonCyan,
-                        backgroundColor: AppTheme.bgCard,
-                        labelStyle: TextStyle(
-                          color: active ? Colors.black : Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                        onSelected: (_) {
-                          HapticFeedback.selectionClick();
-                          StorageService.instance.savePartyWingman(w);
-                          setSheetState(() => selectedWingman = w);
-                        },
-                      );
-                    }).toList(),
+                    children:
+                        [
+                          'Alex (Night Owl Strategist)',
+                          'Jordan (Maverick Bard)',
+                        ].map((w) {
+                          final active = selectedWingman == w;
+                          return ChoiceChip(
+                            label: Text(w),
+                            selected: active,
+                            selectedColor: AppTheme.neonCyan,
+                            backgroundColor: AppTheme.bgCard,
+                            labelStyle: TextStyle(
+                              color: active ? Colors.black : Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                            onSelected: (_) {
+                              HapticFeedback.selectionClick();
+                              StorageService.instance.savePartyWingman(w);
+                              setSheetState(() => selectedWingman = w);
+                            },
+                          );
+                        }).toList(),
                   ),
                   const SizedBox(height: 16),
                   const Text(
@@ -415,7 +420,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                   '🛡️ 2v2 Party Invite! Me + $selectedWingman are down for: ${d['quest']}',
                                 );
                                 RealtimeChatService
-                                    .instance.pendingOpenMatchName = lead.name;
+                                        .instance
+                                        .pendingOpenMatchName =
+                                    lead.name;
                                 widget.onOpenChat();
                               },
                               icon: const Icon(Icons.bolt, size: 16),
@@ -802,19 +809,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: Colors.white24),
                       ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text('🔮 ', style: TextStyle(fontSize: 11)),
-                          Text(
-                            'Mystery Match',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 11.5,
-                            ),
-                          ),
-                        ],
+                      child: const Text(
+                        'Mystery Match',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11.5,
+                        ),
                       ),
                     ),
                   ),
@@ -842,7 +843,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         color: AppTheme.bgSurface,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: _activeVibe == 'All Vibes' &&
+                          color:
+                              _activeVibe == 'All Vibes' &&
                                   _teleportCity == 'San Francisco, CA'
                               ? Colors.white12
                               : AppTheme.neonCyan,
@@ -912,8 +914,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       ),
                     ),
                     GestureDetector(
-                      onTap: () =>
-                          setState(() => _dismissedFateBanner = true),
+                      onTap: () => setState(() => _dismissedFateBanner = true),
                       child: const Icon(
                         Icons.close,
                         size: 15,
@@ -988,7 +989,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           if (details.localPosition.dx < width / 2) {
                             _topCardPhotoIndex =
                                 (_topCardPhotoIndex - 1 + gallery.length) %
-                                    gallery.length;
+                                gallery.length;
                           } else {
                             _topCardPhotoIndex =
                                 (_topCardPhotoIndex + 1) % gallery.length;
@@ -1161,7 +1162,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                 p.name;
                             widget.onOpenChat();
                           },
-                          icon: const Text('🌹', style: TextStyle(fontSize: 12)),
+                          icon: const Text(
+                            '🌹',
+                            style: TextStyle(fontSize: 12),
+                          ),
                           label: const Text(
                             'Send Rose',
                             style: TextStyle(

@@ -20,7 +20,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('SPARKQUEST'), findsOneWidget);
-    expect(find.text('Mystery Match'), findsOneWidget);
+    expect(find.textContaining('Standouts'), findsOneWidget);
 
     // Navigate to Radar Map tab
     await tester.tap(find.text('Radar Map'));

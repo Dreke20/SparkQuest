@@ -319,3 +319,47 @@ CREATE TABLE IF NOT EXISTS public.call_signals (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- =========================================================
+-- Phases 7 to 12: Rich Profiles, Guilds, Telemetry & Geospatial RPC
+-- =========================================================
+CREATE TABLE IF NOT EXISTS public.guilds (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  member_count INT DEFAULT 100,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.analytics_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL DEFAULT 'user_me',
+  event_name TEXT NOT NULL,
+  properties JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE OR REPLACE FUNCTION public.nearby_profiles(
+  user_lat DOUBLE PRECISION DEFAULT 37.7749,
+  user_lng DOUBLE PRECISION DEFAULT -122.4194,
+  radius_miles DOUBLE PRECISION DEFAULT 25.0
+)
+RETURNS SETOF public.profiles
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT *
+  FROM public.profiles
+  WHERE (
+    3958.8 * acos(
+      LEAST(1.0, GREATEST(-1.0,
+        cos(radians(user_lat)) * cos(radians(COALESCE(lat, 37.7749))) *
+        cos(radians(COALESCE(lng, -122.4194)) - radians(user_lng)) +
+        sin(radians(user_lat)) * sin(radians(COALESCE(lat, 37.7749)))
+      ))
+    )
+  ) <= radius_miles
+  ORDER BY updated_at DESC
+  LIMIT 50;
+$$;
+
+

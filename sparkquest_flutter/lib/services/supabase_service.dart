@@ -551,4 +551,74 @@ class SupabaseService {
       return false;
     }
   }
+
+  // ==========================================
+  // PHASE 12: GUILDS, GEOSPATIAL RPC & TELEMETRY
+  // ==========================================
+
+  /// Fetch Adventurer Interest Guilds from `public.guilds`
+  Future<List<Map<String, dynamic>>> fetchGuilds() async {
+    try {
+      final uri = Uri.parse('$baseUrl/rest/v1/guilds?select=*&order=member_count.desc');
+      final request = await _httpClient.getUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(body);
+        if (decoded is List) {
+          return List<Map<String, dynamic>>.from(decoded);
+        }
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  /// Fetch proximity profiles via `nearby_profiles` geospatial RPC
+  Future<List<Map<String, dynamic>>> fetchNearbyProfiles({
+    double lat = 37.7749,
+    double lng = -122.4194,
+    double radiusMiles = 25.0,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/rest/v1/rpc/nearby_profiles');
+      final request = await _httpClient.postUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      request.write(jsonEncode({
+        'user_lat': lat,
+        'user_lng': lng,
+        'radius_miles': radiusMiles,
+      }));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(body);
+        if (decoded is List) {
+          return List<Map<String, dynamic>>.from(decoded);
+        }
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  /// Log product funnel telemetry event to `public.analytics_events`
+  Future<bool> logAnalyticsEvent({
+    required String eventName,
+    Map<String, dynamic> properties = const {},
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/rest/v1/analytics_events');
+      final request = await _httpClient.postUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      request.write(jsonEncode({
+        'user_id': currentUserId ?? 'user_me',
+        'event_name': eventName,
+        'properties': properties,
+      }));
+      final response = await request.close();
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
 }
