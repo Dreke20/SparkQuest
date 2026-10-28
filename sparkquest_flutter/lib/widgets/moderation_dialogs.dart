@@ -285,3 +285,161 @@ class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
   }
 }
 
+/// Phase 6: In-App Privacy Policy, Terms of Service & UGC Safety Guidelines
+class LegalCenterDialog extends StatefulWidget {
+  final int initialTab;
+  const LegalCenterDialog({super.key, this.initialTab = 0});
+
+  @override
+  State<LegalCenterDialog> createState() => _LegalCenterDialogState();
+}
+
+class _LegalCenterDialogState extends State<LegalCenterDialog> {
+  late int _selectedTab;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedTab = widget.initialTab;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tabs = ['Privacy Policy', 'Terms of Use', 'UGC Safety'];
+    return Dialog(
+      backgroundColor: AppTheme.bgSurface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: const BorderSide(color: AppTheme.neonCyan, width: 1.2),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.policy, color: AppTheme.neonCyan, size: 22),
+                    SizedBox(width: 8),
+                    Text(
+                      'Legal & Trust Center',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close, color: Colors.white70, size: 20),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: List.generate(tabs.length, (i) {
+                final active = _selectedTab == i;
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      setState(() => _selectedTab = i);
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: active ? AppTheme.electricViolet : AppTheme.bgCard,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: active ? AppTheme.neonCyan : Colors.white12,
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        tabs[i],
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: active ? FontWeight.bold : FontWeight.normal,
+                          color: active ? Colors.white : AppTheme.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(height: 14),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 280),
+              child: SingleChildScrollView(
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppTheme.bgCard,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white10),
+                  ),
+                  child: Text(
+                    _tabBody(_selectedTab),
+                    style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 12.5,
+                      height: 1.45,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.neonCyan,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  'Acknowledge & Close',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _tabBody(int index) {
+    if (index == 0) {
+      return 'SPARKQUEST PRIVACY POLICY (2026)\n\n'
+          '1. Data Collection & Purpose: We collect your profile name, age, bio, uploaded photos/voice notes (stored in encrypted Supabase Storage buckets), and approximate check-in coordinates to power Radar discovery and Co-Op Quests.\n\n'
+          '2. Comfort Blur & Liveness Privacy: Video calls start with Comfort Blur enabled by default. Liveness verification selfies are used solely for anti-catfish badge verification.\n\n'
+          '3. Right to Erasure (Account Deletion): You may permanently erase your account and all cloud records (profiles, matches, messages, stories, swipes, check-ins) at any time via Profile → Delete Account & Data (`delete_user_account` RPC).';
+    } else if (index == 1) {
+      return 'TERMS OF SERVICE & ELIGIBILITY\n\n'
+          '1. Age Requirement: You must be at least 18 years old to create a SparkQuest account.\n\n'
+          '2. Virtual Items (Embers & Spark Pass): Embers, Spotlight Boosts, and Spark Pass tiers are digital items licensed for in-app use via Google Play Billing.\n\n'
+          '3. Real-World Meetups: Always use Date Shield 2.0 Guardian tools, verify your match, and meet in public Safe Haven partner venues.';
+    } else {
+      return 'USER-GENERATED CONTENT (UGC) & SAFETY RULES\n\n'
+          '1. Zero Tolerance Policy: SparkQuest enforces zero tolerance for harassment, hate speech, non-consensual content, impersonation, or spam.\n\n'
+          '2. 1-Tap Reporting & Blocking: Every profile card and chat thread includes a Report & Block icon. Blocking immediately removes the user from your feed and chat list and logs a moderation record in `public.blocks` and `public.reports`.\n\n'
+          '3. 24-Hour Moderation SLA: Flagged content is reviewed and removed within 24 hours.';
+    }
+  }
+}
+
+

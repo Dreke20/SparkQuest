@@ -115,4 +115,22 @@ void main() {
     await RealtimeChatService.instance.endCallSignal();
     expect(RealtimeChatService.instance.callSignalState, 'ended');
   });
+
+  test('Profile.fromCloudMap parses Supabase Cloud profile rows cleanly', () {
+    final cloudProfile = Profile.fromCloudMap({
+      'user_id': 'user_kael',
+      'name': 'Kaelen Mercer',
+      'age': 28,
+      'city': 'San Francisco, CA',
+      'tags': ['Robotics', 'Espresso', 'Kayaking'],
+      'is_verified': true,
+      'voice_prompt_title': 'Geekiest obsession: Custom mechanical keyboards',
+    });
+
+    expect(cloudProfile.id, 'user_kael');
+    expect(cloudProfile.name, 'Kaelen Mercer');
+    expect(cloudProfile.age, 28);
+    expect(cloudProfile.isVerified, isTrue);
+    expect(cloudProfile.photoAsset, 'assets/images/alex.png');
+  });
 }

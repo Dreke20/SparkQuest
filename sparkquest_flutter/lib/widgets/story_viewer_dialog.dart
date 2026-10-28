@@ -6,6 +6,7 @@ class StoryViewerDialog extends StatefulWidget {
   final String matchName;
   final String photoAsset;
   final List<String> tags;
+  final String? customCaption;
   final Function(String replyText) onReplySent;
 
   const StoryViewerDialog({
@@ -13,6 +14,7 @@ class StoryViewerDialog extends StatefulWidget {
     required this.matchName,
     required this.photoAsset,
     required this.tags,
+    this.customCaption,
     required this.onReplySent,
   });
 
@@ -26,6 +28,9 @@ class _StoryViewerDialogState extends State<StoryViewerDialog>
   final TextEditingController _replyController = TextEditingController();
 
   String get _storyCaption {
+    if (widget.customCaption != null && widget.customCaption!.isNotEmpty) {
+      return widget.customCaption!;
+    }
     switch (widget.matchName.toLowerCase()) {
       case 'sophia':
         return 'Golden hour hike above the clouds 🏔️✨ Who’s joining next Sunday?';

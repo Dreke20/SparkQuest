@@ -4,7 +4,7 @@ Gamified RPG Social Discovery & Dating App built with Flutter, Supabase Cloud (`
 
 ---
 
-## 🚀 Complete 4-Phase Architecture
+## 🚀 Complete 6-Phase Architecture
 
 ### Phase 1: Persistence, Biometric Security & Realtime Chat
 - **Local Storage Persistence (`lib/services/storage_service.dart`)**: Persists Embers, daily streaks, PIN & biometric lock settings, Ghost/Incognito mode, blocked users, discovery filters, quest progress, and offline message caches via `shared_preferences`.
@@ -25,8 +25,18 @@ Gamified RPG Social Discovery & Dating App built with Flutter, Supabase Cloud (`
 - **Neon Night Community Raids (`lib/screens/map_screen.dart`)**: Map category filters (*All*, *Live Events*, *Safe Havens*, *Ember Drops*) and interactive Group Event RSVP & Check-In bottom sheets.
 
 ### Phase 4: Automated Verification & Release Build
-- **Widget & Service Unit Tests (`test/widget_test.dart`)**: Automated verification of 5-tab navigation, `QuestProgressionService`, `RealtimeChatService`, and `StorageService` moderation.
-- **Android Release Packaging**: Configured in `android/app/build.gradle.kts` for signed release APK and Play Store App Bundle builds.
+- **Widget & Service Unit Tests (`test/widget_test.dart`)**: Automated verification of 5-tab navigation, `QuestProgressionService`, `RealtimeChatService`, `StorageService` moderation, and Phase 5–6 cloud sync & call signaling.
+- **Android Release Packaging**: Configured in `android/app/build.gradle.kts` (`upload-keystore.jks` & `key.properties`) for signed release APK and Play Store App Bundle builds.
+
+### Phase 5: Supabase Storage Buckets, Live Call Signaling & Cloud Seed
+- **Supabase Storage Buckets (`avatars`, `stories`, `voice-notes`)**: Live binary media uploads via `SupabaseService.instance.uploadMediaBytes`, `uploadAssetToBucket`, and `uploadVoiceNoteBytes`.
+- **Realtime Call Signaling (`public.call_signals` & `IncomingCallDialog`)**: Live call invite ring state, Accept/Decline signaling, and Escape Call SOS ring simulation.
+- **Live Cloud Seed Data (`20261028050000_phase5_storage_and_seed.sql`)**: Starter cloud profiles, 24h stories, and San Francisco hotspot check-ins deployed to `kqvjntbiagzywstijtsz`.
+
+### Phase 6: Live Cloud Deck Sync, Legal & Trust Center & Web/PWA Build
+- **Live Cloud Deck & Story Sync (`Profile.fromCloudMap` & `ExploreScreen`)**: Automatically fetches remote profiles (`public.profiles`) and 24h story captions (`public.stories`) from Supabase Cloud and merges them into the Radar deck and Stories bar.
+- **In-App Legal & Trust Center (`LegalCenterDialog` in `lib/widgets/moderation_dialogs.dart`)**: 3-tab Privacy Policy, Terms of Service, and UGC Safety Rules accessible directly from Profile settings.
+- **Multi-Platform Release Builds**: Signed Android Release `.apk`, signed Google Play Store `.aab` bundle, and production Flutter Web / PWA bundle (`build/web`).
 
 ---
 
@@ -41,4 +51,10 @@ flutter test
 
 # Build production Android APK
 flutter build apk --release
+
+# Build signed Google Play Store App Bundle (.aab)
+flutter build appbundle --release
+
+# Build production Flutter Web / PWA bundle
+flutter build web --release
 ```

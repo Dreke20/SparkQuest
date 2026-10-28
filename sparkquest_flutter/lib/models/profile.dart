@@ -27,6 +27,49 @@ class Profile {
     this.voicePromptText = "My idea of the perfect Sunday morning 🌅",
   });
 
+  factory Profile.fromCloudMap(Map<String, dynamic> map) {
+    final rawId = (map['user_id'] ?? map['id'] ?? 'explorer').toString();
+    final rawName = (map['name'] ?? 'Explorer').toString();
+    final firstName = rawName.split(' ').first;
+    final lower = firstName.toLowerCase();
+
+    String resolvedAsset = 'assets/images/sophia.png';
+    if (lower.contains('maya')) {
+      resolvedAsset = 'assets/images/maya.png';
+    } else if (lower.contains('liam') || lower.contains('jordan')) {
+      resolvedAsset = 'assets/images/jordan.png';
+    } else if (lower.contains('chloe') || lower.contains('riley')) {
+      resolvedAsset = 'assets/images/riley.png';
+    } else if (lower.contains('zoe') || lower.contains('taylor')) {
+      resolvedAsset = 'assets/images/taylor.png';
+    } else if (lower.contains('kael') || lower.contains('alex')) {
+      resolvedAsset = 'assets/images/alex.png';
+    }
+
+    final rawTags = map['tags'];
+    final parsedTags = rawTags is List
+        ? rawTags.map((e) => e.toString()).toList()
+        : <String>['☕ Coffee', '🏔️ Hiking', '✨ Quests'];
+
+    return Profile(
+      id: rawId,
+      name: rawName,
+      age: (map['age'] is int) ? map['age'] as int : 25,
+      occupation: (map['city'] ?? 'San Francisco, CA').toString(),
+      distance: 'Cloud Synced ☁️',
+      photoAsset: resolvedAsset,
+      tags: parsedTags,
+      compatPct: 91,
+      compatLevel: 'high',
+      isVerified: map['is_verified'] == true,
+      hasVoicePrompt: true,
+      voicePromptText: (map['voice_prompt_title'] ??
+              map['bio'] ??
+              'My ideal first date...')
+          .toString(),
+    );
+  }
+
   static List<Profile> get seedProfiles => [
     const Profile(
       id: 'sophia',
