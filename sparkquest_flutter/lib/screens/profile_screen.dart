@@ -7,15 +7,19 @@ import '../widgets/spark_pass_dialog.dart';
 import '../widgets/auth_dialog.dart';
 import '../services/supabase_service.dart';
 import '../services/iap_service.dart';
+import '../services/storage_service.dart';
+import '../widgets/biometric_lock_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final int embers;
   final VoidCallback onOpenDateShield;
+  final VoidCallback? onTriggerLock;
 
   const ProfileScreen({
     super.key,
     required this.embers,
     required this.onOpenDateShield,
+    this.onTriggerLock,
   });
 
   @override
@@ -23,6 +27,9 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  bool _biometricEnabled = false;
+  bool _ghostModeEnabled = false;
+
   bool _isVerified = false;
   bool _isRecordingVoice = false;
   bool _hasVoicePrompt = false;
@@ -41,7 +48,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _biometricEnabled = StorageService.instance.isBiometricLockEnabled();
+    _ghostModeEnabled = StorageService.instance.isGhostMode();
+  }
+
+  @override
   void dispose() {
+
     _voiceTimer?.cancel();
     super.dispose();
   }
@@ -544,13 +559,144 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 12),
           _buildAttributesCard(),
 
+          const SizedBox(height: 24),
+
+          // Security & Privacy Settings
+
+          const Text(
+            'SECURITY & PRIVACY',
+            style: TextStyle(
+              fontSize: 12,
+              letterSpacing: 1.5,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.neonCyan,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildSecurityCard(),
+
           const SizedBox(height: 40),
         ],
       ),
     );
   }
 
+  Widget _buildSecurityCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.bgCard,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.security_rounded, color: AppTheme.neonCyan, size: 20),
+              const SizedBox(width: 8),
+              const Text('Device Security & Privacy', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildSecuritySwitchRow(
+            title: 'Biometric App Lock',
+            subtitle: 'Require Fingerprint / PIN to open app',
+            value: _biometricEnabled,
+            activeColor: AppTheme.neonCyan,
+            onChanged: (val) async {
+              HapticFeedback.selectionClick();
+              await StorageService.instance.setBiometricLockEnabled(val);
+              setState(() => _biometricEnabled = val);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(val ? '🔒 Biometric Lock Activated' : '🔓 Biometric Lock Disabled'),
+                    duration: const Duration(seconds: 2),
+                    backgroundColor: val ? const Color(0xFF10B981) : Colors.grey.shade800,
+                  ),
+                );
+              }
+            },
+          ),
+          const Divider(color: Colors.white10, height: 20),
+          _buildSecuritySwitchRow(
+            title: 'Ghost / Incognito Mode',
+            subtitle: 'Only visible to people you like',
+            value: _ghostModeEnabled,
+            activeColor: AppTheme.sparkCoral,
+            onChanged: (val) async {
+              HapticFeedback.selectionClick();
+              await StorageService.instance.setGhostMode(val);
+              setState(() => _ghostModeEnabled = val);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(val ? '👻 Ghost Mode Active: Hidden from public deck' : '✨ Ghost Mode Off: Visible to all nearby explorers'),
+                    duration: const Duration(seconds: 2),
+                    backgroundColor: val ? AppTheme.electricViolet : Colors.grey.shade800,
+                  ),
+                );
+              }
+            },
+          ),
+
+          const SizedBox(height: 10),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.bgInput,
+              foregroundColor: AppTheme.questGold,
+              minimumSize: const Size.fromHeight(42),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: AppTheme.questGold.withOpacity(0.4)),
+              ),
+            ),
+
+            onPressed: () {
+              HapticFeedback.heavyImpact();
+              widget.onTriggerLock?.call();
+            },
+            icon: const Icon(Icons.fingerprint, size: 18),
+            label: const Text('Lock App Now (Test Biometrics)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSecuritySwitchRow({
+    required String title,
+    required String subtitle,
+    required bool value,
+    required Color activeColor,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+              const SizedBox(height: 2),
+              Text(subtitle, style: const TextStyle(fontSize: 11, color: AppTheme.textDim)),
+            ],
+          ),
+        ),
+        Switch(
+          value: value,
+          activeColor: activeColor,
+          onChanged: onChanged,
+        ),
+      ],
+    );
+  }
+
   Widget _buildUserHeroCard() {
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(

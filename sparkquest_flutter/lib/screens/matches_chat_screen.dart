@@ -5,6 +5,8 @@ import '../theme/app_theme.dart';
 import '../widgets/vibe_radar_dialog.dart';
 import '../widgets/coop_quest_sheet.dart';
 import '../services/supabase_service.dart';
+import '../services/realtime_chat_service.dart';
+
 
 class MatchesChatScreen extends StatefulWidget {
   final VoidCallback onOpenDateShield;
@@ -157,7 +159,23 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _messages = List.from(widget.conversation.messages);
+    _messages = RealtimeChatService.instance.getMessages(widget.conversation.name, widget.conversation.messages);
+    RealtimeChatService.instance.addListener(_onChatUpdated);
+  }
+
+  @override
+  void dispose() {
+    RealtimeChatService.instance.removeListener(_onChatUpdated);
+    _msgController.dispose();
+    super.dispose();
+  }
+
+  void _onChatUpdated() {
+    if (mounted) {
+      setState(() {
+        _messages = RealtimeChatService.instance.getMessages(widget.conversation.name);
+      });
+    }
   }
 
   void _sendMessage([String? textToSend, bool isVoice = false]) {
@@ -165,14 +183,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     if (text.isEmpty) return;
 
     HapticFeedback.lightImpact();
-    setState(() {
-      _messages.add(ChatMessage(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        text: text,
-        time: 'Now',
-        isSentByMe: true,
-      ));
-    });
+    RealtimeChatService.instance.sendMessage(widget.conversation.name, text);
     _msgController.clear();
 
     SupabaseService.instance.sendMessage(
@@ -182,6 +193,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       isVoice: isVoice,
     );
   }
+
 
   void _openDateItinerary() {
     showModalBottomSheet(
@@ -255,25 +267,30 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: 0,
         title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             CircleAvatar(
-              radius: 18,
+              radius: 16,
               backgroundImage: AssetImage(widget.conversation.photoAsset),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(widget.conversation.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                const Text('🔥 Spark: Flowing Smoothly', style: TextStyle(fontSize: 11, color: AppTheme.neonCyan)),
+                Text(widget.conversation.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                const Text('🔥 Flowing', style: TextStyle(fontSize: 10, color: AppTheme.neonCyan)),
               ],
             ),
           ],
         ),
         actions: [
           IconButton(
-            icon: const Text('🤝', style: TextStyle(fontSize: 18)),
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(2),
+            icon: const Text('🤝', style: TextStyle(fontSize: 16)),
             tooltip: 'Co-Op Match Quest',
             onPressed: () {
               HapticFeedback.selectionClick();
@@ -296,7 +313,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.analytics_outlined, color: AppTheme.neonCyan),
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(2),
+            icon: const Icon(Icons.analytics_outlined, color: AppTheme.neonCyan, size: 20),
             tooltip: '6-Axis Vibe Radar',
             onPressed: () => showDialog(
               context: context,
@@ -304,17 +323,23 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.map_outlined, color: AppTheme.questGold),
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(2),
+            icon: const Icon(Icons.map_outlined, color: AppTheme.questGold, size: 20),
             tooltip: 'Plan Date Quest',
             onPressed: _openDateItinerary,
           ),
           IconButton(
-            icon: const Icon(Icons.shield_outlined, color: AppTheme.neonCyan),
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(2),
+            icon: const Icon(Icons.shield_outlined, color: AppTheme.neonCyan, size: 20),
             tooltip: 'Date Shield',
             onPressed: widget.onOpenDateShield,
           ),
+          const SizedBox(width: 4),
         ],
       ),
+
       body: Column(
         children: [
           // Dynamic Vibe Heatmeter Bar
@@ -435,7 +460,31 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               },
             ),
           ),
+          if (RealtimeChatService.instance.isTyping(widget.conversation.name))
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.bgCard,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppTheme.neonCyan.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('${widget.conversation.name} is typing', style: const TextStyle(fontSize: 11, color: AppTheme.neonCyan)),
+                      const SizedBox(width: 4),
+                      const Text('💬', style: TextStyle(fontSize: 11)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           // Sparky AI Wingman Suggestions Chips
+
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             color: AppTheme.bgDeep,
