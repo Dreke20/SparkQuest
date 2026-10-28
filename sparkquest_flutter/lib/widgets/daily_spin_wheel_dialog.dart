@@ -1,6 +1,8 @@
 import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
+
 import '../theme/app_theme.dart';
 
 class DailySpinWheelDialog extends StatefulWidget {
@@ -12,7 +14,8 @@ class DailySpinWheelDialog extends StatefulWidget {
   State<DailySpinWheelDialog> createState() => _DailySpinWheelDialogState();
 }
 
-class _DailySpinWheelDialogState extends State<DailySpinWheelDialog> with SingleTickerProviderStateMixin {
+class _DailySpinWheelDialogState extends State<DailySpinWheelDialog>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
   late ConfettiController _confettiController;
@@ -22,25 +25,65 @@ class _DailySpinWheelDialogState extends State<DailySpinWheelDialog> with Single
 
   final List<Map<String, dynamic>> _slices = [
     {'label': '✦ 50', 'icon': '✦', 'color': Color(0xFF1E293B), 'reward': 50},
-    {'label': '🔥 Boost', 'icon': '🔥', 'color': AppTheme.sparkCoral, 'reward': 75},
-    {'label': '💎 150', 'icon': '💎', 'color': AppTheme.neonCyan, 'reward': 150},
-    {'label': '⭐ 2x Super', 'icon': '⭐', 'color': AppTheme.questGold, 'reward': 100},
-    {'label': '🛡️ Shield', 'icon': '🛡️', 'color': AppTheme.electricViolet, 'reward': 80},
-    {'label': '✦ 100', 'icon': '✦', 'color': AppTheme.emeraldGreen, 'reward': 100},
-    {'label': '🎁 2x Day', 'icon': '🎁', 'color': Color(0xFFE11D48), 'reward': 120},
-    {'label': '👑 Crown', 'icon': '👑', 'color': Color(0xFFF59E0B), 'reward': 200},
+    {
+      'label': '🔥 Boost',
+      'icon': '🔥',
+      'color': AppTheme.sparkCoral,
+      'reward': 75,
+    },
+    {
+      'label': '💎 150',
+      'icon': '💎',
+      'color': AppTheme.neonCyan,
+      'reward': 150,
+    },
+    {
+      'label': '⭐ 2x Super',
+      'icon': '⭐',
+      'color': AppTheme.questGold,
+      'reward': 100,
+    },
+    {
+      'label': '🛡️ Shield',
+      'icon': '🛡️',
+      'color': AppTheme.electricViolet,
+      'reward': 80,
+    },
+    {
+      'label': '✦ 100',
+      'icon': '✦',
+      'color': AppTheme.emeraldGreen,
+      'reward': 100,
+    },
+    {
+      'label': '🎁 2x Day',
+      'icon': '🎁',
+      'color': Color(0xFFE11D48),
+      'reward': 120,
+    },
+    {
+      'label': '👑 Crown',
+      'icon': '👑',
+      'color': Color(0xFFF59E0B),
+      'reward': 200,
+    },
   ];
 
   @override
   void initState() {
     super.initState();
-    _confettiController = ConfettiController(duration: const Duration(seconds: 2));
+    _confettiController = ConfettiController(
+      duration: const Duration(seconds: 2),
+    );
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 3800),
     );
 
-    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
+    _animation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    );
   }
 
   @override
@@ -61,19 +104,24 @@ class _DailySpinWheelDialogState extends State<DailySpinWheelDialog> with Single
     final targetIndex = Random().nextInt(_slices.length);
     final sliceAngle = (2 * pi) / _slices.length;
     // Pointer is at the top (angle 3*pi/2 or -pi/2)
-    final targetOffset = (3 * pi / 2) - (targetIndex * sliceAngle + sliceAngle / 2);
+    final targetOffset =
+        (3 * pi / 2) - (targetIndex * sliceAngle + sliceAngle / 2);
     final extraSpins = (5 + Random().nextInt(3)) * 2 * pi;
-    final endAngle = _currentAngle + extraSpins + (targetOffset - (_currentAngle % (2 * pi)));
+    final endAngle =
+        _currentAngle +
+        extraSpins +
+        (targetOffset - (_currentAngle % (2 * pi)));
 
     final startAngle = _currentAngle;
 
-    _animation = Tween<double>(begin: startAngle, end: endAngle).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
-    )..addListener(() {
-        setState(() {
-          _currentAngle = _animation.value;
+    _animation =
+        Tween<double>(begin: startAngle, end: endAngle).animate(
+          CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+        )..addListener(() {
+          setState(() {
+            _currentAngle = _animation.value;
+          });
         });
-      });
 
     _controller.forward(from: 0).then((_) {
       final winningSlice = _slices[targetIndex];
@@ -84,7 +132,7 @@ class _DailySpinWheelDialogState extends State<DailySpinWheelDialog> with Single
 
       setState(() {
         _isSpinning = false;
-        _resultText = '🎉 You won ${winningSlice['label']}! (+${reward} Embers)';
+        _resultText = '🎉 You won ${winningSlice['label']}! (+$reward Embers)';
       });
     });
   }
@@ -101,17 +149,23 @@ class _DailySpinWheelDialogState extends State<DailySpinWheelDialog> with Single
             confettiController: _confettiController,
             blastDirectionality: BlastDirectionality.explosive,
             shouldLoop: false,
-            colors: const [AppTheme.questGold, AppTheme.sparkCoral, AppTheme.neonCyan],
+            colors: const [
+              AppTheme.questGold,
+              AppTheme.sparkCoral,
+              AppTheme.neonCyan,
+            ],
           ),
           Container(
             padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
               color: AppTheme.bgSurface,
               borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: AppTheme.neonCyan.withOpacity(0.4)),
+              border: Border.all(
+                color: AppTheme.neonCyan.withValues(alpha: 0.4),
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: AppTheme.neonCyan.withOpacity(0.2),
+                  color: AppTheme.neonCyan.withValues(alpha: 0.2),
                   blurRadius: 30,
                   spreadRadius: 2,
                 ),
@@ -140,7 +194,7 @@ class _DailySpinWheelDialogState extends State<DailySpinWheelDialog> with Single
                     IconButton(
                       icon: const Icon(Icons.close, color: AppTheme.textDim),
                       onPressed: () => Navigator.pop(context),
-                    )
+                    ),
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -185,15 +239,25 @@ class _DailySpinWheelDialogState extends State<DailySpinWheelDialog> with Single
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: AppTheme.bgDeep,
-                          border: Border.all(color: AppTheme.neonCyan, width: 2),
+                          border: Border.all(
+                            color: AppTheme.neonCyan,
+                            width: 2,
+                          ),
                           boxShadow: [
-                            BoxShadow(color: AppTheme.neonCyan.withOpacity(0.6), blurRadius: 10),
+                            BoxShadow(
+                              color: AppTheme.neonCyan.withValues(alpha: 0.6),
+                              blurRadius: 10,
+                            ),
                           ],
                         ),
                         child: const Center(
                           child: Text(
                             '✦',
-                            style: TextStyle(color: AppTheme.questGold, fontWeight: FontWeight.bold, fontSize: 16),
+                            style: TextStyle(
+                              color: AppTheme.questGold,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           ),
                         ),
                       ),
@@ -210,11 +274,17 @@ class _DailySpinWheelDialogState extends State<DailySpinWheelDialog> with Single
                     backgroundColor: AppTheme.sparkCoral,
                     foregroundColor: Colors.white,
                     minimumSize: const Size(double.infinity, 48),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                   child: Text(
                     _isSpinning ? 'SPINNING...' : 'SPIN FOR FREE 🎯',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, letterSpacing: 1),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      letterSpacing: 1,
+                    ),
                   ),
                 ),
               ],

@@ -1,6 +1,8 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import '../theme/app_theme.dart';
 import 'explore_screen.dart';
 import 'map_screen.dart';
@@ -13,6 +15,7 @@ import '../widgets/spark_pass_dialog.dart';
 import '../services/iap_service.dart';
 import '../services/storage_service.dart';
 import '../services/realtime_chat_service.dart';
+import '../services/quest_progression_service.dart';
 import '../widgets/notification_banner.dart';
 import '../widgets/biometric_lock_screen.dart';
 
@@ -70,7 +73,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     StorageService.instance.saveEmbers(_embers);
   }
 
-
   void _openDateShieldModal() {
     showModalBottomSheet(
       context: context,
@@ -84,7 +86,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           Navigator.pop(ctx);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('📞 Emergency call triggered! Phone ringing in 10s...'),
+              content: Text(
+                '📞 Emergency call triggered! Phone ringing in 10s...',
+              ),
               backgroundColor: AppTheme.sparkCoral,
             ),
           );
@@ -101,7 +105,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
         title: const Row(
           children: [
-            Text('✦ Spark Embers Vault', style: TextStyle(color: AppTheme.questGold, fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(
+              '✦ Spark Embers Vault',
+              style: TextStyle(
+                color: AppTheme.questGold,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
         content: SingleChildScrollView(
@@ -109,69 +120,113 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Your Balance: $_embers Embers', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text(
+                'Your Balance: $_embers Embers',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
               const SizedBox(height: 6),
               const Text(
                 'Use Embers to Superlike, unlock radar scan boosts, and reveal mystery blind-date clues.',
                 style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
               ),
               const SizedBox(height: 14),
-              _storeOption('🎁 Daily Spark Grant', 'Free daily reward', 'FREE', () {
-                _addEmbers(25);
-                Navigator.pop(ctx);
-                HapticFeedback.lightImpact();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('🎁 +25 Free Embers claimed for today!'),
-                    backgroundColor: Color(0xFF10B981),
-                  ),
-                );
-              }),
-              const SizedBox(height: 8),
-              _storeOption('💎 100 Embers Pouch', 'Google Play In-App Purchase', '\$1.99', () async {
-                Navigator.pop(ctx);
-                HapticFeedback.heavyImpact();
-                final p = IAPService.instance.products.firstWhere((prod) => prod.id == 'sparkquest_embers_100');
-                await IAPService.instance.purchase(p, onEmbersAdded: _addEmbers);
-                if (mounted) {
+              _storeOption(
+                '🎁 Daily Spark Grant',
+                'Free daily reward',
+                'FREE',
+                () {
+                  _addEmbers(25);
+                  Navigator.pop(ctx);
+                  HapticFeedback.lightImpact();
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('💎 Purchase Successful! +100 Embers added to vault.'),
-                      backgroundColor: AppTheme.questGold,
+                      content: Text('🎁 +25 Free Embers claimed for today!'),
+                      backgroundColor: Color(0xFF10B981),
                     ),
                   );
-                }
-              }),
+                },
+              ),
               const SizedBox(height: 8),
-              _storeOption('🔥 500 Embers Chest', '20% Bonus included • Best value', '\$6.99', () async {
-                Navigator.pop(ctx);
-                HapticFeedback.heavyImpact();
-                final p = IAPService.instance.products.firstWhere((prod) => prod.id == 'sparkquest_embers_500');
-                await IAPService.instance.purchase(p, onEmbersAdded: _addEmbers);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('🔥 Purchase Successful! +500 Embers added to vault.'),
-                      backgroundColor: AppTheme.sparkCoral,
-                    ),
+              _storeOption(
+                '💎 100 Embers Pouch',
+                'Google Play In-App Purchase',
+                '\$1.99',
+                () async {
+                  Navigator.pop(ctx);
+                  HapticFeedback.heavyImpact();
+                  final p = IAPService.instance.products.firstWhere(
+                    (prod) => prod.id == 'sparkquest_embers_100',
                   );
-                }
-              }),
+                  await IAPService.instance.purchase(
+                    p,
+                    onEmbersAdded: _addEmbers,
+                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          '💎 Purchase Successful! +100 Embers added to vault.',
+                        ),
+                        backgroundColor: AppTheme.questGold,
+                      ),
+                    );
+                  }
+                },
+              ),
               const SizedBox(height: 8),
-              _storeOption('⚡ 30m Spotlight Boost', 'Top deck placement for 30 mins', '\$2.99', () async {
-                Navigator.pop(ctx);
-                HapticFeedback.heavyImpact();
-                final p = IAPService.instance.products.firstWhere((prod) => prod.id == 'sparkquest_spotlight_boost');
-                await IAPService.instance.purchase(p);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('⚡ Spotlight Boost Active! You are now featured locally.'),
-                      backgroundColor: Color(0xFFF59E0B),
-                    ),
+              _storeOption(
+                '🔥 500 Embers Chest',
+                '20% Bonus included • Best value',
+                '\$6.99',
+                () async {
+                  Navigator.pop(ctx);
+                  HapticFeedback.heavyImpact();
+                  final p = IAPService.instance.products.firstWhere(
+                    (prod) => prod.id == 'sparkquest_embers_500',
                   );
-                }
-              }),
+                  await IAPService.instance.purchase(
+                    p,
+                    onEmbersAdded: _addEmbers,
+                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          '🔥 Purchase Successful! +500 Embers added to vault.',
+                        ),
+                        backgroundColor: AppTheme.sparkCoral,
+                      ),
+                    );
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
+              _storeOption(
+                '⚡ 30m Spotlight Boost',
+                'Top deck placement for 30 mins',
+                '\$2.99',
+                () async {
+                  Navigator.pop(ctx);
+                  HapticFeedback.heavyImpact();
+                  final p = IAPService.instance.products.firstWhere(
+                    (prod) => prod.id == 'sparkquest_spotlight_boost',
+                  );
+                  await IAPService.instance.purchase(p);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          '⚡ Spotlight Boost Active! You are now featured locally.',
+                        ),
+                        backgroundColor: Color(0xFFF59E0B),
+                      ),
+                    );
+                  }
+                },
+              ),
             ],
           ),
         ),
@@ -182,22 +237,37 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               await IAPService.instance.restorePurchases();
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('🔄 Google Play purchases restored successfully.')),
+                  const SnackBar(
+                    content: Text(
+                      '🔄 Google Play purchases restored successfully.',
+                    ),
+                  ),
                 );
               }
             },
-            child: const Text('Restore Purchases', style: TextStyle(color: AppTheme.textDim, fontSize: 11)),
+            child: const Text(
+              'Restore Purchases',
+              style: TextStyle(color: AppTheme.textDim, fontSize: 11),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close', style: TextStyle(color: AppTheme.textDim)),
-          )
+            child: const Text(
+              'Close',
+              style: TextStyle(color: AppTheme.textDim),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _storeOption(String title, String subtitle, String price, VoidCallback onTap) {
+  Widget _storeOption(
+    String title,
+    String subtitle,
+    String price,
+    VoidCallback onTap,
+  ) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
@@ -206,7 +276,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         decoration: BoxDecoration(
           color: AppTheme.bgInput,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppTheme.questGold.withOpacity(0.3)),
+          border: Border.all(color: AppTheme.questGold.withValues(alpha: 0.3)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -215,20 +285,37 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary, fontSize: 13)),
-                  Text(subtitle, style: const TextStyle(fontSize: 10, color: AppTheme.textDim)),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimary,
+                      fontSize: 13,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: AppTheme.textDim,
+                    ),
+                  ),
                 ],
               ),
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: AppTheme.questGold.withOpacity(0.2),
+                color: AppTheme.questGold.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 price,
-                style: const TextStyle(color: AppTheme.questGold, fontWeight: FontWeight.bold, fontSize: 11),
+                style: const TextStyle(
+                  color: AppTheme.questGold,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                ),
               ),
             ),
           ],
@@ -242,13 +329,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final screens = [
       ExploreScreen(
         onEmbersEarned: () => _addEmbers(15),
+        onBonusEmbers: _addEmbers,
         onOpenChat: () => setState(() => _currentIndex = 2),
       ),
-      MapScreen(
-        onEmberFound: () => _addEmbers(50),
-      ),
+      MapScreen(onEmberFound: () => _addEmbers(50)),
       MatchesChatScreen(
         onOpenDateShield: _openDateShieldModal,
+        onAwardEmbers: _addEmbers,
       ),
       QuestsScreen(
         streakDays: _streakDays,
@@ -259,7 +346,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         onOpenDateShield: _openDateShieldModal,
         onTriggerLock: () => setState(() => _isAppLocked = true),
       ),
-
     ];
 
     return Scaffold(
@@ -293,13 +379,22 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               margin: const EdgeInsets.symmetric(vertical: 12),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: AppTheme.questGold.withOpacity(0.18),
+                color: AppTheme.questGold.withValues(alpha: 0.18),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppTheme.questGold.withOpacity(0.5)),
+                border: Border.all(
+                  color: AppTheme.questGold.withValues(alpha: 0.5),
+                ),
               ),
               child: Row(
                 children: [
-                  const Text('✦ ', style: TextStyle(color: AppTheme.questGold, fontSize: 12, fontWeight: FontWeight.bold)),
+                  const Text(
+                    '✦ ',
+                    style: TextStyle(
+                      color: AppTheme.questGold,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   Text(
                     '$_embers',
                     style: const TextStyle(
@@ -323,12 +418,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               showDialog(
                 context: context,
                 builder: (ctx) => SparkPassDialog(
-                  currentXP: 450,
+                  currentXP: QuestProgressionService.instance.seasonXp,
                   onRewardClaimed: (val) {
                     _addEmbers(val);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('🎉 +$val Embers unlocked from Spark Pass!'),
+                        content: Text(
+                          '🎉 +$val Embers unlocked from Spark Pass!',
+                        ),
                         backgroundColor: AppTheme.questGold,
                       ),
                     );
@@ -380,10 +477,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       ),
       body: Stack(
         children: [
-          IndexedStack(
-            index: _currentIndex,
-            children: screens,
-          ),
+          IndexedStack(index: _currentIndex, children: screens),
           if (_notificationSender != null && _notificationText != null)
             NotificationBanner(
               sender: _notificationSender!,
@@ -416,7 +510,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           color: AppTheme.bgSurface,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.4),
+              color: Colors.black.withValues(alpha: 0.4),
               blurRadius: 16,
               offset: const Offset(0, -4),
             ),
@@ -520,7 +614,9 @@ class _DateShieldBottomSheet extends StatelessWidget {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('📍 Live GPS link copied to clipboard and sent to emergency contact!'),
+                    content: Text(
+                      '📍 Live GPS link copied to clipboard and sent to emergency contact!',
+                    ),
                     backgroundColor: AppTheme.emeraldGreen,
                   ),
                 );
@@ -536,7 +632,9 @@ class _DateShieldBottomSheet extends StatelessWidget {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('⏰ Safety Check-in Timer set for 30 minutes.'),
+                    content: Text(
+                      '⏰ Safety Check-in Timer set for 30 minutes.',
+                    ),
                     backgroundColor: AppTheme.questGold,
                   ),
                 );
@@ -564,14 +662,14 @@ class _DateShieldBottomSheet extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppTheme.bgCard,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.35)),
+          border: Border.all(color: color.withValues(alpha: 0.35)),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.18),
+                color: color.withValues(alpha: 0.18),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: color, size: 22),
@@ -581,9 +679,22 @@ class _DateShieldBottomSheet extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary)),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
                 ],
               ),
             ),

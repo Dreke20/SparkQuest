@@ -35,9 +35,9 @@ class MatchConversation {
   final String id;
   final String name;
   final String photoAsset;
-  final String lastMessage;
-  final String time;
-  final int unreadCount;
+  String lastMessage;
+  String time;
+  int unreadCount;
   final List<String> tags;
   final List<ChatMessage> messages;
 
@@ -51,6 +51,31 @@ class MatchConversation {
     required this.tags,
     required this.messages,
   });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'photoAsset': photoAsset,
+        'lastMessage': lastMessage,
+        'time': time,
+        'unreadCount': unreadCount,
+        'tags': tags,
+        'messages': messages.map((m) => m.toJson()).toList(),
+      };
+
+  factory MatchConversation.fromJson(Map<String, dynamic> json) =>
+      MatchConversation(
+        id: json['id'] ?? '',
+        name: json['name'] ?? '',
+        photoAsset: json['photoAsset'] ?? 'assets/images/sophia.png',
+        lastMessage: json['lastMessage'] ?? 'New Spark! Say hello ✨',
+        time: json['time'] ?? 'Just now',
+        unreadCount: json['unreadCount'] ?? 1,
+        tags: List<String>.from(json['tags'] ?? []),
+        messages: (json['messages'] as List? ?? [])
+            .map((e) => ChatMessage.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
+      );
 
   static List<MatchConversation> get seedConversations => [
     MatchConversation(

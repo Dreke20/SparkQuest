@@ -73,6 +73,7 @@ class _AuthDialogState extends State<AuthDialog> with SingleTickerProviderStateM
     HapticFeedback.mediumImpact();
     setState(() => _isLoading = true);
     final res = await SupabaseService.instance.verifyPhoneOtp(_phoneController.text, code);
+    if (!mounted) return;
     setState(() => _isLoading = false);
 
     if (res != null) {
@@ -93,6 +94,7 @@ class _AuthDialogState extends State<AuthDialog> with SingleTickerProviderStateM
     HapticFeedback.mediumImpact();
     setState(() => _isLoading = true);
     final res = await SupabaseService.instance.signInWithGoogleToken('google_mock_id_token_2026');
+    if (!mounted) return;
     setState(() => _isLoading = false);
 
     if (res != null) {

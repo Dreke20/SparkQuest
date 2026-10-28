@@ -1,6 +1,8 @@
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
+
 import '../models/profile.dart';
 import '../theme/app_theme.dart';
 
@@ -15,7 +17,8 @@ class MysteryBlindMatchDialog extends StatefulWidget {
   });
 
   @override
-  State<MysteryBlindMatchDialog> createState() => _MysteryBlindMatchDialogState();
+  State<MysteryBlindMatchDialog> createState() =>
+      _MysteryBlindMatchDialogState();
 }
 
 class _MysteryBlindMatchDialogState extends State<MysteryBlindMatchDialog> {
@@ -50,7 +53,9 @@ class _MysteryBlindMatchDialogState extends State<MysteryBlindMatchDialog> {
   @override
   void initState() {
     super.initState();
-    _confettiController = ConfettiController(duration: const Duration(seconds: 2));
+    _confettiController = ConfettiController(
+      duration: const Duration(seconds: 2),
+    );
     _mysteryProfile = Profile.seedProfiles.first; // Sophia
   }
 
@@ -96,17 +101,23 @@ class _MysteryBlindMatchDialogState extends State<MysteryBlindMatchDialog> {
             confettiController: _confettiController,
             blastDirectionality: BlastDirectionality.explosive,
             shouldLoop: false,
-            colors: const [AppTheme.questGold, AppTheme.sparkCoral, AppTheme.neonCyan],
+            colors: const [
+              AppTheme.questGold,
+              AppTheme.sparkCoral,
+              AppTheme.neonCyan,
+            ],
           ),
           Container(
             padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
               color: AppTheme.bgSurface,
               borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: AppTheme.electricViolet.withOpacity(0.5)),
+              border: Border.all(
+                color: AppTheme.electricViolet.withValues(alpha: 0.5),
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: AppTheme.electricViolet.withOpacity(0.3),
+                  color: AppTheme.electricViolet.withValues(alpha: 0.3),
                   blurRadius: 30,
                   spreadRadius: 2,
                 ),
@@ -119,18 +130,27 @@ class _MysteryBlindMatchDialogState extends State<MysteryBlindMatchDialog> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: AppTheme.electricViolet.withOpacity(0.2),
+                        color: AppTheme.electricViolet.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppTheme.electricViolet.withOpacity(0.4)),
+                        border: Border.all(
+                          color: AppTheme.electricViolet.withValues(alpha: 0.4),
+                        ),
                       ),
                       child: const Row(
                         children: [
                           Text('🔮 ', style: TextStyle(fontSize: 14)),
                           Text(
                             'MYSTERY BLIND MATCH',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.neonCyan),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.neonCyan,
+                            ),
                           ),
                         ],
                       ),
@@ -138,7 +158,7 @@ class _MysteryBlindMatchDialogState extends State<MysteryBlindMatchDialog> {
                     IconButton(
                       icon: const Icon(Icons.close, color: AppTheme.textDim),
                       onPressed: () => Navigator.pop(context),
-                    )
+                    ),
                   ],
                 ),
                 const SizedBox(height: 14),
@@ -149,10 +169,19 @@ class _MysteryBlindMatchDialogState extends State<MysteryBlindMatchDialog> {
                   height: 130,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: _revealed ? AppTheme.neonCyan : AppTheme.electricViolet, width: 2),
+                    border: Border.all(
+                      color: _revealed
+                          ? AppTheme.neonCyan
+                          : AppTheme.electricViolet,
+                      width: 2,
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: (_revealed ? AppTheme.neonCyan : AppTheme.electricViolet).withOpacity(0.4),
+                        color:
+                            (_revealed
+                                    ? AppTheme.neonCyan
+                                    : AppTheme.electricViolet)
+                                .withValues(alpha: 0.4),
                         blurRadius: 20,
                       ),
                     ],
@@ -163,7 +192,10 @@ class _MysteryBlindMatchDialogState extends State<MysteryBlindMatchDialog> {
                       fit: StackFit.expand,
                       children: [
                         ImageFiltered(
-                          imageFilter: ImageFilter.blur(sigmaX: _blurSigma, sigmaY: _blurSigma),
+                          imageFilter: ImageFilter.blur(
+                            sigmaX: _blurSigma,
+                            sigmaY: _blurSigma,
+                          ),
                           child: Image.asset(
                             _mysteryProfile.photoAsset,
                             fit: BoxFit.cover,
@@ -183,13 +215,21 @@ class _MysteryBlindMatchDialogState extends State<MysteryBlindMatchDialog> {
                 if (!_revealed) ...[
                   Text(
                     'Question ${_step + 1} of 3',
-                    style: const TextStyle(color: AppTheme.neonCyan, fontSize: 12, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      color: AppTheme.neonCyan,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     cur['q'] as String,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimary,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
@@ -198,10 +238,17 @@ class _MysteryBlindMatchDialogState extends State<MysteryBlindMatchDialog> {
                       backgroundColor: AppTheme.bgCard,
                       foregroundColor: AppTheme.textPrimary,
                       minimumSize: const Size(double.infinity, 44),
-                      side: BorderSide(color: AppTheme.neonCyan.withOpacity(0.3)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      side: BorderSide(
+                        color: AppTheme.neonCyan.withValues(alpha: 0.3),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
-                    child: Text(cur['optA'] as String, style: const TextStyle(fontSize: 13)),
+                    child: Text(
+                      cur['optA'] as String,
+                      style: const TextStyle(fontSize: 13),
+                    ),
                   ),
                   const SizedBox(height: 10),
                   ElevatedButton(
@@ -210,20 +257,35 @@ class _MysteryBlindMatchDialogState extends State<MysteryBlindMatchDialog> {
                       backgroundColor: AppTheme.bgCard,
                       foregroundColor: AppTheme.textPrimary,
                       minimumSize: const Size(double.infinity, 44),
-                      side: BorderSide(color: AppTheme.sparkCoral.withOpacity(0.3)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      side: BorderSide(
+                        color: AppTheme.sparkCoral.withValues(alpha: 0.3),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
-                    child: Text(cur['optB'] as String, style: const TextStyle(fontSize: 13)),
+                    child: Text(
+                      cur['optB'] as String,
+                      style: const TextStyle(fontSize: 13),
+                    ),
                   ),
                 ] else ...[
                   Text(
                     '${_mysteryProfile.name}, ${_mysteryProfile.age}',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimary,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     '${_mysteryProfile.occupation} • ${(_score > 0 ? _score : _mysteryProfile.compatPct)}% Chemistry!',
-                    style: const TextStyle(fontSize: 13, color: AppTheme.emeraldGreen, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppTheme.emeraldGreen,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 14),
                   Container(
@@ -235,7 +297,10 @@ class _MysteryBlindMatchDialogState extends State<MysteryBlindMatchDialog> {
                     child: const Text(
                       '🎉 Mutual resonance unlocked! You both chose spontaneous city escapades & hidden speakeasies.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -246,7 +311,9 @@ class _MysteryBlindMatchDialogState extends State<MysteryBlindMatchDialog> {
                       backgroundColor: AppTheme.sparkCoral,
                       foregroundColor: Colors.white,
                       minimumSize: const Size(double.infinity, 48),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                     onPressed: () {
                       Navigator.pop(context);

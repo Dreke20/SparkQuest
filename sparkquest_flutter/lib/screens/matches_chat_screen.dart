@@ -1,39 +1,107 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import '../models/chat_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/vibe_radar_dialog.dart';
 import '../widgets/coop_quest_sheet.dart';
+import '../widgets/icebreaker_games_sheet.dart';
+import '../widgets/video_call_screen.dart';
+import '../widgets/story_viewer_dialog.dart';
+import '../widgets/moderation_dialogs.dart';
 import '../services/supabase_service.dart';
 import '../services/realtime_chat_service.dart';
 
-
 class MatchesChatScreen extends StatefulWidget {
   final VoidCallback onOpenDateShield;
+  final Function(int embers)? onAwardEmbers;
 
-  const MatchesChatScreen({super.key, required this.onOpenDateShield});
+  const MatchesChatScreen({
+    super.key,
+    required this.onOpenDateShield,
+    this.onAwardEmbers,
+  });
 
   @override
   State<MatchesChatScreen> createState() => _MatchesChatScreenState();
 }
 
 class _MatchesChatScreenState extends State<MatchesChatScreen> {
-  final List<MatchConversation> _conversations = MatchConversation.seedConversations;
+  @override
+  void initState() {
+    super.initState();
+    RealtimeChatService.instance.addListener(_onServiceUpdated);
+  }
 
-  void _openChatDetail(MatchConversation convo) {
-    Navigator.push(
+  @override
+  void dispose() {
+    RealtimeChatService.instance.removeListener(_onServiceUpdated);
+    super.dispose();
+  }
+
+  void _onServiceUpdated() {
+    if (!mounted) return;
+    setState(() {});
+    final pending = RealtimeChatService.instance.pendingOpenMatchName;
+    if (pending != null) {
+      RealtimeChatService.instance.pendingOpenMatchName = null;
+      final list = RealtimeChatService.instance.getConversations();
+      final match = list.where(
+        (c) => c.name.toLowerCase() == pending.toLowerCase(),
+      );
+      if (match.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _openChatDetail(match.first);
+        });
+      }
+    }
+  }
+
+  List<MatchConversation> get _visibleConversations =>
+      RealtimeChatService.instance.getConversations();
+
+  void _openStoryViewer(MatchConversation convo) {
+    HapticFeedback.selectionClick();
+    showDialog(
+      context: context,
+      builder: (ctx) => StoryViewerDialog(
+        matchName: convo.name,
+        photoAsset: convo.photoAsset,
+        tags: convo.tags,
+        onReplySent: (replyText) {
+          RealtimeChatService.instance.sendMessage(convo.name, replyText);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Sent story reply to ${convo.name}! ✨'),
+              backgroundColor: AppTheme.neonCyan,
+            ),
+          );
+          _openChatDetail(convo);
+        },
+      ),
+    );
+  }
+
+  void _openChatDetail(MatchConversation convo) async {
+    RealtimeChatService.instance.markConversationRead(convo.name);
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (ctx) => ChatDetailScreen(
           conversation: convo,
           onOpenDateShield: widget.onOpenDateShield,
+          onAwardEmbers: widget.onAwardEmbers,
         ),
       ),
     );
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final conversations = _visibleConversations;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -41,8 +109,12 @@ class _MatchesChatScreenState extends State<MatchesChatScreen> {
         Padding(
           padding: const EdgeInsets.only(left: 16, top: 12, bottom: 8),
           child: const Text(
-            'New Sparks & Stories',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+            'New Sparks & Stories (Tap to View)',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textSecondary,
+            ),
           ),
         ),
         SizedBox(
@@ -50,29 +122,35 @@ class _MatchesChatScreenState extends State<MatchesChatScreen> {
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            itemCount: _conversations.length,
+            itemCount: conversations.length,
             itemBuilder: (ctx, i) {
-              final c = _conversations[i];
+              final c = conversations[i];
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(2.5),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: const LinearGradient(
-                          colors: [AppTheme.sparkCoral, AppTheme.neonCyan],
+                child: GestureDetector(
+                  onTap: () => _openStoryViewer(c),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(2.5),
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [AppTheme.sparkCoral, AppTheme.neonCyan],
+                          ),
+                        ),
+                        child: CircleAvatar(
+                          radius: 28,
+                          backgroundImage: AssetImage(c.photoAsset),
                         ),
                       ),
-                      child: CircleAvatar(
-                        radius: 28,
-                        backgroundImage: AssetImage(c.photoAsset),
+                      const SizedBox(height: 4),
+                      Text(
+                        c.name,
+                        style: const TextStyle(fontSize: 12, color: Colors.white),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(c.name, style: const TextStyle(fontSize: 12, color: Colors.white)),
-                  ],
+                    ],
+                  ),
                 ),
               );
             },
@@ -84,16 +162,21 @@ class _MatchesChatScreenState extends State<MatchesChatScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: const Text(
             'Messages',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
         ),
         Expanded(
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: _conversations.length,
-            separatorBuilder: (_, __) => const Divider(color: Colors.white10, height: 1),
+            itemCount: conversations.length,
+            separatorBuilder: (_, _) =>
+                const Divider(color: Colors.white10, height: 1),
             itemBuilder: (ctx, i) {
-              final c = _conversations[i];
+              final c = conversations[i];
               return ListTile(
                 leading: CircleAvatar(
                   radius: 26,
@@ -102,8 +185,20 @@ class _MatchesChatScreenState extends State<MatchesChatScreen> {
                 title: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(c.name, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-                    Text(c.time, style: const TextStyle(fontSize: 12, color: AppTheme.textDim)),
+                    Text(
+                      c.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      c.time,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textDim,
+                      ),
+                    ),
                   ],
                 ),
                 subtitle: Text(
@@ -111,8 +206,12 @@ class _MatchesChatScreenState extends State<MatchesChatScreen> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: c.unreadCount > 0 ? AppTheme.neonCyan : AppTheme.textSecondary,
-                    fontWeight: c.unreadCount > 0 ? FontWeight.w600 : FontWeight.normal,
+                    color: c.unreadCount > 0
+                        ? AppTheme.neonCyan
+                        : AppTheme.textSecondary,
+                    fontWeight: c.unreadCount > 0
+                        ? FontWeight.w600
+                        : FontWeight.normal,
                   ),
                 ),
                 trailing: c.unreadCount > 0
@@ -124,7 +223,11 @@ class _MatchesChatScreenState extends State<MatchesChatScreen> {
                         ),
                         child: Text(
                           '${c.unreadCount}',
-                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       )
                     : null,
@@ -141,11 +244,13 @@ class _MatchesChatScreenState extends State<MatchesChatScreen> {
 class ChatDetailScreen extends StatefulWidget {
   final MatchConversation conversation;
   final VoidCallback onOpenDateShield;
+  final Function(int embers)? onAwardEmbers;
 
   const ChatDetailScreen({
     super.key,
     required this.conversation,
     required this.onOpenDateShield,
+    this.onAwardEmbers,
   });
 
   @override
@@ -159,7 +264,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _messages = RealtimeChatService.instance.getMessages(widget.conversation.name, widget.conversation.messages);
+    _messages = RealtimeChatService.instance.getMessages(
+      widget.conversation.name,
+      widget.conversation.messages,
+    );
     RealtimeChatService.instance.addListener(_onChatUpdated);
   }
 
@@ -173,7 +281,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   void _onChatUpdated() {
     if (mounted) {
       setState(() {
-        _messages = RealtimeChatService.instance.getMessages(widget.conversation.name);
+        _messages = RealtimeChatService.instance.getMessages(
+          widget.conversation.name,
+        );
       });
     }
   }
@@ -194,6 +304,70 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 
+  void _openIcebreakerArcade() {
+    HapticFeedback.selectionClick();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => IcebreakerGamesSheet(
+        matchName: widget.conversation.name,
+        onSendGameMessage: (msg) => _sendMessage(msg),
+        onAwardEmbers: (embers) {
+          widget.onAwardEmbers?.call(embers);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('🎉 +$embers Embers earned from Spark Arcade!'),
+              backgroundColor: AppTheme.questGold,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _startCall({required bool isVoiceOnly}) async {
+    HapticFeedback.mediumImpact();
+    final durationSecs = await Navigator.push<int>(
+      context,
+      MaterialPageRoute(
+        builder: (ctx) => VideoCallScreen(
+          matchName: widget.conversation.name,
+          photoAsset: widget.conversation.photoAsset,
+          isVoiceOnly: isVoiceOnly,
+          onOpenDateShield: widget.onOpenDateShield,
+        ),
+      ),
+    );
+    if (durationSecs != null && durationSecs > 0 && mounted) {
+      final callType = isVoiceOnly ? '🎙️ Voice Call' : '📹 Video Spark Date';
+      _sendMessage('$callType completed (${durationSecs}s) ✨');
+    }
+  }
+
+  void _openModerationModal() {
+    HapticFeedback.selectionClick();
+    showDialog(
+      context: context,
+      builder: (ctx) => ReportBlockDialog(
+        targetUserId: widget.conversation.id,
+        targetUserName: widget.conversation.name,
+        onUserBlocked: () {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  '🛡️ ${widget.conversation.name} has been blocked and removed.',
+                ),
+                backgroundColor: AppTheme.sparkCoral,
+              ),
+            );
+            Navigator.pop(context);
+          }
+        },
+      ),
+    );
+  }
 
   void _openDateItinerary() {
     showModalBottomSheet(
@@ -210,30 +384,57 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           children: [
             Row(
               children: [
-                const Icon(Icons.auto_awesome, color: AppTheme.questGold, size: 24),
+                const Icon(
+                  Icons.auto_awesome,
+                  color: AppTheme.questGold,
+                  size: 24,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   'SparkQuest Itinerary: ${widget.conversation.name}',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 14),
-            _itineraryStep('☕ 4:30 PM', 'Artisan Pour-Over', 'Blue Velvet Atelier'),
-            _itineraryStep('🎨 5:45 PM', 'Indie Gallery Stroll', 'Arts District Collective'),
-            _itineraryStep('🍸 7:15 PM', 'Rooftop Stargazing', 'Skyline Pergola'),
+            _itineraryStep(
+              '☕ 4:30 PM',
+              'Artisan Pour-Over',
+              'Blue Velvet Atelier',
+            ),
+            _itineraryStep(
+              '🎨 5:45 PM',
+              'Indie Gallery Stroll',
+              'Arts District Collective',
+            ),
+            _itineraryStep(
+              '🍸 7:15 PM',
+              'Rooftop Stargazing',
+              'Skyline Pergola',
+            ),
             const SizedBox(height: 16),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.sparkCoral,
                 minimumSize: const Size.fromHeight(48),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
               onPressed: () {
                 Navigator.pop(ctx);
-                _sendMessage('✨ I asked Sparky to plan our first quest! ☕ Pour-over → 🎨 Gallery → 🍸 Rooftop drinks. What do you think?');
+                _sendMessage(
+                  '✨ I asked Sparky to plan our first quest! ☕ Pour-over → 🎨 Gallery → 🍸 Rooftop drinks. What do you think?',
+                );
               },
-              child: const Text('Send Itinerary to Chat', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'Send Itinerary to Chat',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),
@@ -247,14 +448,33 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(time, style: const TextStyle(color: AppTheme.neonCyan, fontWeight: FontWeight.bold, fontSize: 13)),
+          Text(
+            time,
+            style: const TextStyle(
+              color: AppTheme.neonCyan,
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                Text(loc, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  loc,
+                  style: const TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
               ],
             ),
           ),
@@ -280,13 +500,51 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(widget.conversation.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                const Text('🔥 Flowing', style: TextStyle(fontSize: 10, color: AppTheme.neonCyan)),
+                Text(
+                  widget.conversation.name,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Text(
+                  '🔥 Flowing',
+                  style: TextStyle(fontSize: 10, color: AppTheme.neonCyan),
+                ),
               ],
             ),
           ],
         ),
         actions: [
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(2),
+            icon: const Icon(
+              Icons.call_outlined,
+              color: AppTheme.neonCyan,
+              size: 19,
+            ),
+            tooltip: 'Voice Spark Call',
+            onPressed: () => _startCall(isVoiceOnly: true),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(2),
+            icon: const Icon(
+              Icons.videocam_outlined,
+              color: AppTheme.sparkCoral,
+              size: 21,
+            ),
+            tooltip: 'Video Spark Date',
+            onPressed: () => _startCall(isVoiceOnly: false),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(2),
+            icon: const Text('🎮', style: TextStyle(fontSize: 16)),
+            tooltip: 'Icebreaker Mini-Games',
+            onPressed: _openIcebreakerArcade,
+          ),
           IconButton(
             visualDensity: VisualDensity.compact,
             padding: const EdgeInsets.all(2),
@@ -301,6 +559,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 builder: (ctx) => CoopQuestSheet(
                   matchName: widget.conversation.name,
                   onCompleted: (embers) {
+                    widget.onAwardEmbers?.call(embers);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('🎉 +$embers Embers from Co-Op Quest!'),
@@ -315,26 +574,24 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           IconButton(
             visualDensity: VisualDensity.compact,
             padding: const EdgeInsets.all(2),
-            icon: const Icon(Icons.analytics_outlined, color: AppTheme.neonCyan, size: 20),
-            tooltip: '6-Axis Vibe Radar',
-            onPressed: () => showDialog(
-              context: context,
-              builder: (ctx) => VibeRadarDialog(matchName: widget.conversation.name),
+            icon: const Icon(
+              Icons.map_outlined,
+              color: AppTheme.questGold,
+              size: 19,
             ),
-          ),
-          IconButton(
-            visualDensity: VisualDensity.compact,
-            padding: const EdgeInsets.all(2),
-            icon: const Icon(Icons.map_outlined, color: AppTheme.questGold, size: 20),
             tooltip: 'Plan Date Quest',
             onPressed: _openDateItinerary,
           ),
           IconButton(
             visualDensity: VisualDensity.compact,
             padding: const EdgeInsets.all(2),
-            icon: const Icon(Icons.shield_outlined, color: AppTheme.neonCyan, size: 20),
-            tooltip: 'Date Shield',
-            onPressed: widget.onOpenDateShield,
+            icon: const Icon(
+              Icons.flag_outlined,
+              color: AppTheme.textSecondary,
+              size: 19,
+            ),
+            tooltip: 'Report or Block User',
+            onPressed: _openModerationModal,
           ),
           const SizedBox(width: 4),
         ],
@@ -351,7 +608,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               children: [
                 Row(
                   children: [
-                    const Text('⚡ Chemistry: ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.neonCyan)),
+                    const Text(
+                      '⚡ Chemistry: ',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.neonCyan,
+                      ),
+                    ),
                     Container(
                       width: 60,
                       height: 5,
@@ -371,15 +635,30 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    const Text('88% (Date Ready!)', style: TextStyle(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.bold)),
+                    const Text(
+                      '88% (Date Ready!)',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.white70,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
                 InkWell(
                   onTap: () => showDialog(
                     context: context,
-                    builder: (ctx) => VibeRadarDialog(matchName: widget.conversation.name),
+                    builder: (ctx) =>
+                        VibeRadarDialog(matchName: widget.conversation.name),
                   ),
-                  child: const Text('📊 Vibe Radar', style: TextStyle(fontSize: 11, color: AppTheme.neonCyan, fontWeight: FontWeight.bold)),
+                  child: const Text(
+                    '📊 Vibe Radar',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppTheme.neonCyan,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -390,8 +669,18 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             color: AppTheme.bgSurface,
             child: Row(
               children: [
-                const Text('🤝 Co-Op Quest: ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.questGold)),
-                const Text('Send 5 messages (4/5) · +25🔥', style: TextStyle(fontSize: 12, color: Colors.white70)),
+                const Text(
+                  '🤝 Co-Op Quest: ',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: AppTheme.questGold,
+                  ),
+                ),
+                const Text(
+                  'Send 5 messages (4/5) · +25🔥',
+                  style: TextStyle(fontSize: 12, color: Colors.white70),
+                ),
               ],
             ),
           ),
@@ -404,24 +693,31 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 final m = _messages[i];
                 final isVoice = m.text.contains('🎙️');
                 return Align(
-                  alignment: m.isSentByMe ? Alignment.centerRight : Alignment.centerLeft,
+                  alignment: m.isSentByMe
+                      ? Alignment.centerRight
+                      : Alignment.centerLeft,
                   child: Container(
                     margin: const EdgeInsets.symmetric(vertical: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width * 0.78,
+                    ),
                     decoration: BoxDecoration(
                       color: isVoice
                           ? const Color(0xFF1E1B4B)
                           : m.isSentByMe
-                              ? AppTheme.electricViolet
-                              : AppTheme.bgCard,
+                          ? AppTheme.electricViolet
+                          : AppTheme.bgCard,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: isVoice
                             ? const Color(0xFF8B5CF6)
                             : m.isSentByMe
-                                ? AppTheme.electricViolet
-                                : Colors.white10,
+                            ? AppTheme.electricViolet
+                            : Colors.white10,
                       ),
                     ),
                     child: Column(
@@ -439,20 +735,49 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                     color: Color(0xFF8B5CF6),
                                     shape: BoxShape.circle,
                                   ),
-                                  child: const Icon(Icons.play_arrow, color: Colors.white, size: 16),
+                                  child: const Icon(
+                                    Icons.play_arrow,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              const Text('ılılıllı|l|lllı|', style: TextStyle(color: Color(0xFF06B6D4), fontSize: 16, letterSpacing: 1)),
+                              const Text(
+                                'ılılıllı|l|lllı|',
+                                style: TextStyle(
+                                  color: Color(0xFF06B6D4),
+                                  fontSize: 16,
+                                  letterSpacing: 1,
+                                ),
+                              ),
                               const SizedBox(width: 8),
-                              const Text('0:09', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                              const Text(
+                                '0:09',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 11,
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 4),
                         ],
-                        Text(m.text, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                        Text(
+                          m.text,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                          ),
+                        ),
                         const SizedBox(height: 4),
-                        Text(m.time, style: const TextStyle(color: Colors.white54, fontSize: 10)),
+                        Text(
+                          m.time,
+                          style: const TextStyle(
+                            color: Colors.white54,
+                            fontSize: 10,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -466,16 +791,27 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.bgCard,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppTheme.neonCyan.withOpacity(0.3)),
+                    border: Border.all(
+                      color: AppTheme.neonCyan.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('${widget.conversation.name} is typing', style: const TextStyle(fontSize: 11, color: AppTheme.neonCyan)),
+                      Text(
+                        '${widget.conversation.name} is typing',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppTheme.neonCyan,
+                        ),
+                      ),
                       const SizedBox(width: 4),
                       const Text('💬', style: TextStyle(fontSize: 11)),
                     ],
@@ -490,7 +826,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             color: AppTheme.bgDeep,
             child: Row(
               children: [
-                const Icon(Icons.auto_awesome, color: AppTheme.questGold, size: 16),
+                const Icon(
+                  Icons.auto_awesome,
+                  color: AppTheme.questGold,
+                  size: 16,
+                ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: SingleChildScrollView(
@@ -519,11 +859,17 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     tooltip: 'Send Voice Note',
                     onPressed: () {
                       HapticFeedback.mediumImpact();
-                      _sendMessage('🎙️ Voice Note (0:09) "Honestly the espresso tonic there changed my life haha"', true);
+                      _sendMessage(
+                        '🎙️ Voice Note (0:09) "Honestly the espresso tonic there changed my life haha"',
+                        true,
+                      );
                     },
                   ),
                   IconButton(
-                    icon: const Icon(Icons.camera_alt, color: AppTheme.neonCyan),
+                    icon: const Icon(
+                      Icons.camera_alt,
+                      color: AppTheme.neonCyan,
+                    ),
                     onPressed: () {
                       _sendMessage('📷 [Photo attached]');
                     },
@@ -541,7 +887,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                         ),
                         filled: true,
                         fillColor: AppTheme.bgInput,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
                       ),
                       onSubmitted: (_) => _sendMessage(),
                     ),
@@ -550,7 +899,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   CircleAvatar(
                     backgroundColor: AppTheme.sparkCoral,
                     child: IconButton(
-                      icon: const Icon(Icons.send, color: Colors.white, size: 18),
+                      icon: const Icon(
+                        Icons.send,
+                        color: Colors.white,
+                        size: 18,
+                      ),
                       onPressed: () => _sendMessage(),
                     ),
                   ),
@@ -569,8 +922,17 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       child: ActionChip(
         backgroundColor: AppTheme.bgSurface,
         side: const BorderSide(color: AppTheme.electricViolet, width: 0.8),
-        label: Text(label, style: const TextStyle(fontSize: 11, color: Colors.white)),
-        onPressed: () => _sendMessage(label),
+        label: Text(
+          label,
+          style: const TextStyle(fontSize: 11, color: Colors.white),
+        ),
+        onPressed: () {
+          if (label.contains('trivia duel')) {
+            _openIcebreakerArcade();
+          } else {
+            _sendMessage(label);
+          }
+        },
       ),
     );
   }

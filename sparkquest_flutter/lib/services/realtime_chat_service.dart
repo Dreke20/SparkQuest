@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/chat_model.dart';
+import '../models/profile.dart';
 import 'storage_service.dart';
+import 'quest_progression_service.dart';
 
 class RealtimeChatService extends ChangeNotifier {
   static final RealtimeChatService instance = RealtimeChatService._internal();
@@ -9,7 +11,87 @@ class RealtimeChatService extends ChangeNotifier {
 
   final Map<String, List<ChatMessage>> _conversations = {};
   final Map<String, bool> _typingStates = {};
+  List<MatchConversation>? _matchList;
+  String? pendingOpenMatchName;
   Function(String sender, String text)? onIncomingNotification;
+
+  List<MatchConversation> getConversations() {
+    if (_matchList == null) {
+      final seeds = List<MatchConversation>.from(
+        MatchConversation.seedConversations,
+      );
+      final saved = StorageService.instance.getSavedMatches();
+      for (final item in saved) {
+        final parsed = MatchConversation.fromJson(item);
+        if (!seeds.any((s) => s.id.toLowerCase() == parsed.id.toLowerCase())) {
+          seeds.insert(0, parsed);
+        }
+      }
+      _matchList = seeds;
+    }
+
+    final blocked = StorageService.instance.getBlockedUsers();
+    return _matchList!
+        .where((c) => !blocked.contains(c.id.toLowerCase()))
+        .toList();
+  }
+
+  MatchConversation addMatchFromProfile(Profile profile) {
+    final list = getConversations();
+    final existing = list.where(
+      (c) =>
+          c.id.toLowerCase() == profile.id.toLowerCase() ||
+          c.name.toLowerCase() == profile.name.toLowerCase(),
+    );
+    if (existing.isNotEmpty) {
+      return existing.first;
+    }
+
+    final newConvo = MatchConversation(
+      id: profile.id,
+      name: profile.name,
+      photoAsset: profile.photoAsset,
+      lastMessage: 'It’s a Spark! Say hello to ${profile.name} ✨',
+      time: 'Just now',
+      unreadCount: 1,
+      tags: profile.tags,
+      messages: [
+        ChatMessage(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          text:
+              'Hey! We matched (${profile.compatPct}% compatibility) 🔥 Down for a co-op quest?',
+          time: 'Just now',
+          isSentByMe: false,
+        ),
+      ],
+    );
+
+    _matchList ??= List<MatchConversation>.from(
+      MatchConversation.seedConversations,
+    );
+    _matchList!.insert(0, newConvo);
+    _persistMatchList();
+    notifyListeners();
+    return newConvo;
+  }
+
+  void markConversationRead(String matchName) {
+    if (_matchList == null) return;
+    for (final c in _matchList!) {
+      if (c.name.toLowerCase() == matchName.toLowerCase()) {
+        c.unreadCount = 0;
+      }
+    }
+    _persistMatchList();
+    notifyListeners();
+  }
+
+  void _persistMatchList() {
+    if (_matchList == null) return;
+    StorageService.instance.saveMatches(
+      _matchList!.map((c) => c.toJson()).toList(),
+    );
+  }
 
   List<ChatMessage> getMessages(String matchName, [List<ChatMessage>? seedMessages]) {
     if (!_conversations.containsKey(matchName)) {
@@ -60,11 +142,33 @@ class RealtimeChatService extends ChangeNotifier {
     );
 
     _conversations.putIfAbsent(matchName, () => []).add(userMsg);
+    _updateConversationPreview(matchName, text, timeStr, isIncoming: false);
     _persist(matchName);
+    QuestProgressionService.instance.incrementQuest('engage2', xpGain: 20);
     notifyListeners();
 
     // Trigger simulated match typing indicator and reply
     _simulateMatchReply(matchName, text);
+  }
+
+  void _updateConversationPreview(
+    String matchName,
+    String lastMsg,
+    String timeStr, {
+    required bool isIncoming,
+  }) {
+    getConversations();
+    if (_matchList == null) return;
+    for (final c in _matchList!) {
+      if (c.name.toLowerCase() == matchName.toLowerCase()) {
+        c.lastMessage = lastMsg;
+        c.time = timeStr;
+        if (isIncoming) {
+          c.unreadCount += 1;
+        }
+      }
+    }
+    _persistMatchList();
   }
 
   void _simulateMatchReply(String matchName, String userText) {
@@ -89,6 +193,12 @@ class RealtimeChatService extends ChangeNotifier {
         );
 
         _conversations.putIfAbsent(matchName, () => []).add(replyMsg);
+        _updateConversationPreview(
+          matchName,
+          replyText,
+          timeStr,
+          isIncoming: true,
+        );
         _persist(matchName);
         notifyListeners();
 

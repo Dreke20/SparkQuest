@@ -1,19 +1,30 @@
 import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:confetti/confetti.dart';
+
 import '../models/profile.dart';
 import '../theme/app_theme.dart';
 import '../widgets/mystery_blind_match_dialog.dart';
+import '../widgets/discovery_filter_sheet.dart';
+import '../widgets/moderation_dialogs.dart';
+import '../widgets/onboarding_ftue_dialog.dart';
+import '../services/storage_service.dart';
+import '../services/supabase_service.dart';
+import '../services/realtime_chat_service.dart';
+import '../services/quest_progression_service.dart';
 
 class ExploreScreen extends StatefulWidget {
   final VoidCallback onEmbersEarned;
+  final Function(int amount)? onBonusEmbers;
   final VoidCallback onOpenChat;
 
   const ExploreScreen({
     super.key,
     required this.onEmbersEarned,
+    this.onBonusEmbers,
     required this.onOpenChat,
   });
 
@@ -26,13 +37,43 @@ class _ExploreScreenState extends State<ExploreScreen> {
   final List<Profile> _history = [];
   Offset _dragOffset = Offset.zero;
   bool _isPlayingVoice = false;
+  String _activeVibe = 'All Vibes';
+  bool _ftueDone = false;
   late ConfettiController _confettiController;
 
   @override
   void initState() {
     super.initState();
-    _cards = List.from(Profile.seedProfiles);
-    _confettiController = ConfettiController(duration: const Duration(seconds: 2));
+    _loadFilteredDeck();
+    _confettiController = ConfettiController(
+      duration: const Duration(seconds: 2),
+    );
+  }
+
+  void _loadFilteredDeck() {
+    final blocked = StorageService.instance.getBlockedUsers();
+    final minAge = StorageService.instance.getMinAge();
+    final maxAge = StorageService.instance.getMaxAge();
+    final verifiedOnly = StorageService.instance.getVerifiedOnly();
+    final vibe = StorageService.instance.getSelectedVibe();
+
+    setState(() {
+      _ftueDone = StorageService.instance.isFtueCompleted();
+      _activeVibe = vibe;
+      _cards = Profile.seedProfiles.where((p) {
+        if (blocked.contains(p.id.toLowerCase())) return false;
+        if (p.age < minAge || p.age > maxAge) return false;
+        if (verifiedOnly && !p.isVerified) return false;
+        if (vibe != 'All Vibes') {
+          final vibeKeyword = vibe.split(' ').last.toLowerCase();
+          final hasTag = p.tags.any(
+            (t) => t.toLowerCase().contains(vibeKeyword),
+          );
+          if (!hasTag) return false;
+        }
+        return true;
+      }).toList();
+    });
   }
 
   @override
@@ -49,16 +90,23 @@ class _ExploreScreenState extends State<ExploreScreen> {
     _dragOffset = Offset.zero;
     setState(() {});
 
+    SupabaseService.instance.recordSwipeAndCheckMatch(
+      targetId: top.id,
+      direction: isRight ? 'right' : 'left',
+    );
+
     if (isRight) {
+      RealtimeChatService.instance.addMatchFromProfile(top);
+      QuestProgressionService.instance.incrementQuest('engage1', xpGain: 15);
       _showMatchDialog(top);
     }
   }
 
   void _rewind() {
     if (_history.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No previous card to undo')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No previous card to undo')));
       return;
     }
     HapticFeedback.lightImpact();
@@ -66,9 +114,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
       final last = _history.removeLast();
       _cards.insert(0, last);
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Swipe undone! ↩️')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Swipe undone! ↩️')));
   }
 
   void _showMatchDialog(Profile profile) {
@@ -85,7 +132,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
             confettiController: _confettiController,
             blastDirectionality: BlastDirectionality.explosive,
             shouldLoop: false,
-            colors: const [AppTheme.neonCyan, AppTheme.sparkCoral, AppTheme.questGold],
+            colors: const [
+              AppTheme.neonCyan,
+              AppTheme.sparkCoral,
+              AppTheme.questGold,
+            ],
           ),
           AlertDialog(
             backgroundColor: AppTheme.bgSurface,
@@ -117,14 +168,20 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 ),
                 const SizedBox(height: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: AppTheme.questGold.withOpacity(0.15),
+                    color: AppTheme.questGold.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Text(
                     '+10 Embers Earned 🔥',
-                    style: TextStyle(color: AppTheme.questGold, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: AppTheme.questGold,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
@@ -132,18 +189,28 @@ class _ExploreScreenState extends State<ExploreScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Keep Swiping', style: TextStyle(color: AppTheme.textDim)),
+                child: const Text(
+                  'Keep Swiping',
+                  style: TextStyle(color: AppTheme.textDim),
+                ),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.sparkCoral,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
                 onPressed: () {
                   Navigator.pop(ctx);
+                  RealtimeChatService.instance.pendingOpenMatchName =
+                      profile.name;
                   widget.onOpenChat();
                 },
-                child: const Text('Send Message', style: TextStyle(color: Colors.white)),
+                child: const Text(
+                  'Send Message',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
             ],
           ),
@@ -174,8 +241,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ElevatedButton.icon(
               icon: const Icon(Icons.refresh),
               label: const Text('Reload Profiles'),
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.electricViolet),
-              onPressed: () => setState(() => _cards = List.from(Profile.seedProfiles)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.electricViolet,
+              ),
+              onPressed: _loadFilteredDeck,
             ),
           ],
         ),
@@ -188,6 +257,71 @@ class _ExploreScreenState extends State<ExploreScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         children: [
+          if (!_ftueDone)
+            GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                showDialog(
+                  context: context,
+                  builder: (ctx) => OnboardingFtueDialog(
+                    onCompleted: (bonusEmbers) {
+                      setState(() => _ftueDone = true);
+                      widget.onBonusEmbers?.call(bonusEmbers);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            '🎁 Onboarding Complete! +$bonusEmbers Embers & +100 Season XP unlocked!',
+                          ),
+                          backgroundColor: AppTheme.questGold,
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppTheme.questGold.withValues(alpha: 0.2),
+                      AppTheme.electricViolet.withValues(alpha: 0.25),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: AppTheme.questGold.withValues(alpha: 0.5),
+                  ),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Text('🎁 ', style: TextStyle(fontSize: 14)),
+                        Text(
+                          'Complete Explorer Class Setup (+100🔥)',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Icon(
+                      Icons.arrow_forward_ios,
+                      color: AppTheme.questGold,
+                      size: 13,
+                    ),
+                  ],
+                ),
+              ),
+            ),
           // Mystery Blind Match & Vibes Pill
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
@@ -203,7 +337,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           widget.onEmbersEarned();
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('🎉 +$val Embers earned from Mystery Match!'),
+                              content: Text(
+                                '🎉 +$val Embers earned from Mystery Match!',
+                              ),
                               backgroundColor: AppTheme.questGold,
                             ),
                           );
@@ -214,11 +350,16 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   },
                   borderRadius: BorderRadius.circular(20),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
-                      color: AppTheme.electricViolet.withOpacity(0.2),
+                      color: AppTheme.electricViolet.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppTheme.electricViolet.withOpacity(0.5)),
+                      border: Border.all(
+                        color: AppTheme.electricViolet.withValues(alpha: 0.5),
+                      ),
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
@@ -226,24 +367,61 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         Text('🔮 ', style: TextStyle(fontSize: 12)),
                         Text(
                           'Mystery Match',
-                          style: TextStyle(color: AppTheme.neonCyan, fontWeight: FontWeight.bold, fontSize: 12),
+                          style: TextStyle(
+                            color: AppTheme.neonCyan,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppTheme.bgSurface,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.white10),
-                  ),
-                  child: const Row(
-                    children: [
-                      Text('🔍 ', style: TextStyle(fontSize: 11)),
-                      Text('All Vibes', style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
-                    ],
+                InkWell(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (ctx) => DiscoveryFilterSheet(
+                        onFiltersChanged: _loadFilteredDeck,
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.bgSurface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: _activeVibe == 'All Vibes'
+                            ? Colors.white12
+                            : AppTheme.neonCyan,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.tune,
+                          size: 14,
+                          color: AppTheme.neonCyan,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          _activeVibe,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 11.5,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -302,10 +480,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
         boxShadow: [
           BoxShadow(
             color: isTop && _dragOffset.dx > 50
-                ? AppTheme.emeraldGreen.withOpacity(0.4)
+                ? AppTheme.emeraldGreen.withValues(alpha: 0.4)
                 : isTop && _dragOffset.dx < -50
-                    ? AppTheme.sparkCoral.withOpacity(0.4)
-                    : Colors.black.withOpacity(0.4),
+                ? AppTheme.sparkCoral.withValues(alpha: 0.4)
+                : Colors.black.withValues(alpha: 0.4),
             blurRadius: 20,
             spreadRadius: 2,
           ),
@@ -319,7 +497,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
           Image.asset(
             profile.photoAsset,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(color: AppTheme.bgSurface),
+            errorBuilder: (_, _, _) => Container(color: AppTheme.bgSurface),
           ),
           // Gradient Overlay
           Container(
@@ -329,8 +507,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 end: Alignment.bottomCenter,
                 colors: [
                   Colors.transparent,
-                  Colors.black.withOpacity(0.2),
-                  Colors.black.withOpacity(0.95),
+                  Colors.black.withValues(alpha: 0.2),
+                  Colors.black.withValues(alpha: 0.95),
                 ],
                 stops: const [0.4, 0.65, 1.0],
               ),
@@ -343,7 +521,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: AppTheme.bgSurface.withOpacity(0.85),
+                color: AppTheme.bgSurface.withValues(alpha: 0.85),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: AppTheme.neonCyan),
               ),
@@ -360,6 +538,47 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     ),
                   ),
                 ],
+              ),
+            ),
+          ),
+          // Report / Block Moderation Button on Card (Top Right)
+          Positioned(
+            top: 16,
+            right: 16,
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                showDialog(
+                  context: context,
+                  builder: (ctx) => ReportBlockDialog(
+                    targetUserId: profile.id,
+                    targetUserName: profile.name,
+                    onUserBlocked: () {
+                      _loadFilteredDeck();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            '🛡️ ${profile.name} has been blocked and removed from discovery.',
+                          ),
+                          backgroundColor: AppTheme.sparkCoral,
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.bgSurface.withValues(alpha: 0.75),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: const Icon(
+                  Icons.flag_outlined,
+                  color: Colors.white70,
+                  size: 16,
+                ),
               ),
             ),
           ),
@@ -385,27 +604,49 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     ),
                     const SizedBox(width: 6),
                     if (profile.isVerified)
-                      const Icon(Icons.verified, color: AppTheme.neonCyan, size: 22),
+                      const Icon(
+                        Icons.verified,
+                        color: AppTheme.neonCyan,
+                        size: 22,
+                      ),
                   ],
                 ),
                 Text(
                   '${profile.occupation} · ${profile.distance}',
-                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                  style: const TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 14,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 // Tags
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
-                  children: profile.tags.map((t) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppTheme.bgSurface.withOpacity(0.8),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.white.withOpacity(0.1)),
-                    ),
-                    child: Text(t, style: const TextStyle(fontSize: 12, color: Colors.white)),
-                  )).toList(),
+                  children: profile.tags
+                      .map(
+                        (t) => Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.bgSurface.withValues(alpha: 0.8),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.1),
+                            ),
+                          ),
+                          child: Text(
+                            t,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
                 ),
                 const SizedBox(height: 12),
                 // Voice Spark Pill
@@ -415,18 +656,25 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       setState(() => _isPlayingVoice = !_isPlayingVoice);
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
-                        color: AppTheme.bgSurface.withOpacity(0.9),
+                        color: AppTheme.bgSurface.withValues(alpha: 0.9),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: _isPlayingVoice ? AppTheme.neonCyan : Colors.white24,
+                          color: _isPlayingVoice
+                              ? AppTheme.neonCyan
+                              : Colors.white24,
                         ),
                       ),
                       child: Row(
                         children: [
                           Icon(
-                            _isPlayingVoice ? Icons.pause_circle : Icons.play_circle_fill,
+                            _isPlayingVoice
+                                ? Icons.pause_circle
+                                : Icons.play_circle_fill,
                             color: AppTheme.neonCyan,
                             size: 24,
                           ),
@@ -434,13 +682,19 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           Expanded(
                             child: Text(
                               profile.voicePromptText,
-                              style: const TextStyle(fontSize: 12, color: Colors.white),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.white,
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           Text(
                             _isPlayingVoice ? 'Playing...' : '12s',
-                            style: const TextStyle(fontSize: 11, color: AppTheme.neonCyan),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppTheme.neonCyan,
+                            ),
                           ),
                         ],
                       ),
@@ -495,7 +749,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
             size: 48,
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('⚡ 1-Hour Super Boost Active! Profile 5x amplified.')),
+                const SnackBar(
+                  content: Text(
+                    '⚡ 1-Hour Super Boost Active! Profile 5x amplified.',
+                  ),
+                ),
               );
             },
           ),
@@ -516,10 +774,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
       decoration: BoxDecoration(
         color: AppTheme.bgSurface,
         shape: BoxShape.circle,
-        border: Border.all(color: color.withOpacity(0.5), width: 1.5),
+        border: Border.all(color: color.withValues(alpha: 0.5), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.2),
+            color: color.withValues(alpha: 0.2),
             blurRadius: 12,
             spreadRadius: 1,
           ),

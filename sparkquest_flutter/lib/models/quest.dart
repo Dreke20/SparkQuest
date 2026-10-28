@@ -2,7 +2,7 @@ class QuestItem {
   final String id;
   final String title;
   final String icon;
-  final int current;
+  int current;
   final int target;
   final int reward;
   bool isClaimed;
@@ -18,6 +18,12 @@ class QuestItem {
   });
 
   bool get isCompleted => current >= target;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'current': current,
+        'isClaimed': isClaimed,
+      };
 
   static List<QuestItem> get initialQuests => [
     QuestItem(
@@ -60,6 +66,14 @@ class QuestItem {
       current: 0,
       target: 1,
       reward: 15,
+    ),
+    QuestItem(
+      id: 'engage6',
+      title: 'Play an Icebreaker Arcade Game',
+      icon: '🎮',
+      current: 0,
+      target: 1,
+      reward: 35,
     ),
   ];
 }
