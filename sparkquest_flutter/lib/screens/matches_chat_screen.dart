@@ -82,6 +82,101 @@ class _MatchesChatScreenState extends State<MatchesChatScreen> {
     );
   }
 
+  void _openPostStoryDialog() {
+    final captionCtrl = TextEditingController(
+      text: 'Grabbing an espresso at Neon Roasters ☕ Who is nearby?',
+    );
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.bgCard,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(22),
+          side: const BorderSide(color: AppTheme.neonCyan),
+        ),
+        title: const Text(
+          '📸 Post 24h Spark Story',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Uploads photo to Supabase Storage ("stories" bucket) & broadcasts to nearby matches for 24h.',
+              style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: captionCtrl,
+              maxLines: 2,
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+              decoration: InputDecoration(
+                hintText: 'What quest are you on right now?',
+                hintStyle: const TextStyle(color: AppTheme.textDim),
+                filled: true,
+                fillColor: AppTheme.bgInput,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppTheme.textDim),
+            ),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.neonCyan,
+              foregroundColor: Colors.black,
+            ),
+            onPressed: () async {
+              final caption = captionCtrl.text.trim();
+              Navigator.pop(ctx);
+              HapticFeedback.mediumImpact();
+              final cloudUrl = await SupabaseService.instance.uploadAssetToBucket(
+                bucket: 'stories',
+                assetPath: 'assets/images/alex.png',
+                customFileName: 'story_alex.png',
+              );
+              await SupabaseService.instance.postStory(
+                userName: 'Alex Explorer',
+                avatarUrl: cloudUrl ?? 'assets/images/alex.png',
+                imageUrl: cloudUrl ?? 'assets/images/alex.png',
+                caption: caption.isEmpty ? 'Out on a Spark Quest ⚡' : caption,
+              );
+              widget.onAwardEmbers?.call(15);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      cloudUrl != null
+                          ? '☁️ Story uploaded to Supabase Storage & posted! (+15🔥)'
+                          : '📸 24h Story posted! (+15🔥)',
+                    ),
+                    backgroundColor: AppTheme.emeraldGreen,
+                  ),
+                );
+              }
+            },
+            icon: const Icon(Icons.cloud_upload, size: 16),
+            label: const Text(
+              'Upload & Post',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _openChatDetail(MatchConversation convo) async {
     RealtimeChatService.instance.markConversationRead(convo.name);
     await Navigator.push(
@@ -122,9 +217,63 @@ class _MatchesChatScreenState extends State<MatchesChatScreen> {
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            itemCount: conversations.length,
+            itemCount: conversations.length + 1,
             itemBuilder: (ctx, i) {
-              final c = conversations[i];
+              if (i == 0) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: GestureDetector(
+                    onTap: _openPostStoryDialog,
+                    child: Column(
+                      children: [
+                        Stack(
+                          alignment: Alignment.bottomRight,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(2.5),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppTheme.neonCyan,
+                                  width: 2,
+                                ),
+                              ),
+                              child: const CircleAvatar(
+                                radius: 28,
+                                backgroundImage: AssetImage(
+                                  'assets/images/alex.png',
+                                ),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: const BoxDecoration(
+                                color: AppTheme.neonCyan,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.add,
+                                size: 13,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Your Story',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.neonCyan,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              final c = conversations[i - 1];
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 6),
                 child: GestureDetector(
@@ -856,11 +1005,15 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.mic, color: Color(0xFF06B6D4)),
-                    tooltip: 'Send Voice Note',
-                    onPressed: () {
+                    tooltip: 'Send Voice Note (Uploads to Supabase Storage)',
+                    onPressed: () async {
                       HapticFeedback.mediumImpact();
+                      final audioUrl = await SupabaseService.instance
+                          .uploadVoiceNoteBytes(durationSec: 9);
                       _sendMessage(
-                        '🎙️ Voice Note (0:09) "Honestly the espresso tonic there changed my life haha"',
+                        audioUrl != null
+                            ? '🎙️ Voice Note (0:09) • Synced to Cloud Storage'
+                            : '🎙️ Voice Note (0:09) "Honestly the espresso tonic there changed my life haha"',
                         true,
                       );
                     },
@@ -870,8 +1023,20 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                       Icons.camera_alt,
                       color: AppTheme.neonCyan,
                     ),
-                    onPressed: () {
-                      _sendMessage('📷 [Photo attached]');
+                    tooltip: 'Send Photo (Uploads to Supabase Storage)',
+                    onPressed: () async {
+                      HapticFeedback.mediumImpact();
+                      final photoUrl = await SupabaseService.instance
+                          .uploadAssetToBucket(
+                            bucket: 'stories',
+                            assetPath: 'assets/images/alex.png',
+                            customFileName: 'chat_photo.png',
+                          );
+                      _sendMessage(
+                        photoUrl != null
+                            ? '📷 [Photo Uploaded to Cloud Storage ✨]'
+                            : '📷 [Photo attached]',
+                      );
                     },
                   ),
                   Expanded(

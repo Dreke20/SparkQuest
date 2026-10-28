@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../services/realtime_chat_service.dart';
+import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 
 class VideoCallScreen extends StatefulWidget {
@@ -41,6 +43,12 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   void initState() {
     super.initState();
     _isCamOff = widget.isVoiceOnly;
+    RealtimeChatService.instance.addListener(_onSignalChanged);
+    RealtimeChatService.instance.initiateCallSignal(
+      matchName: widget.matchName,
+      matchAvatar: widget.photoAsset,
+      isVoiceOnly: widget.isVoiceOnly,
+    );
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
         setState(() {
@@ -54,8 +62,13 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     });
   }
 
+  void _onSignalChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    RealtimeChatService.instance.removeListener(_onSignalChanged);
     _timer?.cancel();
     super.dispose();
   }
@@ -192,14 +205,18 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                             Container(
                               width: 8,
                               height: 8,
-                              decoration: const BoxDecoration(
-                                color: AppTheme.emeraldGreen,
+                              decoration: BoxDecoration(
+                                color: RealtimeChatService.instance.callSignalState == 'ringing'
+                                    ? AppTheme.questGold
+                                    : AppTheme.emeraldGreen,
                                 shape: BoxShape.circle,
                               ),
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              '${widget.matchName} • $_formattedTime',
+                              RealtimeChatService.instance.callSignalState == 'ringing'
+                                  ? 'Ringing ${widget.matchName} (Realtime)...'
+                                  : '${widget.matchName} • $_formattedTime',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
@@ -415,6 +432,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                     GestureDetector(
                       onTap: () {
                         HapticFeedback.heavyImpact();
+                        RealtimeChatService.instance.endCallSignal();
                         Navigator.pop(context, _seconds);
                       },
                       child: Container(
@@ -481,4 +499,157 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     );
   }
 }
+
+/// Phase 5: Incoming Call Signaling Dialog over Supabase Realtime
+class IncomingCallDialog extends StatelessWidget {
+  final String roomId;
+  final String callerName;
+  final String callerAvatar;
+  final bool isVoiceOnly;
+  final VoidCallback onAccept;
+  final VoidCallback onDecline;
+
+  const IncomingCallDialog({
+    super.key,
+    required this.roomId,
+    required this.callerName,
+    required this.callerAvatar,
+    this.isVoiceOnly = false,
+    required this.onAccept,
+    required this.onDecline,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: AppTheme.bgCard,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(28),
+        side: const BorderSide(color: AppTheme.neonCyan, width: 1.5),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppTheme.neonCyan.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
+                isVoiceOnly
+                    ? '🎙️ INCOMING VOICE SPARK (REALTIME)'
+                    : '📹 INCOMING VIDEO SPARK (REALTIME)',
+                style: const TextStyle(
+                  color: AppTheme.neonCyan,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppTheme.electricViolet, width: 3),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.electricViolet.withValues(alpha: 0.45),
+                    blurRadius: 20,
+                  ),
+                ],
+              ),
+              child: CircleAvatar(
+                radius: 44,
+                backgroundImage: callerAvatar.startsWith('http')
+                    ? NetworkImage(callerAvatar) as ImageProvider
+                    : AssetImage(callerAvatar),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              callerName,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Comfort Blur will start enabled for your safety 🛡️',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.sparkCoral,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  onPressed: () {
+                    HapticFeedback.mediumImpact();
+                    SupabaseService.instance.updateCallSignalStatus(
+                      roomId: roomId,
+                      status: 'declined',
+                    );
+                    Navigator.pop(context);
+                    onDecline();
+                  },
+                  icon: const Icon(Icons.call_end, size: 18),
+                  label: const Text('Decline'),
+                ),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.emeraldGreen,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  onPressed: () {
+                    HapticFeedback.heavyImpact();
+                    SupabaseService.instance.updateCallSignalStatus(
+                      roomId: roomId,
+                      status: 'accepted',
+                    );
+                    Navigator.pop(context);
+                    onAccept();
+                  },
+                  icon: Icon(
+                    isVoiceOnly ? Icons.phone_in_talk : Icons.videocam,
+                    size: 18,
+                  ),
+                  label: const Text(
+                    'Accept',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 

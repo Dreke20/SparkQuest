@@ -95,4 +95,24 @@ void main() {
       isNot(contains('taylor')),
     );
   });
+
+  test('RealtimeChatService triggers and ends Phase 5 live call signaling', () async {
+    Map<String, dynamic>? receivedSignal;
+    RealtimeChatService.instance.onIncomingCall = (signal) {
+      receivedSignal = signal;
+    };
+
+    RealtimeChatService.instance.triggerIncomingCall(
+      callerName: 'Maya',
+      callerAvatar: 'assets/images/maya.png',
+      isVoiceOnly: false,
+    );
+
+    expect(RealtimeChatService.instance.callSignalState, 'ringing');
+    expect(receivedSignal, isNotNull);
+    expect(receivedSignal!['caller_name'], 'Maya');
+
+    await RealtimeChatService.instance.endCallSignal();
+    expect(RealtimeChatService.instance.callSignalState, 'ended');
+  });
 }

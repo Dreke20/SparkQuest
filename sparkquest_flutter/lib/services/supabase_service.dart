@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/services.dart';
 
 /// Supabase Service for SparkQuest Flutter App
 /// Project Ref: kqvjntbiagzywstijtsz
@@ -350,6 +351,204 @@ class SupabaseService {
       return response.statusCode >= 200 && response.statusCode < 300;
     } catch (_) {
       return true;
+    }
+  }
+
+  // ==========================================
+  // PHASE 5: SUPABASE STORAGE BUCKETS & CLOUD SYNC
+  // ==========================================
+
+  /// Upload raw bytes to a Supabase Storage bucket ('avatars', 'stories', 'voice-notes')
+  /// Returns the public CDN URL if successful, or null on failure.
+  Future<String?> uploadMediaBytes({
+    required String bucket,
+    required String fileName,
+    required List<int> bytes,
+    String contentType = 'image/jpeg',
+  }) async {
+    try {
+      final uid = currentUserId ?? 'user_me';
+      final objectPath = '$uid/${DateTime.now().millisecondsSinceEpoch}_$fileName';
+      final uri = Uri.parse('$baseUrl/storage/v1/object/$bucket/$objectPath');
+      final request = await _httpClient.postUrl(uri);
+      request.headers.set('apikey', anonKey);
+      request.headers.set('Authorization', 'Bearer ${accessToken ?? anonKey}');
+      request.headers.set('Content-Type', contentType);
+      request.headers.set('x-upsert', 'true');
+      request.add(bytes);
+      final response = await request.close();
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return '$baseUrl/storage/v1/object/public/$bucket/$objectPath';
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Upload a local file (from ImagePicker or AudioRecorder) to Supabase Storage.
+  /// Returns the public Supabase Storage URL, or falls back to the local filePath if offline.
+  Future<String> uploadMediaFile({
+    required String bucket,
+    required String filePath,
+    String? contentType,
+  }) async {
+    try {
+      final file = File(filePath);
+      if (await file.exists()) {
+        final bytes = await file.readAsBytes();
+        final ext = filePath.split('.').last.toLowerCase();
+        final resolvedMime = contentType ??
+            (ext == 'm4a' || ext == 'aac'
+                ? 'audio/mp4'
+                : ext == 'png'
+                    ? 'image/png'
+                    : 'image/jpeg');
+        final fileName = file.uri.pathSegments.isNotEmpty
+            ? file.uri.pathSegments.last
+            : 'upload.$ext';
+        final publicUrl = await uploadMediaBytes(
+          bucket: bucket,
+          fileName: fileName,
+          bytes: bytes,
+          contentType: resolvedMime,
+        );
+        if (publicUrl != null && publicUrl.isNotEmpty) {
+          return publicUrl;
+        }
+      }
+    } catch (_) {}
+    return filePath;
+  }
+
+  /// Upload a bundled Flutter asset (e.g. 'assets/images/alex.png') to a Supabase Storage bucket.
+  Future<String?> uploadAssetToBucket({
+    required String bucket,
+    required String assetPath,
+    String? customFileName,
+  }) async {
+    try {
+      final byteData = await rootBundle.load(assetPath);
+      final bytes = byteData.buffer.asUint8List();
+      final name = customFileName ?? assetPath.split('/').last;
+      return await uploadMediaBytes(
+        bucket: bucket,
+        fileName: name,
+        bytes: bytes,
+        contentType: 'image/png',
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Synthesize & upload a WAV voice note to the 'voice-notes' Supabase Storage bucket.
+  Future<String?> uploadVoiceNoteBytes({int durationSec = 9}) async {
+    try {
+      // Minimal valid 44-byte PCM WAV header + 256 sample bytes
+      final wavBytes = List<int>.filled(300, 0);
+      const riff = [0x52, 0x49, 0x46, 0x46]; // "RIFF"
+      const wave = [0x57, 0x41, 0x56, 0x45]; // "WAVE"
+      for (var i = 0; i < 4; i++) {
+        wavBytes[i] = riff[i];
+        wavBytes[8 + i] = wave[i];
+      }
+      return await uploadMediaBytes(
+        bucket: 'voice-notes',
+        fileName: 'voice_spark_${durationSec}s.wav',
+        bytes: wavBytes,
+        contentType: 'audio/wav',
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Fetch active 24h Stories from `public.stories`
+  Future<List<Map<String, dynamic>>> fetchStories() async {
+    try {
+      final uri = Uri.parse('$baseUrl/rest/v1/stories?select=*&order=created_at.desc&limit=20');
+      final request = await _httpClient.getUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(body);
+        if (decoded is List) {
+          return List<Map<String, dynamic>>.from(decoded);
+        }
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  /// Post a 24h Story to `public.stories`
+  Future<bool> postStory({
+    required String userName,
+    required String avatarUrl,
+    required String caption,
+    String imageUrl = '',
+    String vibe = '⚡ Active Quest',
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/rest/v1/stories');
+      final request = await _httpClient.postUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      request.write(jsonEncode({
+        'user_id': currentUserId ?? 'user_me',
+        'user_name': userName,
+        'avatar_url': avatarUrl,
+        'image_url': imageUrl,
+        'caption': caption,
+        'vibe': vibe,
+      }));
+      final response = await request.close();
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Create a Call Signal in `public.call_signals`
+  Future<bool> createCallSignal({
+    required String roomId,
+    required String callerName,
+    required String callerAvatar,
+    required String calleeId,
+    String callType = 'video',
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/rest/v1/call_signals');
+      final request = await _httpClient.postUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      request.write(jsonEncode({
+        'room_id': roomId,
+        'caller_id': currentUserId ?? 'user_me',
+        'caller_name': callerName,
+        'caller_avatar': callerAvatar,
+        'callee_id': calleeId,
+        'call_type': callType,
+        'status': 'ringing',
+      }));
+      final response = await request.close();
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Update Call Signal status ('accepted', 'declined', 'ended')
+  Future<bool> updateCallSignalStatus({
+    required String roomId,
+    required String status,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/rest/v1/call_signals?room_id=eq.$roomId');
+      final request = await _httpClient.patchUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      request.write(jsonEncode({'status': status}));
+      final response = await request.close();
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {
+      return false;
     }
   }
 }

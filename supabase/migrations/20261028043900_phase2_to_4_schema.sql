@@ -85,3 +85,4 @@ begin
   return true;
 end;
 $$ language plpgsql security definer;
+

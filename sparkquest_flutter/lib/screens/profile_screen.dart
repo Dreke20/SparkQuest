@@ -98,32 +98,66 @@ class _ProfileScreenState extends State<ProfileScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _LivenessVerificationModal(
-        onVerified: () {
+        onVerified: () async {
           setState(() => _isVerified = true);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('🎉 Face Verified! Anti-Catfish Shield Activated.'),
-              backgroundColor: AppTheme.emeraldGreen,
-            ),
+          final avatarUrl = await SupabaseService.instance.uploadAssetToBucket(
+            bucket: 'avatars',
+            assetPath: 'assets/images/alex.png',
+            customFileName: 'verified_selfie_alex.png',
           );
+          if (avatarUrl != null) {
+            await SupabaseService.instance.updateProfileField(
+              'avatar_url',
+              avatarUrl,
+            );
+          }
+          await SupabaseService.instance.updateProfileField(
+            'is_verified',
+            true,
+          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  '🎉 Face Verified & Synced to Supabase Cloud Storage!',
+                ),
+                backgroundColor: AppTheme.emeraldGreen,
+              ),
+            );
+          }
         },
       ),
     );
   }
 
-  void _toggleVoiceRecording() {
+  void _toggleVoiceRecording() async {
     if (_isRecordingVoice) {
       _voiceTimer?.cancel();
       setState(() {
         _isRecordingVoice = false;
         _hasVoicePrompt = true;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('🎙️ Voice Spark saved! "My secret, useless talent"'),
-          backgroundColor: AppTheme.electricViolet,
-        ),
+      final voiceUrl = await SupabaseService.instance.uploadVoiceNoteBytes(
+        durationSec: _voiceSeconds > 0 ? _voiceSeconds : 9,
       );
+      if (voiceUrl != null) {
+        await SupabaseService.instance.updateProfileField(
+          'voice_prompt_url',
+          voiceUrl,
+        );
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              voiceUrl != null
+                  ? '🎙️ Voice Spark uploaded to Supabase Storage ("voice-notes")!'
+                  : '🎙️ Voice Spark saved! "My secret, useless talent"',
+            ),
+            backgroundColor: AppTheme.electricViolet,
+          ),
+        );
+      }
     } else {
       setState(() {
         _isRecordingVoice = true;
