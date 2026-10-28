@@ -7,7 +7,7 @@ import '../services/quest_progression_service.dart';
 
 class QuestsScreen extends StatefulWidget {
   final int streakDays;
-  final VoidCallback onClaimEmber;
+  final Function(int amount) onClaimEmber;
 
   const QuestsScreen({
     super.key,
@@ -48,7 +48,7 @@ class _QuestsScreenState extends State<QuestsScreen> {
   void _claim(QuestItem quest) {
     if (quest.isClaimed || !quest.isCompleted) return;
     QuestProgressionService.instance.claimQuest(quest.id);
-    widget.onClaimEmber();
+    widget.onClaimEmber(quest.reward);
     _confettiController.play();
 
     ScaffoldMessenger.of(context).showSnackBar(

@@ -368,7 +368,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       context: context,
                       builder: (ctx) => MysteryBlindMatchDialog(
                         onAwardEmbers: (val) {
-                          widget.onEmbersEarned();
+                          if (widget.onBonusEmbers != null) {
+                            widget.onBonusEmbers!(val);
+                          } else {
+                            widget.onEmbersEarned();
+                          }
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(

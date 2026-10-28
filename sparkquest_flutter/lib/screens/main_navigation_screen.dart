@@ -38,7 +38,20 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   void initState() {
     super.initState();
+    RealtimeChatService.instance.addListener(_onBadgeStateChanged);
+    QuestProgressionService.instance.addListener(_onBadgeStateChanged);
     _initStorageAndServices();
+  }
+
+  @override
+  void dispose() {
+    RealtimeChatService.instance.removeListener(_onBadgeStateChanged);
+    QuestProgressionService.instance.removeListener(_onBadgeStateChanged);
+    super.dispose();
+  }
+
+  void _onBadgeStateChanged() {
+    if (mounted) setState(() {});
   }
 
   void _initStorageAndServices() async {
@@ -390,7 +403,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       ),
       QuestsScreen(
         streakDays: _streakDays,
-        onClaimEmber: () => _addEmbers(100),
+        onClaimEmber: _addEmbers,
       ),
       ProfileScreen(
         embers: _embers,
@@ -567,36 +580,67 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             ),
           ],
         ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) => setState(() => _currentIndex = index),
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.local_fire_department_outlined),
-              activeIcon: Icon(Icons.local_fire_department_rounded),
-              label: 'Explore',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.explore_outlined),
-              activeIcon: Icon(Icons.explore_rounded),
-              label: 'Radar Map',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.chat_bubble_outline_rounded),
-              activeIcon: Icon(Icons.chat_bubble_rounded),
-              label: 'Matches',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.shield_outlined),
-              activeIcon: Icon(Icons.shield_rounded),
-              label: 'Quests',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline_rounded),
-              activeIcon: Icon(Icons.person_rounded),
-              label: 'Profile',
-            ),
-          ],
+        child: Builder(
+          builder: (context) {
+            final unreadMessages = RealtimeChatService.instance
+                .getConversations()
+                .fold<int>(0, (sum, c) => sum + c.unreadCount);
+            final claimableQuests = QuestProgressionService.instance.quests
+                .where((q) => q.isCompleted && !q.isClaimed)
+                .length;
+
+            return BottomNavigationBar(
+              currentIndex: _currentIndex,
+              onTap: (index) => setState(() => _currentIndex = index),
+              items: [
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.local_fire_department_outlined),
+                  activeIcon: Icon(Icons.local_fire_department_rounded),
+                  label: 'Explore',
+                ),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.explore_outlined),
+                  activeIcon: Icon(Icons.explore_rounded),
+                  label: 'Radar Map',
+                ),
+                BottomNavigationBarItem(
+                  icon: Badge.count(
+                    count: unreadMessages,
+                    isLabelVisible: unreadMessages > 0,
+                    backgroundColor: AppTheme.sparkCoral,
+                    child: const Icon(Icons.chat_bubble_outline_rounded),
+                  ),
+                  activeIcon: Badge.count(
+                    count: unreadMessages,
+                    isLabelVisible: unreadMessages > 0,
+                    backgroundColor: AppTheme.sparkCoral,
+                    child: const Icon(Icons.chat_bubble_rounded),
+                  ),
+                  label: 'Matches',
+                ),
+                BottomNavigationBarItem(
+                  icon: Badge.count(
+                    count: claimableQuests,
+                    isLabelVisible: claimableQuests > 0,
+                    backgroundColor: AppTheme.emeraldGreen,
+                    child: const Icon(Icons.shield_outlined),
+                  ),
+                  activeIcon: Badge.count(
+                    count: claimableQuests,
+                    isLabelVisible: claimableQuests > 0,
+                    backgroundColor: AppTheme.emeraldGreen,
+                    child: const Icon(Icons.shield_rounded),
+                  ),
+                  label: 'Quests',
+                ),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.person_outline_rounded),
+                  activeIcon: Icon(Icons.person_rounded),
+                  label: 'Profile',
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

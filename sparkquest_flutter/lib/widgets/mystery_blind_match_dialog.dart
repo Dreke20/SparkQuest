@@ -1,9 +1,11 @@
+import 'dart:math';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 
 import '../models/profile.dart';
+import '../services/realtime_chat_service.dart';
 import '../theme/app_theme.dart';
 
 class MysteryBlindMatchDialog extends StatefulWidget {
@@ -56,7 +58,8 @@ class _MysteryBlindMatchDialogState extends State<MysteryBlindMatchDialog> {
     _confettiController = ConfettiController(
       duration: const Duration(seconds: 2),
     );
-    _mysteryProfile = Profile.seedProfiles.first; // Sophia
+    final seeds = Profile.seedProfiles;
+    _mysteryProfile = seeds[Random().nextInt(seeds.length)];
   }
 
   @override
@@ -316,6 +319,11 @@ class _MysteryBlindMatchDialogState extends State<MysteryBlindMatchDialog> {
                       ),
                     ),
                     onPressed: () {
+                      RealtimeChatService.instance.addMatchFromProfile(
+                        _mysteryProfile,
+                      );
+                      RealtimeChatService.instance.pendingOpenMatchName =
+                          _mysteryProfile.name;
                       Navigator.pop(context);
                       widget.onOpenChat();
                     },

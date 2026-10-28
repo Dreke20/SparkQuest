@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 
+import '../services/storage_service.dart';
 import '../theme/app_theme.dart';
 
 class DailySpinWheelDialog extends StatefulWidget {
@@ -20,6 +21,7 @@ class _DailySpinWheelDialogState extends State<DailySpinWheelDialog>
   late Animation<double> _animation;
   late ConfettiController _confettiController;
   bool _isSpinning = false;
+  bool _hasSpunToday = false;
   double _currentAngle = 0;
   String _resultText = 'Spin the wheel for free daily Embers & perks!';
 
@@ -72,6 +74,10 @@ class _DailySpinWheelDialogState extends State<DailySpinWheelDialog>
   @override
   void initState() {
     super.initState();
+    _hasSpunToday = StorageService.instance.hasUsedFreeDailySpinToday();
+    if (_hasSpunToday) {
+      _resultText = 'Daily free spin claimed! VIP Bonus Spin unlocked ✨';
+    }
     _confettiController = ConfettiController(
       duration: const Duration(seconds: 2),
     );
@@ -128,10 +134,12 @@ class _DailySpinWheelDialogState extends State<DailySpinWheelDialog>
       final reward = winningSlice['reward'] as int;
 
       widget.onAwardEmbers(reward);
+      StorageService.instance.markFreeDailySpinUsedToday();
       _confettiController.play();
 
       setState(() {
         _isSpinning = false;
+        _hasSpunToday = true;
         _resultText = '🎉 You won ${winningSlice['label']}! (+$reward Embers)';
       });
     });
@@ -279,7 +287,11 @@ class _DailySpinWheelDialogState extends State<DailySpinWheelDialog>
                     ),
                   ),
                   child: Text(
-                    _isSpinning ? 'SPINNING...' : 'SPIN FOR FREE 🎯',
+                    _isSpinning
+                        ? 'SPINNING...'
+                        : (_hasSpunToday
+                              ? 'VIP BONUS SPIN 🎯'
+                              : 'SPIN FOR FREE 🎯'),
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
