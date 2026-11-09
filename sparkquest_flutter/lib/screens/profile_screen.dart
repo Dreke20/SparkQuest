@@ -13,6 +13,7 @@ import '../services/storage_service.dart';
 import '../services/quest_progression_service.dart';
 import '../widgets/sparky_ai_wingman_sheet.dart';
 import '../widgets/moderation_dialogs.dart';
+import '../widgets/release_notes_dialog.dart';
 
 class ProfileScreen extends StatefulWidget {
   final int embers;
@@ -1312,6 +1313,109 @@ class _ProfileScreenState extends State<ProfileScreen> {
             label: const Text(
               'Delete Account & Wipe Data (Play Store Policy)',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            ),
+          ),
+          const SizedBox(height: 18),
+          const Divider(color: Colors.white12, height: 1),
+          const SizedBox(height: 14),
+
+          // Version Labeling & Release Notes Card
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppTheme.bgSurface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppTheme.neonCyan.withValues(alpha: 0.35),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: Image.asset(
+                            'assets/images/logo.jpg',
+                            width: 20,
+                            height: 20,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'SparkQuest v2.0.0+4',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.emeraldGreen.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppTheme.emeraldGreen),
+                      ),
+                      child: const Text(
+                        'PRODUCTION',
+                        style: TextStyle(
+                          color: AppTheme.emeraldGreen,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Build: 2026.11 • Flutter 3.47.7 • Supabase Cloud Live',
+                  style: TextStyle(color: AppTheme.textDim, fontSize: 10.5),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.electricViolet.withValues(
+                        alpha: 0.3,
+                      ),
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: AppTheme.electricViolet),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => const ReleaseNotesDialog(),
+                      );
+                    },
+                    icon: const Icon(Icons.new_releases_outlined, size: 15),
+                    label: const Text(
+                      'Release Notes & Roadmap',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

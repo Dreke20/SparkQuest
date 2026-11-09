@@ -2,6 +2,8 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../theme/app_theme.dart';
 import '../services/storage_service.dart';
@@ -20,32 +22,54 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen>
     with SingleTickerProviderStateMixin {
+  final MapController _mapController = MapController();
+  bool _isLiveMap = true;
   bool _isScanning = false;
   bool _privacyFuzzActive = true;
   String _selectedCategory = 'all'; // 'all', 'venue', 'drop', 'event'
   late AnimationController _radarController;
+  late LatLng _userLocation;
+
   final List<MapDrop> _drops = [
     MapDrop(
       id: '1',
       title: 'Skyline Lounge',
       type: 'venue',
       icon: '🍸',
+      location: const LatLng(37.7845, -122.4089),
       x: 0.32,
       y: 0.42,
+      address: '750 Sutter St, San Francisco, CA',
+      description: 'Verified Safe Haven rooftop cocktail lounge with panoramic skyline views.',
     ),
     MapDrop(
       id: '2',
       title: 'The Boathouse Cafe',
       type: 'venue',
       icon: '☕',
+      location: const LatLng(37.7694, -122.4132),
       x: 0.68,
       y: 0.56,
+      address: '1020 Valencia St, San Francisco, CA',
+      description: 'Third-wave espresso & matcha bar. Angel-shot trained baristas on site.',
+    ),
+    MapDrop(
+      id: 'safe_neon',
+      title: 'Neon Roasters',
+      type: 'venue',
+      icon: '🛡️',
+      location: const LatLng(37.7620, -122.4220),
+      x: 0.50,
+      y: 0.72,
+      address: '500 Dolores St, San Francisco, CA',
+      description: 'Cozy artisan roastery with outdoor heated patio and safe meeting zones.',
     ),
     MapDrop(
       id: '3',
       title: 'Fire Drop +50',
       type: 'fire',
       icon: '🔥',
+      location: const LatLng(37.7770, -122.4240),
       x: 0.48,
       y: 0.30,
       value: 50,
@@ -55,6 +79,7 @@ class _MapScreenState extends State<MapScreen>
       title: 'Gem Drop +100',
       type: 'gem',
       icon: '💎',
+      location: const LatLng(37.7720, -122.4100),
       x: 0.25,
       y: 0.64,
       value: 100,
@@ -64,16 +89,22 @@ class _MapScreenState extends State<MapScreen>
       title: 'Rooftop Trivia Raid',
       type: 'event',
       icon: '🎉',
+      location: const LatLng(37.7812, -122.3956),
       x: 0.72,
       y: 0.34,
+      address: '888 Brannan St, San Francisco, CA',
+      description: 'Community trivia night with icebreaker cards & group Co-Op prizes.',
     ),
     MapDrop(
       id: 'event_run',
       title: 'Sunset Run & Matcha',
       type: 'event',
       icon: '🌅',
+      location: const LatLng(37.7699, -122.4469),
       x: 0.30,
       y: 0.24,
+      address: 'Buena Vista Park, San Francisco, CA',
+      description: 'Casual 3-mile sunset trail loop finishing with iced matcha lattes.',
     ),
   ];
 
@@ -98,6 +129,17 @@ class _MapScreenState extends State<MapScreen>
       vsync: this,
       duration: const Duration(milliseconds: 2000),
     );
+
+    final city = StorageService.instance.getTeleportCity();
+    if (city.contains('Tokyo')) {
+      _userLocation = const LatLng(35.6762, 139.6503);
+    } else if (city.contains('New York')) {
+      _userLocation = const LatLng(40.7128, -74.0060);
+    } else if (city.contains('London')) {
+      _userLocation = const LatLng(51.5074, -0.1278);
+    } else {
+      _userLocation = const LatLng(37.7749, -122.4194); // SF default
+    }
   }
 
   @override
@@ -110,9 +152,16 @@ class _MapScreenState extends State<MapScreen>
     setState(() => _isScanning = true);
     _radarController.forward(from: 0.0);
 
-    // Add 2 newly revealed mystery drops
+    // Add 2 newly revealed mystery drops around current map center
     Future.delayed(const Duration(milliseconds: 1200), () {
       if (mounted) {
+        final randLat = (Random().nextDouble() - 0.5) * 0.015;
+        final randLng = (Random().nextDouble() - 0.5) * 0.015;
+        final newLoc = LatLng(
+          _userLocation.latitude + randLat,
+          _userLocation.longitude + randLng,
+        );
+
         setState(() {
           _isScanning = false;
           _drops.add(
@@ -121,6 +170,7 @@ class _MapScreenState extends State<MapScreen>
               title: 'Mystery Beacon +75',
               type: 'fire',
               icon: '🔥',
+              location: newLoc,
               x: 0.5 + (Random().nextDouble() * 0.3 - 0.15),
               y: 0.5 + (Random().nextDouble() * 0.3 - 0.15),
               value: 75,
@@ -130,7 +180,7 @@ class _MapScreenState extends State<MapScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              '📡 Radar Scan Complete: 2 Hidden Ember Beacons Revealed!',
+              '📡 Radar Scan Complete: 2 Hidden Ember Beacons Revealed on Live Map!',
             ),
             backgroundColor: AppTheme.neonCyan,
           ),
@@ -139,157 +189,84 @@ class _MapScreenState extends State<MapScreen>
     });
   }
 
+  void _onDropTapped(MapDrop drop) {
+    HapticFeedback.selectionClick();
+    if (drop.value > 0) {
+      widget.onEmberFound();
+      QuestProgressionService.instance.incrementQuest(
+        'engage5',
+        xpGain: 25,
+      );
+      setState(() => _drops.remove(drop));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Claimed ${drop.title}! 🔥 (+25 XP)'),
+          backgroundColor: AppTheme.questGold,
+        ),
+      );
+    } else if (drop.type == 'event') {
+      _showEventRsvpModal(drop);
+    } else {
+      _showVenueModal(drop.title);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Map Canvas Area
-        Container(
-          color: const Color(0xFF070B14),
-          child: Stack(
-            fit: StackFit.expand,
+        // Live Interactive Map or Cyber Grid Area
+        Positioned.fill(
+          child: Container(
+            color: const Color(0xFF070B14),
+            child: _isLiveMap ? _buildLiveFlutterMap() : _buildCyberRadarCanvas(),
+          ),
+        ),
+        // Map Floating Controls (Recenter, Zoom, Map/Radar View Toggle)
+        Positioned(
+          top: 155,
+          right: 16,
+          child: Column(
             children: [
-              // Grid Background Lines
-              CustomPaint(painter: MapGridPainter()),
-              // Concentric Radar Waves Animation
-              if (_isScanning)
-                Center(
-                  child: AnimatedBuilder(
-                    animation: _radarController,
-                    builder: (context, child) {
-                      return CustomPaint(
-                        painter: SonarWavePainter(
-                          progress: _radarController.value,
-                        ),
-                        child: const SizedBox(width: 320, height: 320),
-                      );
-                    },
-                  ),
-                ),
-              // User Center Marker
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: AppTheme.neonCyan,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.neonCyan.withValues(alpha: 0.6),
-                            blurRadius: 16,
-                            spreadRadius: 4,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppTheme.bgSurface.withValues(alpha: 0.85),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Text(
-                        'You',
-                        style: TextStyle(fontSize: 10, color: Colors.white),
-                      ),
-                    ),
-                  ],
-                ),
+              _buildMapControlBtn(
+                icon: _isLiveMap ? Icons.radar : Icons.map_outlined,
+                tooltip: _isLiveMap ? 'Radar Grid' : 'Live Map',
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => _isLiveMap = !_isLiveMap);
+                },
               ),
-              // Map Drops & Venue Markers
-              ..._filteredDrops.map(
-                (drop) => Positioned(
-                  left: MediaQuery.of(context).size.width * drop.x - 30,
-                  top: (MediaQuery.of(context).size.height - 200) * drop.y - 30,
-                  child: GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      if (drop.value > 0) {
-                        widget.onEmberFound();
-                        QuestProgressionService.instance.incrementQuest(
-                          'engage5',
-                          xpGain: 25,
-                        );
-                        setState(() => _drops.remove(drop));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Claimed ${drop.title}! 🔥 (+25 XP)'),
-                            backgroundColor: AppTheme.questGold,
-                          ),
-                        );
-                      } else if (drop.type == 'event') {
-                        _showEventRsvpModal(drop);
-                      } else {
-                        _showVenueModal(drop.title);
-                      }
-                    },
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppTheme.bgSurface,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: drop.type == 'venue'
-                                  ? AppTheme.electricViolet
-                                  : (drop.type == 'event'
-                                      ? AppTheme.neonCyan
-                                      : AppTheme.questGold),
-                              width: 2,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color:
-                                    (drop.type == 'venue'
-                                            ? AppTheme.electricViolet
-                                            : (drop.type == 'event'
-                                                ? AppTheme.neonCyan
-                                                : AppTheme.questGold))
-                                        .withValues(alpha: 0.4),
-                                blurRadius: 10,
-                              ),
-                            ],
-                          ),
-                          child: Text(
-                            drop.icon,
-                            style: const TextStyle(fontSize: 20),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.7),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            drop.title,
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+              const SizedBox(height: 8),
+              if (_isLiveMap) ...[
+                _buildMapControlBtn(
+                  icon: Icons.my_location,
+                  tooltip: 'Recenter',
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    _mapController.move(_userLocation, 14.5);
+                  },
                 ),
-              ),
+                const SizedBox(height: 8),
+                _buildMapControlBtn(
+                  icon: Icons.add,
+                  tooltip: 'Zoom In',
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    final zoom = _mapController.camera.zoom;
+                    _mapController.move(_mapController.camera.center, zoom + 1);
+                  },
+                ),
+                const SizedBox(height: 8),
+                _buildMapControlBtn(
+                  icon: Icons.remove,
+                  tooltip: 'Zoom Out',
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    final zoom = _mapController.camera.zoom;
+                    _mapController.move(_mapController.camera.center, zoom - 1);
+                  },
+                ),
+              ],
             ],
           ),
         ),
@@ -519,6 +496,324 @@ class _MapScreenState extends State<MapScreen>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildLiveFlutterMap() {
+    return FlutterMap(
+      mapController: _mapController,
+      options: MapOptions(
+        initialCenter: _userLocation,
+        initialZoom: 14.5,
+        interactionOptions: const InteractionOptions(
+          flags: InteractiveFlag.all,
+        ),
+      ),
+      children: [
+        // TileLayer for Dark Matter CartoDB tiles with high contrast night mode
+        TileLayer(
+          urlTemplate:
+              'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+          subdomains: const ['a', 'b', 'c', 'd'],
+          userAgentPackageName: 'com.sparkquest.sparkquest',
+          maxZoom: 19,
+        ),
+        // 500m Privacy Shield / Fuzz Radius around User
+        if (_privacyFuzzActive)
+          CircleLayer(
+            circles: [
+              CircleMarker(
+                point: _userLocation,
+                radius: 500,
+                useRadiusInMeter: true,
+                color: AppTheme.emeraldGreen.withValues(alpha: 0.12),
+                borderColor: AppTheme.emeraldGreen.withValues(alpha: 0.5),
+                borderStrokeWidth: 2,
+              ),
+            ],
+          ),
+        // MarkerLayer for User and Drops
+        MarkerLayer(
+          markers: [
+            // User Location Marker
+            Marker(
+              point: _userLocation,
+              width: 50,
+              height: 50,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: AppTheme.neonCyan,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.neonCyan.withValues(alpha: 0.8),
+                          blurRadius: 14,
+                          spreadRadius: 3,
+                        ),
+                      ],
+                    ),
+                    child: const Center(
+                      child: Icon(Icons.navigation, size: 12, color: Colors.black),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 1.5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.8),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppTheme.neonCyan.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: const Text(
+                      'You',
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Venue / Event / Drop Markers
+            ..._filteredDrops.map((drop) {
+              final isVenue = drop.type == 'venue';
+              final isEvent = drop.type == 'event';
+              final badgeColor = isVenue
+                  ? AppTheme.electricViolet
+                  : (isEvent ? AppTheme.neonCyan : AppTheme.questGold);
+
+              return Marker(
+                point: drop.location,
+                width: 76,
+                height: 70,
+                child: GestureDetector(
+                  onTap: () => _onDropTapped(drop),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: AppTheme.bgSurface,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: badgeColor, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: badgeColor.withValues(alpha: 0.5),
+                              blurRadius: 10,
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            drop.icon,
+                            style: const TextStyle(fontSize: 18),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 1.5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: badgeColor.withValues(alpha: 0.5),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Text(
+                          drop.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 9,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCyberRadarCanvas() {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Grid Background Lines
+        CustomPaint(painter: MapGridPainter()),
+        // Concentric Radar Waves Animation
+        if (_isScanning)
+          Center(
+            child: AnimatedBuilder(
+              animation: _radarController,
+              builder: (context, child) {
+                return CustomPaint(
+                  painter: SonarWavePainter(
+                    progress: _radarController.value,
+                  ),
+                  child: const SizedBox(width: 320, height: 320),
+                );
+              },
+            ),
+          ),
+        // User Center Marker
+        Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: AppTheme.neonCyan,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.neonCyan.withValues(alpha: 0.6),
+                      blurRadius: 16,
+                      spreadRadius: 4,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.bgSurface.withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Text(
+                  'You',
+                  style: TextStyle(fontSize: 10, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Map Drops & Venue Markers in Radar Vector Grid
+        ..._filteredDrops.map(
+          (drop) => Positioned(
+            left: MediaQuery.of(context).size.width * drop.x - 30,
+            top: (MediaQuery.of(context).size.height - 200) * drop.y - 30,
+            child: GestureDetector(
+              onTap: () => _onDropTapped(drop),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.bgSurface,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: drop.type == 'venue'
+                            ? AppTheme.electricViolet
+                            : (drop.type == 'event'
+                                ? AppTheme.neonCyan
+                                : AppTheme.questGold),
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: (drop.type == 'venue'
+                                  ? AppTheme.electricViolet
+                                  : (drop.type == 'event'
+                                      ? AppTheme.neonCyan
+                                      : AppTheme.questGold))
+                              .withValues(alpha: 0.4),
+                          blurRadius: 10,
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      drop.icon,
+                      style: const TextStyle(fontSize: 20),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.7),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      drop.title,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMapControlBtn({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      width: 42,
+      height: 42,
+      decoration: BoxDecoration(
+        color: AppTheme.bgSurface.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.neonCyan.withValues(alpha: 0.45)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 8,
+          ),
+        ],
+      ),
+      child: IconButton(
+        icon: Icon(icon, color: AppTheme.neonCyan, size: 20),
+        tooltip: tooltip,
+        onPressed: onTap,
+        padding: EdgeInsets.zero,
+      ),
     );
   }
 
@@ -1019,18 +1314,24 @@ class MapDrop {
   final String title;
   final String type;
   final String icon;
+  final LatLng location;
   final double x;
   final double y;
   final int value;
+  final String address;
+  final String description;
 
   MapDrop({
     required this.id,
     required this.title,
     required this.type,
     required this.icon,
+    required this.location,
     required this.x,
     required this.y,
     this.value = 0,
+    this.address = '',
+    this.description = '',
   });
 }
 
