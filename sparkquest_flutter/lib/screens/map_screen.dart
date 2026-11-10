@@ -10,6 +10,8 @@ import '../services/storage_service.dart';
 import '../services/supabase_service.dart';
 import '../services/quest_progression_service.dart';
 import '../services/realtime_chat_service.dart';
+import '../widgets/voice_lounges_sheet.dart';
+import '../widgets/ble_proximity_sheet.dart';
 
 class MapScreen extends StatefulWidget {
   final VoidCallback onEmberFound;
@@ -275,95 +277,139 @@ class _MapScreenState extends State<MapScreen>
           top: 16,
           left: 16,
           right: 16,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppTheme.bgSurface.withValues(alpha: 0.92),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: AppTheme.neonCyan.withValues(alpha: 0.5),
+          child: GestureDetector(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (ctx) => const BleProximitySheet(),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppTheme.bgSurface.withValues(alpha: 0.92),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppTheme.neonCyan.withValues(alpha: 0.5),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.neonCyan.withValues(alpha: 0.15),
+                    blurRadius: 12,
+                  ),
+                ],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.neonCyan.withValues(alpha: 0.15),
-                  blurRadius: 12,
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.asset(
-                    'assets/images/maya.png',
-                    width: 34,
-                    height: 34,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '📡 PROXIMITY BEACON DETECTED',
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.neonCyan,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                      Text(
-                        'Maya (92% Match) is 280 ft away!',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    HapticFeedback.mediumImpact();
-                    RealtimeChatService.instance.sendMessage(
-                      'Maya',
-                      '👋 Waved at your Proximity Beacon (280 ft away)!',
-                    );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Wave sent to Maya’s chat! 🌊 Check Matches for her reply.',
-                        ),
-                        backgroundColor: AppTheme.sparkCoral,
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.sparkCoral,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    minimumSize: Size.zero,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.asset(
+                      'assets/images/maya.png',
+                      width: 34,
+                      height: 34,
+                      fit: BoxFit.cover,
                     ),
                   ),
-                  child: const Text(
-                    'Wave 🌊',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '📡 PROXIMITY BEACON DETECTED',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.neonCyan,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        Text(
+                          'Maya (94% Synergy) is 18m away!',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ],
+                  ElevatedButton(
+                    onPressed: () {
+                      HapticFeedback.mediumImpact();
+                      RealtimeChatService.instance.sendMessage(
+                        'Maya',
+                        '👋 Waved at your Proximity Beacon (18m away)!',
+                      );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Wave sent to Maya’s chat! 🌊 Check Matches for her reply.',
+                          ),
+                          backgroundColor: AppTheme.sparkCoral,
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.sparkCoral,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      minimumSize: Size.zero,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Text(
+                      'Wave 🌊',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  OutlinedButton(
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (ctx) => const BleProximitySheet(),
+                      );
+                    },
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(
+                        color: AppTheme.neonCyan.withValues(alpha: 0.6),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
+                      minimumSize: Size.zero,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Text(
+                      'Radar 📡',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.neonCyan,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -386,6 +432,78 @@ class _MapScreenState extends State<MapScreen>
                     _buildFilterPill('venue', '🛡️ Safe Havens'),
                     const SizedBox(width: 8),
                     _buildFilterPill('drop', '🔥 Ember Drops'),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (ctx) => const VoiceLoungesSheet(),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.electricViolet.withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: AppTheme.electricViolet),
+                        ),
+                        child: const Row(
+                          children: [
+                            Text('🎙️ ', style: TextStyle(fontSize: 11)),
+                            Text(
+                              'Voice Lounges',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (ctx) => const BleProximitySheet(),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.neonCyan.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: AppTheme.neonCyan),
+                        ),
+                        child: const Row(
+                          children: [
+                            Text('📡 ', style: TextStyle(fontSize: 11)),
+                            Text(
+                              'BLE Radar',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                     const SizedBox(width: 8),
                     GestureDetector(
                       onTap: () {

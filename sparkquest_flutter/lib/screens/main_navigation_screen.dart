@@ -20,6 +20,8 @@ import '../services/quest_progression_service.dart';
 import '../widgets/notification_banner.dart';
 import '../widgets/biometric_lock_screen.dart';
 import '../widgets/video_call_screen.dart';
+import '../widgets/voice_lounges_sheet.dart';
+import '../widgets/ble_proximity_sheet.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -692,6 +694,44 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       ),
                     );
                   },
+                ),
+              );
+            },
+          ),
+
+          // Drop-In Voice Lounges (v2.1.0 Roadmap Feature)
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(4),
+            icon: const Text('🎙️', style: TextStyle(fontSize: 16)),
+            tooltip: 'Live Voice Lounges',
+            onPressed: () {
+              HapticFeedback.selectionClick();
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (ctx) => const VoiceLoungesSheet(),
+              );
+            },
+          ),
+
+          // BLE Proximity Radar (v2.1.0 Roadmap Feature)
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(4),
+            icon: const Text('📡', style: TextStyle(fontSize: 16)),
+            tooltip: 'BLE Proximity Radar',
+            onPressed: () {
+              HapticFeedback.selectionClick();
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (ctx) => BleProximitySheet(
+                  onEmberSpent: () => setState(
+                    () => _embers = StorageService.instance.getEmbers(),
+                  ),
                 ),
               );
             },

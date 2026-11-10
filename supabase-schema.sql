@@ -362,4 +362,47 @@ AS $$
   LIMIT 50;
 $$;
 
+-- =========================================================
+-- Phase 13: Voice Lounges & Production Storage RLS
+-- =========================================================
+CREATE TABLE IF NOT EXISTS public.voice_lounges (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    topic TEXT NOT NULL,
+    vibe TEXT DEFAULT 'Indie Vibe' NOT NULL,
+    host_id TEXT NOT NULL,
+    host_name TEXT NOT NULL,
+    max_listeners INTEGER DEFAULT 20 NOT NULL,
+    is_active BOOLEAN DEFAULT true NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.voice_lounge_members (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lounge_id TEXT REFERENCES public.voice_lounges(id) ON DELETE CASCADE NOT NULL,
+    user_id TEXT NOT NULL,
+    user_name TEXT NOT NULL,
+    user_avatar TEXT DEFAULT '',
+    is_speaking BOOLEAN DEFAULT false NOT NULL,
+    is_muted BOOLEAN DEFAULT false NOT NULL,
+    joined_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+    CONSTRAINT unique_lounge_participant UNIQUE (lounge_id, user_id)
+);
+
+ALTER TABLE public.voice_lounges ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.voice_lounge_members ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public can view active voice lounges" ON public.voice_lounges;
+CREATE POLICY "Public can view active voice lounges" ON public.voice_lounges
+    FOR SELECT USING (is_active = true);
+
+DROP POLICY IF EXISTS "Members can view lounge attendees" ON public.voice_lounge_members;
+CREATE POLICY "Members can view lounge attendees" ON public.voice_lounge_members
+    FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Users can join or update lounge presence" ON public.voice_lounge_members;
+CREATE POLICY "Users can join or update lounge presence" ON public.voice_lounge_members
+    FOR ALL USING (auth.uid()::text = user_id OR user_id = 'user_me');
+
+
 

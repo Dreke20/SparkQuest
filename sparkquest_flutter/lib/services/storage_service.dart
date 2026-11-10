@@ -284,6 +284,10 @@ class StorageService {
   Future<void> savePartyWingman(String name) async =>
       await _prefs?.setString('party_wingman_name', name);
 
+  String getUserName() => _prefs?.getString('user_display_name') ?? 'Alex';
+  Future<void> saveUserName(String name) async =>
+      await _prefs?.setString('user_display_name', name);
+
   // --- Phase 8–12 Persisted State (Subclass, Guilds, Streak Shield, Match Perks) ---
   bool isStreakShieldArmed() =>
       _prefs?.getBool('streak_shield_armed') ?? true;
@@ -306,4 +310,20 @@ class StorageService {
       _prefs?.getStringList('revealed_admirer_ids') ?? ['jordan'];
   Future<void> saveRevealedAdmirers(List<String> ids) async =>
       await _prefs?.setStringList('revealed_admirer_ids', ids);
+
+  // --- BLE Proximity Beacon ---
+  bool isBleBeaconBroadcasting() =>
+      _prefs?.getBool('ble_beacon_broadcasting') ?? true;
+  Future<void> setBleBeaconBroadcasting(bool active) async =>
+      await _prefs?.setBool('ble_beacon_broadcasting', active);
+
+  String getBleBeaconVibe() =>
+      _prefs?.getString('ble_beacon_vibe') ?? 'Looking for Coffee ☕';
+  Future<void> saveBleBeaconVibe(String vibe) async =>
+      await _prefs?.setString('ble_beacon_vibe', vibe);
+
+  int getBleBeaconRangeMeters() =>
+      _prefs?.getInt('ble_beacon_range_meters') ?? 50;
+  Future<void> saveBleBeaconRangeMeters(int meters) async =>
+      await _prefs?.setInt('ble_beacon_range_meters', meters);
 }

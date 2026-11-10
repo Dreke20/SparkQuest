@@ -5,6 +5,7 @@ import 'package:sparkquest/models/profile.dart';
 import 'package:sparkquest/services/quest_progression_service.dart';
 import 'package:sparkquest/services/realtime_chat_service.dart';
 import 'package:sparkquest/services/storage_service.dart';
+import 'package:sparkquest/services/supabase_service.dart';
 
 void main() {
   setUp(() async {
@@ -168,5 +169,38 @@ void main() {
 
     await StorageService.instance.addInventoryItem('rose', 2);
     expect(StorageService.instance.getInventoryCount('rose'), 2);
+  });
+
+  test('Phase 13 (v2.1.0): Drop-In Voice Lounges & User Profile State', () async {
+    final lounges = await SupabaseService.instance.fetchVoiceLounges();
+    expect(lounges.length, greaterThanOrEqualTo(3));
+    expect(lounges.first['title'], contains('Espresso'));
+
+    final joined = await SupabaseService.instance.joinVoiceLounge(
+      loungeId: 'lounge_coffee',
+      userId: 'user_test',
+      userName: 'Test Explorer',
+    );
+    expect(joined, isTrue);
+
+    final left = await SupabaseService.instance.leaveVoiceLounge('lounge_coffee', 'user_test');
+    expect(left, isTrue);
+
+    await StorageService.instance.saveUserName('Alex Navigator');
+    expect(StorageService.instance.getUserName(), 'Alex Navigator');
+  });
+
+  test('Phase 14 (v2.1.0): BLE Proximity Beacon settings & persistence', () async {
+    expect(StorageService.instance.isBleBeaconBroadcasting(), isTrue);
+    await StorageService.instance.setBleBeaconBroadcasting(false);
+    expect(StorageService.instance.isBleBeaconBroadcasting(), isFalse);
+
+    expect(StorageService.instance.getBleBeaconVibe(), 'Looking for Coffee ☕');
+    await StorageService.instance.saveBleBeaconVibe('Ready for Trivia 🧠');
+    expect(StorageService.instance.getBleBeaconVibe(), 'Ready for Trivia 🧠');
+
+    expect(StorageService.instance.getBleBeaconRangeMeters(), 50);
+    await StorageService.instance.saveBleBeaconRangeMeters(30);
+    expect(StorageService.instance.getBleBeaconRangeMeters(), 30);
   });
 }
