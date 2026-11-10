@@ -79,6 +79,10 @@ In Google Play Console (`App content &rarr; Content rating`):
 5. **Controlled Substances**: No.
 6. **Age Restriction Declaration**: Check the box indicating the app is restricted to **Adults (18+)**.
    * *Google Play Dating Policy*: All dating apps must set target audience to **18+ only**. Do not select any age bracket under 18.
+7. **Child Safety Standards Policy URL**:
+   * Google Play requires social and dating apps to publish a public webpage declaring zero tolerance for CSAM/CSAE and underage use.
+   * Enter Public URL: `https://dreke20.github.io/SparkQuest/child-safety.html`
+   * Confirm users can report child safety concerns in-app (Implemented: *"Child Safety / Underage Concern"* option).
 
 ---
 

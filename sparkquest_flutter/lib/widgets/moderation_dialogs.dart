@@ -21,16 +21,16 @@ class ReportBlockDialog extends StatefulWidget {
 }
 
 class _ReportBlockDialogState extends State<ReportBlockDialog> {
-  String _selectedReason = 'Inappropriate Content';
+  String _selectedReason = 'Child Safety / Underage Concern';
   final TextEditingController _detailsController = TextEditingController();
   bool _isSubmitting = false;
 
   final List<String> _reasons = [
+    'Child Safety / Underage Concern',
     'Inappropriate Content',
     'Harassment or Bullying',
     'Fake Profile / Catfish',
     'Spam or Scam',
-    'Underage User',
   ];
 
   @override
@@ -55,8 +55,20 @@ class _ReportBlockDialogState extends State<ReportBlockDialog> {
     await StorageService.instance.blockUser(widget.targetUserId);
 
     if (mounted) {
+      final isChildSafety = _selectedReason.contains('Child Safety');
       Navigator.pop(context);
       widget.onUserBlocked();
+      if (isChildSafety) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              '🛡️ Child Safety Concern Received: Account immediately blocked and escalated to our 24/7 Trust & Safety Team.',
+            ),
+            backgroundColor: AppTheme.sparkCoral,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
     }
   }
 
@@ -131,6 +143,34 @@ class _ReportBlockDialogState extends State<ReportBlockDialog> {
                 ),
               );
             }),
+            if (_selectedReason.contains('Child Safety'))
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.sparkCoral.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: AppTheme.sparkCoral.withValues(alpha: 0.5),
+                  ),
+                ),
+                child: const Row(
+                  children: [
+                    Text('🛡️', style: TextStyle(fontSize: 16)),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Child Safety reports receive immediate 24/7 priority review. Accounts suspected of underage use or CSAM are instantly suspended.',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             const SizedBox(height: 8),
             TextField(
               controller: _detailsController,

@@ -16,6 +16,8 @@
 
 * **Privacy Policy URL**:
   `https://dreke20.github.io/SparkQuest/privacy.html`
+* **Child Safety Standards Policy URL**:
+  `https://dreke20.github.io/SparkQuest/child-safety.html`
 * **Account Deletion Web Portal**:
   `https://dreke20.github.io/SparkQuest/delete-account.html`
 * **Terms of Service & UGC Standards**:
@@ -23,6 +25,7 @@
 * **Landing Page**:
   `https://dreke20.github.io/SparkQuest/`
 * **Support Email**: `support@sparkquest.app`
+* **Safety & Child Protection Email**: `safety@sparkquest.app`
 
 ---
 
@@ -59,6 +62,8 @@ Welcome to **SparkQuest** — the adventure dating app built to replace endless,
 | **Target Audience** | ✅ 18+ Strictly (Adults Only) | `DATA_SAFETY.md` |
 | **Google Play Billing** | ✅ Integrated (`in_app_purchase: 3.3.1`) | `lib/services/iap_service.dart` |
 | **Permissions Declared** | ✅ Location, Camera, Audio, Billing, Biometrics | `AndroidManifest.xml` |
+| **Child Safety Standards Policy URL** | ✅ Hosted via GitHub Pages | `docs/child-safety.html` |
+| **Child Safety In-App Reporting** | ✅ Implemented with P0 Escalation | `lib/widgets/moderation_dialogs.dart` |
 | **Reviewer Demo Account** | ✅ Pre-configured (`reviewer@sparkquest.app`) | `GOOGLE_PLAY_REVIEWER_INSTRUCTIONS.md` |
 
 ---
