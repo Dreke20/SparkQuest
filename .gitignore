@@ -118,3 +118,10 @@ dist
 .gemini/
 .idea/
 .vscode/
+
+# Keystores and private signing credentials
+*.jks
+*.keystore
+key.properties
+upload-keystore.jks
+release-keystore.jks

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — SparkQuest</title>
+  <style>
+    :root {
+      --bg: #070B14;
+      --card: #131D33;
+      --text: #F3F4F6;
+      --text-muted: #9CA3AF;
+      --cyan: #06B6D4;
+      --coral: #FF4757;
+      --gold: #F59E0B;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background: linear-gradient(135deg, #131D33 0%, #1A2642 100%);
+      border-bottom: 1px solid rgba(6, 182, 212, 0.2);
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+    }
+    .logo {
+      font-size: 2rem;
+      font-weight: 900;
+      letter-spacing: 2px;
+      color: #fff;
+    }
+    .logo span { color: var(--coral); }
+    .badge {
+      display: inline-block;
+      margin-top: 0.5rem;
+      background: rgba(6, 182, 212, 0.15);
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .container {
+      max-width: 860px;
+      margin: 2rem auto;
+      padding: 0 1.5rem 4rem 1.5rem;
+    }
+    .card {
+      background-color: var(--card);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+    h1, h2, h3 { color: #fff; }
+    h2 {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 0.5rem;
+      margin-top: 2rem;
+      color: var(--cyan);
+    }
+    p, li { color: var(--text-muted); font-size: 1rem; }
+    strong { color: var(--text); }
+    ul { padding-left: 1.25rem; }
+    li { margin-bottom: 0.5rem; }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .btn-action {
+      display: inline-block;
+      background: var(--coral);
+      color: #fff;
+      padding: 0.75rem 1.5rem;
+      border-radius: 10px;
+      font-weight: bold;
+      text-decoration: none;
+      margin-top: 1rem;
+    }
+    footer {
+      text-align: center;
+      padding: 2rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">SPARK<span>QUEST</span></div>
+    <div class="badge">Official Google Play Privacy Policy • Effective: October 2026</div>
+    <p style="color: var(--text-muted); margin-top: 0.5rem;">Package: <code>com.sparkquest.sparkquest</code></p>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h1>Privacy Policy</h1>
+      <p>Last updated: <strong>November 10, 2026</strong></p>
+      <p>SparkQuest ("we", "our", or "us") provides a location-based dating and exploration social application. This Privacy Policy outlines our transparent commitment to your privacy, how we collect, protect, use, and process your personal information, and how you retain full control over your data.</p>
+      
+      <h2>1. Age Requirement (Strict 18+ Policy)</h2>
+      <p>SparkQuest is exclusively designed and intended for adults aged <strong>18 years or older</strong>. We do not knowingly collect, solicit, or maintain personal information from individuals under the age of 18. Any account discovered to belong to a minor is immediately terminated and wiped.</p>
+
+      <h2>2. Information We Collect & Why</h2>
+      <ul>
+        <li>
+          <strong>Location Data (Approximate & Precise GPS):</strong>
+          With your explicit permission (<code>ACCESS_FINE_LOCATION</code> and <code>ACCESS_COARSE_LOCATION</code>), SparkQuest accesses device coordinates to display nearby Safe Haven meeting venues, active community events, and mystery ember beacons.
+          <br><em>Privacy Shield:</em> By default, SparkQuest applies a <strong>500-meter radius blur</strong> to all explorer locations to prevent exact stalking or home coordinate exposure. We never sell your location to third-party data brokers.
+        </li>
+        <li>
+          <strong>Photos & Camera:</strong>
+          With camera permission (<code>CAMERA</code>), you can upload profile pictures and complete our mandatory 3D Anti-Catfish liveness selfie check to verify genuine account authenticity. Profile photos are hosted securely on private Supabase cloud buckets.
+        </li>
+        <li>
+          <strong>Audio & Microphone:</strong>
+          With microphone permission (<code>RECORD_AUDIO</code>), you can participate in live drop-in Audio Lounges or test Date Guard voice calls. Audio streams are encrypted and processed in real time; we do not store private voice conversations.
+        </li>
+        <li>
+          <strong>Account & Profile Information:</strong>
+          Your email address, hashed credentials, display name, age, gender identity, orientation, bio prompt answers, and dating preferences are collected through Supabase Cloud Auth to provide your matchmaking profile.
+        </li>
+        <li>
+          <strong>In-App Purchases & Digital Goods:</strong>
+          Financial transactions for SparkQuest VIP Subscriptions or Ember currency are processed exclusively by <strong>Google Play Billing</strong> (<code>com.android.vending.BILLING</code>). We never collect or store your payment card numbers or banking data.
+        </li>
+      </ul>
+
+      <h2>3. How We Share & Protect Data</h2>
+      <p>We do <strong>not</strong> sell, rent, or trade your personal information. Data is only shared with trusted service infrastructure necessary to operate the service:</p>
+      <ul>
+        <li><strong>Supabase Cloud:</strong> Encrypted PostgreSQL database and object storage (SOC2 Type II certified).</li>
+        <li><strong>Google Play Services:</strong> Core billing, push notifications, and security attestation.</li>
+        <li><strong>CartoDB / OpenStreetMap:</strong> Anonymous vector map tile rendering.</li>
+      </ul>
+
+      <h2>4. User Safety & Fortress Protections</h2>
+      <ul>
+        <li><strong>Date Shield 2.0:</strong> One-tap emergency fake phone call and trusted contact check-ins.</li>
+        <li><strong>UGC Safety & Zero Tolerance:</strong> Instant user blocking and categorical reporting (Harassment, Catfish, Inappropriate Content). Reported users are quarantined immediately.</li>
+      </ul>
+
+      <h2>5. Account & Data Deletion Rights</h2>
+      <p>You have the absolute right to delete your account and all associated personal data at any time:</p>
+      <ul>
+        <li><strong>In-App:</strong> Navigate to <code>Profile &rarr; Settings &rarr; Delete Account & Wipe Data</code>.</li>
+        <li><strong>Web Deletion Portal:</strong> You can submit a deletion request online without the app installed at our official portal:</li>
+      </ul>
+      <p><a href="delete-account.html" class="btn-action">Go to Account Deletion Portal &rarr;</a></p>
+      <p>Upon request, your profile, photos, matches, chat logs, and telemetry are permanently purged within 24 hours.</p>
+
+      <h2>6. Contact Us</h2>
+      <p>For inquiries, rights requests, or data privacy concerns, please contact our Data Protection Officer:</p>
+      <p>
+        <strong>SparkQuest Support & Privacy Team</strong><br>
+        Email: <a href="mailto:support@sparkquest.app">support@sparkquest.app</a><br>
+        Web: <a href="https://github.com/Dreke20/SparkQuest">https://github.com/Dreke20/SparkQuest</a>
+      </p>
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2026 SparkQuest. All rights reserved. | <a href="terms.html">Terms of Service</a> | <a href="delete-account.html">Account Deletion</a>
+  </footer>
+</body>
+</html>
+

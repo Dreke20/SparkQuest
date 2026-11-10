@@ -25,6 +25,11 @@ class StorageService {
     return true;
   }
 
+  Future<void> addEmbers(int amount) async {
+    final current = getEmbers();
+    await saveEmbers(current + amount);
+  }
+
   bool isGoldVip() => _prefs?.getBool('user_is_gold_vip') ?? false;
   Future<void> setGoldVip(bool isVip) async =>
       await _prefs?.setBool('user_is_gold_vip', isVip);

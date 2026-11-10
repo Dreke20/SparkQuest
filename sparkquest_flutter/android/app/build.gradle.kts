@@ -13,6 +13,11 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
+val envKeystorePath = System.getenv("KEYSTORE_PATH")
+val envStorePassword = System.getenv("KEYSTORE_PASSWORD")
+val envKeyAlias = System.getenv("KEY_ALIAS")
+val envKeyPassword = System.getenv("KEY_PASSWORD")
+
 android {
     namespace = "com.sparkquest.sparkquest"
     compileSdk = flutter.compileSdkVersion
@@ -33,19 +38,40 @@ android {
 
     signingConfigs {
         create("release") {
-            keyAlias = keystoreProperties.getProperty("keyAlias")
-            keyPassword = keystoreProperties.getProperty("keyPassword")
-            storeFile = keystoreProperties.getProperty("storeFile")?.let { file(it) }
-            storePassword = keystoreProperties.getProperty("storePassword")
+            val alias = envKeyAlias ?: keystoreProperties.getProperty("keyAlias")
+            val keyPass = envKeyPassword ?: keystoreProperties.getProperty("keyPassword")
+            val storePass = envStorePassword ?: keystoreProperties.getProperty("storePassword")
+            val storePath = envKeystorePath ?: keystoreProperties.getProperty("storeFile")
+
+            if (storePath != null && storePass != null) {
+                val candidateFile = if (file(storePath).exists()) {
+                    file(storePath)
+                } else if (rootProject.file(storePath).exists()) {
+                    rootProject.file(storePath)
+                } else null
+
+                if (candidateFile != null) {
+                    storeFile = candidateFile
+                    storePassword = storePass
+                    keyAlias = alias
+                    keyPassword = keyPass ?: storePass
+                }
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig = if (keystorePropertiesFile.exists()) {
-                signingConfigs.getByName("release")
+            val relConfig = signingConfigs.getByName("release")
+            if (relConfig.storeFile != null && relConfig.storeFile!!.exists()) {
+                signingConfig = relConfig
             } else {
-                signingConfigs.getByName("debug")
+                throw GradleException(
+                    "CRITICAL: Release build requested without a valid release keystore! " +
+                    "Google Play Console rejects debug-signed bundles. " +
+                    "Configure sparkquest_flutter/android/key.properties or set KEYSTORE_PATH, " +
+                    "KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD environment variables."
+                )
             }
             isMinifyEnabled = false
             isShrinkResources = false

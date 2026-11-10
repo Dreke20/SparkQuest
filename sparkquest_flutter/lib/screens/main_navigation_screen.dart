@@ -252,7 +252,34 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 'Spend Embers on Super-Sparks (25🔥), Standout Roses (40🔥), Rewinds (15🔥), and Admirer Unblurs (30🔥).',
                 style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppTheme.bgSurface,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.security, color: AppTheme.neonCyan, size: 14),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        IAPService.instance.isBillingAvailable
+                            ? 'Google Play In-App Billing Active'
+                            : 'Google Play Billing Sandbox • Closed Beta',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: AppTheme.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
               _storeOption(
                 '🎁 Daily Spark Grant (+25🔥)',
                 dailyClaimed ? 'Come back tomorrow for next grant' : 'Free 1x daily login reward',
