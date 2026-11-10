@@ -25,6 +25,7 @@ class Profile {
   final List<String> pollOptions;
   final bool isFreeTonight;
   final bool isStandout;
+  final bool isDemoProfile;
 
   const Profile({
     required this.id,
@@ -62,6 +63,7 @@ class Profile {
     ],
     this.isFreeTonight = true,
     this.isStandout = false,
+    this.isDemoProfile = false,
   });
 
   List<String> get effectiveGallery => photoGallery.isNotEmpty
@@ -156,15 +158,16 @@ class Profile {
       relationshipIntent: '🛡️ Long-Term Co-Op Partner',
       isFreeTonight: true,
       isStandout: true,
+      isDemoProfile: map['is_demo'] == true,
     );
   }
 
   static List<Profile> get seedProfiles => [
     const Profile(
       id: 'sophia',
-      name: 'Sophia',
+      name: 'Sophia [Review Demo]',
       age: 24,
-      occupation: 'Photographer',
+      occupation: 'Photographer • Fake Profile for Review',
       distance: '2 mi away',
       photoAsset: 'assets/images/sophia.png',
       photoGallery: [
@@ -175,7 +178,7 @@ class Profile {
       tags: ['🎨 Art', '🏔️ Hiking', '☕ Coffee'],
       compatPct: 92,
       compatLevel: 'high',
-      voicePromptText: 'My idea of the perfect Sunday morning 🌅',
+      voicePromptText: '[Review Demo] My idea of the perfect Sunday morning 🌅',
       rpgClass: '🎨 Creative Alchemist',
       relationshipIntent: '🛡️ Long-Term Co-Op Partner',
       pronouns: 'she/her',
@@ -183,9 +186,9 @@ class Profile {
       languages: 'English, French',
       zodiac: '♓ Pisces',
       lifestyleVitals: [
+        '🧪 Demo Review Profile',
         '☕ Matcha & Espresso',
         '🍷 Wine Nights',
-        '🐕 Golden Retriever Mom',
         '🥾 Weekend Hiker',
       ],
       anthemTitle: 'Sunset Lover',
@@ -198,12 +201,13 @@ class Profile {
       ],
       isFreeTonight: true,
       isStandout: true,
+      isDemoProfile: true,
     ),
     const Profile(
       id: 'alex',
-      name: 'Alex',
+      name: 'Alex [Review Demo]',
       age: 27,
-      occupation: 'Software Engineer',
+      occupation: 'Software Engineer • Fake Profile for Review',
       distance: '5 mi away',
       photoAsset: 'assets/images/alex.png',
       photoGallery: [
@@ -214,7 +218,7 @@ class Profile {
       tags: ['🎮 Gaming', '🍳 Cooking', '📚 Books'],
       compatPct: 87,
       compatLevel: 'high',
-      voicePromptText: 'My secret, completely useless talent 🪄',
+      voicePromptText: '[Review Demo] My secret, completely useless talent 🪄',
       rpgClass: '🌌 Night Owl Strategist',
       relationshipIntent: '🛡️ Long-Term Co-Op Partner',
       pronouns: 'he/him',
@@ -222,9 +226,9 @@ class Profile {
       languages: 'English, Japanese',
       zodiac: '♏ Scorpio',
       lifestyleVitals: [
+        '🧪 Demo Review Profile',
         '🕹️ Co-Op Gamer',
         '🍜 Ramen Chef',
-        '🚭 Non-Smoker',
         '🏋️ Climbing Gym 4x/wk',
       ],
       anthemTitle: 'Instant Crush',
@@ -237,12 +241,13 @@ class Profile {
       ],
       isFreeTonight: true,
       isStandout: true,
+      isDemoProfile: true,
     ),
     const Profile(
       id: 'maya',
-      name: 'Maya',
+      name: 'Maya [Review Demo]',
       age: 25,
-      occupation: 'Yoga Instructor',
+      occupation: 'Yoga Instructor • Fake Profile for Review',
       distance: '3 mi away',
       photoAsset: 'assets/images/maya.png',
       photoGallery: [
@@ -253,7 +258,7 @@ class Profile {
       tags: ['🧘 Yoga', '🌱 Vegan', '✈️ Travel'],
       compatPct: 84,
       compatLevel: 'high',
-      voicePromptText: 'My most unhinged travel story ✈️',
+      voicePromptText: '[Review Demo] My most unhinged travel story ✈️',
       rpgClass: '🌿 Zen Pathfinder',
       relationshipIntent: '🗺️ Adventure & Spontaneous Dates',
       pronouns: 'she/her',
@@ -261,9 +266,9 @@ class Profile {
       languages: 'English, Spanish',
       zodiac: '♊ Gemini',
       lifestyleVitals: [
+        '🧪 Demo Review Profile',
         '🧘 Daily Flow',
         '🌱 Plant-Based',
-        '🌊 Cold Plunge Club',
         '✈️ 18 Countries',
       ],
       anthemTitle: 'Oceans',
@@ -276,12 +281,13 @@ class Profile {
       ],
       isFreeTonight: true,
       isStandout: false,
+      isDemoProfile: true,
     ),
     const Profile(
       id: 'jordan',
-      name: 'Jordan',
+      name: 'Jordan [Review Demo]',
       age: 28,
-      occupation: 'Music Producer',
+      occupation: 'Music Producer • Fake Profile for Review',
       distance: '1 mi away',
       photoAsset: 'assets/images/jordan.png',
       photoGallery: [
@@ -292,7 +298,7 @@ class Profile {
       tags: ['🎵 Music', '🎬 Film', '🍷 Wine'],
       compatPct: 94,
       compatLevel: 'high',
-      voicePromptText: 'What my voice sounds like at 7 AM ☕',
+      voicePromptText: '[Review Demo] What my voice sounds like at 7 AM ☕',
       rpgClass: '🎵 Maverick Bard',
       relationshipIntent: '🗺️ Adventure & Spontaneous Dates',
       pronouns: 'he/they',
@@ -300,9 +306,9 @@ class Profile {
       languages: 'English',
       zodiac: '♌ Leo',
       lifestyleVitals: [
+        '🧪 Demo Review Profile',
         '🎹 Vinyl Collector',
         '🍷 Natural Wine',
-        '🎬 A24 Film Buff',
         '🌙 Late Night Studio',
       ],
       anthemTitle: 'Electric Feel',
@@ -315,12 +321,13 @@ class Profile {
       ],
       isFreeTonight: false,
       isStandout: true,
+      isDemoProfile: true,
     ),
     const Profile(
       id: 'riley',
-      name: 'Riley',
+      name: 'Riley [Review Demo]',
       age: 23,
-      occupation: 'Med Student',
+      occupation: 'Med Student • Fake Profile for Review',
       distance: '4 mi away',
       photoAsset: 'assets/images/riley.png',
       photoGallery: [
@@ -331,7 +338,7 @@ class Profile {
       tags: ['🏃 Running', '🐕 Dogs', '📖 Reading'],
       compatPct: 81,
       compatLevel: 'medium',
-      voicePromptText: 'Hot take on pineapple pizza 🍕',
+      voicePromptText: '[Review Demo] Hot take on pineapple pizza 🍕',
       rpgClass: '🛡️ Guardian Healer',
       relationshipIntent: '🛡️ Long-Term Co-Op Partner',
       pronouns: 'she/her',
@@ -339,9 +346,9 @@ class Profile {
       languages: 'English, Mandarin',
       zodiac: '♍ Virgo',
       lifestyleVitals: [
+        '🧪 Demo Review Profile',
         '🏃 Half-Marathoner',
         '🐕 Shelter Volunteer',
-        '☕ Oat Latte Loyal',
         '📚 Sci-Fi Reader',
       ],
       anthemTitle: 'Golden Hour',
@@ -354,12 +361,13 @@ class Profile {
       ],
       isFreeTonight: false,
       isStandout: false,
+      isDemoProfile: true,
     ),
     const Profile(
       id: 'taylor',
-      name: 'Taylor',
+      name: 'Taylor [Review Demo]',
       age: 26,
-      occupation: 'Product Designer',
+      occupation: 'Product Designer • Fake Profile for Review',
       distance: '6 mi away',
       photoAsset: 'assets/images/taylor.png',
       photoGallery: [
@@ -370,7 +378,7 @@ class Profile {
       tags: ['🎨 Design', '☕ Coffee', '🎸 Guitar'],
       compatPct: 89,
       compatLevel: 'high',
-      voicePromptText: 'My most unhinged travel story ✈️',
+      voicePromptText: '[Review Demo] My most unhinged travel story ✈️',
       rpgClass: '✨ Arcane Architect',
       relationshipIntent: '✨ New In Town / Open to Sparks',
       pronouns: 'they/them',
@@ -378,9 +386,9 @@ class Profile {
       languages: 'English, Italian',
       zodiac: '♒ Aquarius',
       lifestyleVitals: [
+        '🧪 Demo Review Profile',
         '🎨 Ceramics Studio',
         '🎸 Indie Acoustic',
-        '☕ Pour-Over Snob',
         '🚲 Fixed-Gear Cyclist',
       ],
       anthemTitle: 'Space Song',
@@ -393,6 +401,7 @@ class Profile {
       ],
       isFreeTonight: true,
       isStandout: true,
+      isDemoProfile: true,
     ),
   ];
 }

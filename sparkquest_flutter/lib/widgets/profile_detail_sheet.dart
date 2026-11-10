@@ -279,7 +279,35 @@ class _ProfileDetailSheetState extends State<ProfileDetailSheet> {
                           }),
                         ),
                       ),
-                      if (_photoIndex > 0)
+                      if (profile.isDemoProfile)
+                        Positioned(
+                          top: 22,
+                          left: 14,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF59E0B),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.science, color: Colors.black, size: 14),
+                                SizedBox(width: 5),
+                                Text(
+                                  'FAKE PROFILE FOR GOOGLE REVIEW',
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      if (_photoIndex > 0 && !profile.isDemoProfile)
                         Positioned(
                           top: 22,
                           left: 14,
@@ -383,6 +411,45 @@ class _ProfileDetailSheetState extends State<ProfileDetailSheet> {
                 ),
               ),
               const SizedBox(height: 12),
+              if (profile.isDemoProfile) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFF59E0B), width: 1.4),
+                  ),
+                  child: const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.science, color: Color(0xFFF59E0B), size: 22),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'DEMO PROFILE • FOR GOOGLE REVIEW ONLY',
+                              style: TextStyle(
+                                color: Color(0xFFF59E0B),
+                                fontWeight: FontWeight.w900,
+                                fontSize: 11.5,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            SizedBox(height: 3),
+                            Text(
+                              'Notice for Google Play Reviewer: This is an automated sample profile generated for testing matchmaking, chat, and date scheduling features during app review. Real users never see this profile.',
+                              style: TextStyle(color: Colors.white70, fontSize: 11, height: 1.35),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               // #4: Relationship Intent & RPG Class Badges
               Row(
                 children: [

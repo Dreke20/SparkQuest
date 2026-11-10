@@ -21,19 +21,26 @@ class RealtimeChatService extends ChangeNotifier {
   String callSignalState = 'idle'; // 'idle' | 'ringing' | 'connected' | 'declined' | 'ended'
   String? activeCallRoomId;
 
+  void reloadConversations() {
+    _matchList = null;
+    notifyListeners();
+  }
+
   List<MatchConversation> getConversations() {
     if (_matchList == null) {
-      final seeds = List<MatchConversation>.from(
-        MatchConversation.seedConversations,
-      );
+      final isReviewer = StorageService.instance.isReviewerAccount();
+      final convos = <MatchConversation>[];
+      if (isReviewer) {
+        convos.addAll(MatchConversation.seedConversations);
+      }
       final saved = StorageService.instance.getSavedMatches();
       for (final item in saved) {
         final parsed = MatchConversation.fromJson(item);
-        if (!seeds.any((s) => s.id.toLowerCase() == parsed.id.toLowerCase())) {
-          seeds.insert(0, parsed);
+        if (!convos.any((s) => s.id.toLowerCase() == parsed.id.toLowerCase())) {
+          convos.insert(0, parsed);
         }
       }
-      _matchList = seeds;
+      _matchList = convos;
     }
 
     final blocked = StorageService.instance.getBlockedUsers();

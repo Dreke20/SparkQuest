@@ -172,6 +172,7 @@ class SupabaseService {
       currentUserId = 'user_${email.split('@').first}';
       await StorageService.instance.saveUserName('Google Reviewer');
       await StorageService.instance.saveUserEmail(email);
+      await StorageService.instance.setReviewerMode(true);
       return {
         'access_token': accessToken,
         'user': {'id': currentUserId, 'email': email},
@@ -221,6 +222,7 @@ class SupabaseService {
     currentUserId = 'user_google_reviewer';
     await StorageService.instance.saveUserName('Google Play Reviewer');
     await StorageService.instance.saveUserEmail('reviewer@sparkquest.app');
+    await StorageService.instance.setReviewerMode(true);
     return {
       'access_token': accessToken,
       'user': {
@@ -238,6 +240,7 @@ class SupabaseService {
     currentUserId = 'user_me';
     currentUserProfile = null;
     await StorageService.instance.saveUserEmail(null);
+    await StorageService.instance.setReviewerMode(false);
   }
 
   // ==========================================

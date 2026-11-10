@@ -77,28 +77,32 @@ class _ExploreScreenState extends State<ExploreScreen> {
       _freeTonightOnly = freeTonight;
       _topCardPhotoIndex = 0;
 
-      var filtered = Profile.seedProfiles.where((p) {
-        if (blocked.contains(p.id.toLowerCase())) return false;
-        if (p.age < minAge || p.age > maxAge) return false;
-        if (verifiedOnly && !p.isVerified) return false;
-        if (freeTonight && !p.isFreeTonight) return false;
-        if (intent != 'All Intents' && p.relationshipIntent != intent) {
-          return false;
-        }
-        if (vibe != 'All Vibes') {
-          final vibeKeyword = vibe.split(' ').last.toLowerCase();
-          final hasTag = p.tags.any(
-            (t) => t.toLowerCase().contains(vibeKeyword),
-          );
-          if (!hasTag) return false;
-        }
-        return true;
-      }).toList();
+      final isReviewer = StorageService.instance.isReviewerAccount();
+      List<Profile> filtered = [];
+      if (isReviewer) {
+        filtered = Profile.seedProfiles.where((p) {
+          if (blocked.contains(p.id.toLowerCase())) return false;
+          if (p.age < minAge || p.age > maxAge) return false;
+          if (verifiedOnly && !p.isVerified) return false;
+          if (freeTonight && !p.isFreeTonight) return false;
+          if (intent != 'All Intents' && p.relationshipIntent != intent) {
+            return false;
+          }
+          if (vibe != 'All Vibes') {
+            final vibeKeyword = vibe.split(' ').last.toLowerCase();
+            final hasTag = p.tags.any(
+              (t) => t.toLowerCase().contains(vibeKeyword),
+            );
+            if (!hasTag) return false;
+          }
+          return true;
+        }).toList();
 
-      if (filtered.isEmpty && !strict) {
-        filtered = Profile.seedProfiles
-            .where((p) => !blocked.contains(p.id.toLowerCase()))
-            .toList();
+        if (filtered.isEmpty && !strict) {
+          filtered = Profile.seedProfiles
+              .where((p) => !blocked.contains(p.id.toLowerCase()))
+              .toList();
+        }
       }
 
       _cards = filtered;
@@ -1133,7 +1137,39 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   // #10: Daily Standouts View
   Widget _buildStandoutsList(List<String> userTags, String userArchetype) {
-    final standouts = Profile.seedProfiles.where((p) => p.isStandout).toList();
+    final isReviewer = StorageService.instance.isReviewerAccount();
+    final standouts = isReviewer
+        ? Profile.seedProfiles.where((p) => p.isStandout).toList()
+        : _cards.where((p) => p.isStandout).toList();
+
+    if (standouts.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.star_border, size: 54, color: AppTheme.questGold),
+              SizedBox(height: 12),
+              Text(
+                'No Standouts Right Now',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              SizedBox(height: 6),
+              Text(
+                'Featured profiles refresh every morning as new adventurers join your area.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppTheme.textDim, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return ListView.builder(
       itemCount: standouts.length,
       itemBuilder: (ctx, i) {
@@ -1447,6 +1483,41 @@ class _ExploreScreenState extends State<ExploreScreen> {
               ],
             ),
           ),
+          if (profile.isDemoProfile)
+            Positioned(
+              top: 58,
+              left: 16,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B),
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black45,
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.science, color: Colors.black, size: 14),
+                    SizedBox(width: 5),
+                    Text(
+                      'FAKE PROFILE • FOR GOOGLE REVIEW',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 9.5,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           // Report / Block Moderation Button on Card (Top Right)
           Positioned(
             top: 22,
@@ -1535,6 +1606,25 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     ),
                   ],
                 ),
+                if (profile.isDemoProfile) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF59E0B).withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFF59E0B), width: 1.2),
+                    ),
+                    child: const Text(
+                      '🧪 FAKE PROFILE FOR GOOGLE REVIEW',
+                      style: TextStyle(
+                        color: Color(0xFFF59E0B),
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 6),
                 // Name & Age & Verified
                 Row(

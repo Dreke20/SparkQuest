@@ -8,16 +8,32 @@ This document maintains the version history, short release notes, and future roa
 
 | Version | Build | Release Date | Channel | Status | Key Highlights |
 | :--- | :--- | :--- | :--- | :---: | :--- |
-| **v2.0.0** | `+10` | Nov 2026 | Production / Closed Beta | 🟢 **Live** | In-App VIP 2× Rewarded Embers Multiplier, "Privacy choices" Consent Button in Settings, AdMob Privacy Policy Updates, Version 10 Build |
+| **v2.0.0** | `+11` | Nov 2026 | Production / Closed Beta | 🟢 **Live** | Fake Profiles Removed for Real Users, Reviewer-Exclusive Demo Profiles Labeled for Google Review, Signed Build 11 |
+| **v2.0.0** | `+10` | Nov 2026 | Production / Closed Beta | ⚪ Archive | In-App VIP 2× Rewarded Embers Multiplier, "Privacy choices" Consent Button in Settings, AdMob Privacy Policy Updates, Version 10 Build |
 | **v2.0.0** | `+9` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Production Google AdMob Credentials (Live App ID & Ad Unit IDs for Banner, Interstitial, and Rewarded Ads), Signed Release Build |
 | **v2.0.0** | `+8` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Google Maps Tiles (Roadmap & Satellite Hybrid), Profile Sign Out Button, Zero UI Overlaps & Discovery Hub AppBar |
 | **v2.0.0** | `+7` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Google AdMob Ads (Rewarded Videos for Free Embers & Bonus Wheel Spins, Quests Banner, Deck Interstitials, Gold VIP Ad-Free Guarantee) |
 | **v2.0.0** | `+6` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Google Play Reviewer Hardening, Manifest Backup Disabled, Clean UI |
-| **v2.1.0** | `+11` | Q1 2027 | Internal Testing | 🟡 Planned | Drop-in Audio Lounges, Guild Boss Battles, AR Moment Prompts |
+| **v2.1.0** | `+12` | Q1 2027 | Internal Testing | 🟡 Planned | Drop-in Audio Lounges, Guild Boss Battles, AR Moment Prompts |
 
 ---
 
-## 🚀 Live Release: v2.0.0+10 (VIP 2× Rewarded Multiplier & AdMob Privacy Choices)
+## 🚀 Live Release: v2.0.0+11 (Reviewer-Exclusive Labeled Demo Profiles)
+
+### 🛡️ 1. Zero Fake Profiles for Regular Production Users
+- **Clean Production Deck**: Regular users never see hardcoded seed profiles. The swipe deck, Daily Standouts list, and chat conversations populate strictly from real cloud profiles in Supabase (`public.profiles`).
+- **Polished Empty States**: If an explorer has swiped through all local users or is the first in their area, friendly "All Caught Up / Early Explorer" cards display options to adjust distance filters or share referral links.
+
+### 🧪 2. Reviewer Account Demo Mode & Google Play Labels
+- **Conditional Reviewer Activation**: When logging in with reviewer credentials (`reviewer@sparkquest.app`), the app securely surfaces demo profiles so Google reviewers can evaluate all interactive features (swiping, matching, icebreakers, prompt replies, and chat).
+- **Unmistakable Fake Profile Disclaimers**: Every demo profile card, profile detail sheet, and chat conversation is explicitly labeled:
+  - Top Card Banner: `🧪 FAKE PROFILE • FOR GOOGLE REVIEW`
+  - Name Label: `Sophia [Review Demo]`, `Alex [Review Demo]`, etc.
+  - Detail Sheet Disclaimer: *"Notice for Google Play Reviewer: This is an automated sample profile generated for testing matchmaking, chat, and date scheduling features during app review. Real users never see this profile."*
+
+---
+
+## 📦 Previous Release: v2.0.0+10 (VIP 2× Rewarded Multiplier & AdMob Privacy Choices)
 
 ### 🛡️ 1. Google AdMob Consent & "Privacy choices" Button
 - **In-App "Privacy choices" Settings Button**: Users can reopen the Google UMP consent form anytime in `Profile -> Settings -> Privacy choices` to update their tracking and ad personalization preferences in compliance with GDPR and ePrivacy directives.

@@ -209,8 +209,8 @@ void main() {
     // 1. Message permissions default to true (Matches only)
     expect(StorageService.instance.isMatchesOnlyMessagesEnabled(), isTrue);
 
-    // Maya is a seed conversation (mutual match)
-    expect(RealtimeChatService.instance.canReceiveMessageFrom('Maya'), isTrue);
+    // Riley was added as a mutual match via addMatchFromProfile in earlier test
+    expect(RealtimeChatService.instance.canReceiveMessageFrom('Riley'), isTrue);
     // Non-match user is blocked when Matches Only is enabled
     expect(RealtimeChatService.instance.canReceiveMessageFrom('RandomExplorer99'), isFalse);
 
@@ -299,5 +299,36 @@ void main() {
     expect(StorageService.instance.getMapTileMode(), 'google_hybrid');
     await StorageService.instance.saveMapTileMode('osm');
     expect(StorageService.instance.getMapTileMode(), 'osm');
+  });
+
+  test('Phase 18: Fake Profiles Removed for Normal Users & Shown for Reviewer Only', () async {
+    // 1. Normal user: Zero fake seed profiles in discovery or conversations
+    await StorageService.instance.saveUserEmail('normal.explorer@sparkquest.app');
+    expect(StorageService.instance.isReviewerAccount(), isFalse);
+
+    RealtimeChatService.instance.reloadConversations();
+    final normalConvos = RealtimeChatService.instance.getConversations();
+    // Normal users should not have seed conversations
+    expect(normalConvos.any((c) => c.name.contains('[Review Demo]')), isFalse);
+
+    // 2. Reviewer user: Fake seed profiles appear with explicit Google Review labels
+    await StorageService.instance.saveUserEmail('reviewer@sparkquest.app');
+    expect(StorageService.instance.isReviewerAccount(), isTrue);
+
+    RealtimeChatService.instance.reloadConversations();
+    final reviewerConvos = RealtimeChatService.instance.getConversations();
+    expect(reviewerConvos.any((c) => c.name.contains('[Review Demo]')), isTrue);
+    expect(reviewerConvos.any((c) => c.lastMessage.contains('Play Review Demo')), isTrue);
+
+    // Check seed profiles labeling
+    final demoSeeds = Profile.seedProfiles;
+    expect(demoSeeds.every((p) => p.isDemoProfile), isTrue);
+    expect(demoSeeds.every((p) => p.name.contains('[Review Demo]')), isTrue);
+    expect(demoSeeds.every((p) => p.occupation.contains('Fake Profile for Review')), isTrue);
+
+    // Clean up
+    await StorageService.instance.saveUserEmail(null);
+    expect(StorageService.instance.isReviewerAccount(), isFalse);
+    RealtimeChatService.instance.reloadConversations();
   });
 }

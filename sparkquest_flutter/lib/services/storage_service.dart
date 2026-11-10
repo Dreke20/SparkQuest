@@ -358,4 +358,16 @@ class StorageService {
       _prefs?.getBool('ad_location_consent') ?? true;
   Future<void> setAdLocationMeasurementEnabled(bool enabled) async =>
       await _prefs?.setBool('ad_location_consent', enabled);
+
+  // --- Google Play Reviewer Account Detection ---
+  bool isReviewerAccount() {
+    final email = getUserEmail()?.toLowerCase().trim() ?? '';
+    if (email == 'reviewer@sparkquest.app' || email.contains('reviewer') || email.contains('test.play')) {
+      return true;
+    }
+    return _prefs?.getBool('is_reviewer_mode') ?? false;
+  }
+
+  Future<void> setReviewerMode(bool enabled) async =>
+      await _prefs?.setBool('is_reviewer_mode', enabled);
 }

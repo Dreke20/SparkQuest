@@ -80,16 +80,16 @@ class MatchConversation {
   static List<MatchConversation> get seedConversations => [
     MatchConversation(
       id: 'sophia',
-      name: 'Sophia',
+      name: 'Sophia [Review Demo]',
       photoAsset: 'assets/images/sophia.png',
-      lastMessage: 'Hey! I love your hiking photos 🏔️ Where was that last trail?',
+      lastMessage: '🧪 [Play Review Demo] Hey! I love your hiking photos 🏔️ Where was that last trail?',
       time: '2:34 PM',
       unreadCount: 1,
       tags: ['🎨 Art', '🏔️ Hiking', '☕ Coffee'],
       messages: [
         ChatMessage(
           id: '1',
-          text: 'Hey! I love your hiking photos 🏔️ Where was that last trail?',
+          text: '🧪 [Play Review Demo] Hey! I love your hiking photos 🏔️ Where was that last trail?',
           time: '2:34 PM',
           isSentByMe: false,
         ),
@@ -97,16 +97,16 @@ class MatchConversation {
     ),
     MatchConversation(
       id: 'jordan',
-      name: 'Jordan',
+      name: 'Jordan [Review Demo]',
       photoAsset: 'assets/images/jordan.png',
-      lastMessage: 'Are we heading to the vinyl lounge this weekend? 🎵',
+      lastMessage: '🧪 [Play Review Demo] Are we heading to the vinyl lounge this weekend? 🎵',
       time: 'Yesterday',
       unreadCount: 0,
       tags: ['🎵 Music', '🎬 Film', '🍷 Wine'],
       messages: [
         ChatMessage(
           id: '1',
-          text: 'Are we heading to the vinyl lounge this weekend? 🎵',
+          text: '🧪 [Play Review Demo] Are we heading to the vinyl lounge this weekend? 🎵',
           time: 'Yesterday',
           isSentByMe: false,
         ),
@@ -120,16 +120,16 @@ class MatchConversation {
     ),
     MatchConversation(
       id: 'maya',
-      name: 'Maya',
+      name: 'Maya [Review Demo]',
       photoAsset: 'assets/images/maya.png',
-      lastMessage: 'Let’s do sunrise yoga at the overlook! 🌅',
+      lastMessage: '🧪 [Play Review Demo] Let’s do sunrise yoga at the overlook! 🌅',
       time: 'Oct 25',
       unreadCount: 0,
       tags: ['🧘 Yoga', '🌱 Vegan', '✈️ Travel'],
       messages: [
         ChatMessage(
           id: '1',
-          text: 'Let’s do sunrise yoga at the overlook! 🌅',
+          text: '🧪 [Play Review Demo] Let’s do sunrise yoga at the overlook! 🌅',
           time: 'Oct 25',
           isSentByMe: false,
         ),
