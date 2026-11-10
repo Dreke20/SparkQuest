@@ -21,6 +21,9 @@ class SupabaseService {
   Map<String, dynamic>? currentUserProfile;
   final HttpClient _httpClient = HttpClient();
 
+  bool get isSignedIn =>
+      accessToken != null || StorageService.instance.getUserEmail() != null;
+
   Map<String, String> get _headers => {
         'apikey': anonKey,
         'Authorization': 'Bearer ${accessToken ?? anonKey}',
@@ -113,6 +116,7 @@ class SupabaseService {
         final decoded = jsonDecode(body);
         if (decoded is Map<String, dynamic>) {
           accessToken = decoded['access_token'];
+          await StorageService.instance.saveUserEmail('google.user@sparkquest.app');
           return decoded;
         }
       }
@@ -120,6 +124,7 @@ class SupabaseService {
 
     // Simulated Google session
     accessToken = 'google_demo_token_${DateTime.now().millisecondsSinceEpoch}';
+    await StorageService.instance.saveUserEmail('google.user@sparkquest.app');
     return {'access_token': accessToken, 'user': {'id': 'user_me', 'email': 'explorer@sparkquest.app'}};
   }
 
@@ -155,6 +160,7 @@ class SupabaseService {
             currentUserId = user['id'] ?? 'user_me';
           }
           await StorageService.instance.saveUserName(email.split('@').first);
+          await StorageService.instance.saveUserEmail(email);
           return decoded;
         }
       }
@@ -165,6 +171,7 @@ class SupabaseService {
       accessToken = 'auth_token_${DateTime.now().millisecondsSinceEpoch}';
       currentUserId = 'user_${email.split('@').first}';
       await StorageService.instance.saveUserName('Google Reviewer');
+      await StorageService.instance.saveUserEmail(email);
       return {
         'access_token': accessToken,
         'user': {'id': currentUserId, 'email': email},
@@ -191,6 +198,7 @@ class SupabaseService {
             currentUserId = user['id'] ?? 'user_me';
           }
           await StorageService.instance.saveUserName(email.split('@').first);
+          await StorageService.instance.saveUserEmail(email);
           return decoded;
         }
       }
@@ -200,6 +208,7 @@ class SupabaseService {
     accessToken = 'auth_token_${DateTime.now().millisecondsSinceEpoch}';
     currentUserId = 'user_new';
     await StorageService.instance.saveUserName(email.split('@').first);
+    await StorageService.instance.saveUserEmail(email);
     return {
       'access_token': accessToken,
       'user': {'id': currentUserId, 'email': email},
@@ -211,6 +220,7 @@ class SupabaseService {
     accessToken = 'play_reviewer_token_${DateTime.now().millisecondsSinceEpoch}';
     currentUserId = 'user_google_reviewer';
     await StorageService.instance.saveUserName('Google Play Reviewer');
+    await StorageService.instance.saveUserEmail('reviewer@sparkquest.app');
     return {
       'access_token': accessToken,
       'user': {
@@ -225,7 +235,9 @@ class SupabaseService {
   /// Sign Out
   Future<void> signOut() async {
     accessToken = null;
+    currentUserId = 'user_me';
     currentUserProfile = null;
+    await StorageService.instance.saveUserEmail(null);
   }
 
   // ==========================================

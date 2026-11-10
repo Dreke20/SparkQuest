@@ -390,6 +390,66 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  void _showSignOutDialog() {
+    HapticFeedback.selectionClick();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.bgCard,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.logout, color: AppTheme.sparkCoral, size: 22),
+            SizedBox(width: 8),
+            Text(
+              'Sign Out?',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Are you sure you want to sign out? Your cloud sync and matchmaking session will pause until you sign back in.',
+          style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: AppTheme.textDim)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.sparkCoral,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await SupabaseService.instance.signOut();
+              setState(() {
+                _loadProfilePrefs();
+              });
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('👋 Successfully signed out. Browsing as Guest Explorer.'),
+                    backgroundColor: AppTheme.sparkCoral,
+                  ),
+                );
+              }
+            },
+            child: const Text('Sign Out', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _openVIPModal() {
     showDialog(
       context: context,
@@ -1162,36 +1222,116 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF06B6D4),
-              minimumSize: const Size.fromHeight(42),
-              side: BorderSide(
-                color: const Color(0xFF06B6D4).withValues(alpha: 0.45),
-              ),
-              shape: RoundedRectangleBorder(
+          if (SupabaseService.instance.isSignedIn) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppTheme.bgCard,
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppTheme.emeraldGreen.withValues(alpha: 0.35),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.check_circle_outline,
+                    color: AppTheme.emeraldGreen,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Cloud Sync Active (Signed In)',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          StorageService.instance.getUserEmail() ?? 'Authenticated Explorer',
+                          style: const TextStyle(
+                            color: AppTheme.textDim,
+                            fontSize: 11,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AuthDialog(
+                          onAuthenticated: () {
+                            setState(() {
+                              _loadProfilePrefs();
+                            });
+                          },
+                        ),
+                      );
+                    },
+                    child: const Text('Switch', style: TextStyle(color: AppTheme.neonCyan, fontSize: 11)),
+                  ),
+                ],
               ),
             ),
-            onPressed: () {
-              HapticFeedback.selectionClick();
-              showDialog(
-                context: context,
-                builder: (ctx) => AuthDialog(
-                  onAuthenticated: () {
-                    setState(() {
-                      _loadProfilePrefs();
-                    });
-                  },
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.sparkCoral,
+                minimumSize: const Size.fromHeight(42),
+                side: BorderSide(
+                  color: AppTheme.sparkCoral.withValues(alpha: 0.5),
                 ),
-              );
-            },
-            icon: const Icon(Icons.cloud_sync_outlined, size: 18),
-            label: const Text(
-              'Account & Cloud Sync (Sign In)',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: _showSignOutDialog,
+              icon: const Icon(Icons.logout, size: 18),
+              label: const Text(
+                'Sign Out',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              ),
             ),
-          ),
+          ] else ...[
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF06B6D4),
+                minimumSize: const Size.fromHeight(42),
+                side: BorderSide(
+                  color: const Color(0xFF06B6D4).withValues(alpha: 0.45),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () {
+                HapticFeedback.selectionClick();
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AuthDialog(
+                    onAuthenticated: () {
+                      setState(() {
+                        _loadProfilePrefs();
+                      });
+                    },
+                  ),
+                );
+              },
+              icon: const Icon(Icons.cloud_sync_outlined, size: 18),
+              label: const Text(
+                'Account & Cloud Sync (Sign In)',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              ),
+            ),
+          ],
           const SizedBox(height: 10),
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
@@ -1289,7 +1429,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(width: 8),
                         const Text(
-                          'SparkQuest v2.0.0+7',
+                          'SparkQuest v2.0.0+8',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 13,
@@ -1321,7 +1461,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Build: 2026.11 • SparkQuest v2.0.0+7',
+                  'Build: 2026.11 • SparkQuest v2.0.0+8',
                   style: TextStyle(color: AppTheme.textDim, fontSize: 10.5),
                 ),
                 const SizedBox(height: 10),

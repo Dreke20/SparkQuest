@@ -28,6 +28,7 @@ class _MapScreenState extends State<MapScreen>
   bool _isLiveMap = true;
   bool _isScanning = false;
   bool _privacyFuzzActive = true;
+  String _mapTileMode = 'google_roadmap'; // 'google_roadmap', 'google_hybrid', 'osm'
   String _selectedCategory = 'all'; // 'all', 'venue', 'drop', 'event'
   late AnimationController _radarController;
   late LatLng _userLocation;
@@ -127,6 +128,7 @@ class _MapScreenState extends State<MapScreen>
   @override
   void initState() {
     super.initState();
+    _mapTileMode = StorageService.instance.getMapTileMode();
     _radarController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2000),
@@ -213,6 +215,99 @@ class _MapScreenState extends State<MapScreen>
     }
   }
 
+  void _showMapLayerDialog() {
+    HapticFeedback.selectionClick();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.bgCard,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.layers, color: AppTheme.neonCyan, size: 22),
+            SizedBox(width: 8),
+            Text(
+              'Select Map Layer',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _mapLayerTile(
+              key: 'google_roadmap',
+              title: '🗺️ Google Maps (Roadmap)',
+              subtitle: 'Detailed streets, transit, parks & landmarks',
+            ),
+            const Divider(color: Colors.white12, height: 12),
+            _mapLayerTile(
+              key: 'google_hybrid',
+              title: '🛰️ Google Satellite Hybrid',
+              subtitle: 'High-res aerial imagery with road overlays',
+            ),
+            const Divider(color: Colors.white12, height: 12),
+            _mapLayerTile(
+              key: 'osm',
+              title: '🌐 OpenStreetMap Standard',
+              subtitle: 'Community-driven global street map',
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close', style: TextStyle(color: AppTheme.textDim)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _mapLayerTile({
+    required String key,
+    required String title,
+    required String subtitle,
+  }) {
+    final isSelected = _mapTileMode == key;
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: isSelected ? AppTheme.neonCyan : Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 13.5,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: const TextStyle(color: AppTheme.textDim, fontSize: 11),
+      ),
+      trailing: isSelected
+          ? const Icon(Icons.check_circle, color: AppTheme.neonCyan, size: 20)
+          : null,
+      onTap: () {
+        setState(() {
+          _mapTileMode = key;
+        });
+        StorageService.instance.saveMapTileMode(key);
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('🗺️ Map Layer switched to $title'),
+            backgroundColor: AppTheme.bgSurface,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -240,6 +335,12 @@ class _MapScreenState extends State<MapScreen>
               ),
               const SizedBox(height: 8),
               if (_isLiveMap) ...[
+                _buildMapControlBtn(
+                  icon: Icons.layers,
+                  tooltip: 'Map Layer (Google/Satellite/OSM)',
+                  onTap: _showMapLayerDialog,
+                ),
+                const SizedBox(height: 8),
                 _buildMapControlBtn(
                   icon: Icons.my_location,
                   tooltip: 'Recenter',
@@ -272,155 +373,152 @@ class _MapScreenState extends State<MapScreen>
             ],
           ),
         ),
-        // Proximity Beacon Alert
+        // Top Header: Proximity Beacon + Map Category Filter Bar
         Positioned(
-          top: 16,
-          left: 16,
-          right: 16,
-          child: GestureDetector(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (ctx) => const BleProximitySheet(),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppTheme.bgSurface.withValues(alpha: 0.92),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: AppTheme.neonCyan.withValues(alpha: 0.5),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.neonCyan.withValues(alpha: 0.15),
-                    blurRadius: 12,
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.asset(
-                      'assets/images/maya.png',
-                      width: 34,
-                      height: 34,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '📡 PROXIMITY BEACON DETECTED',
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.neonCyan,
-                            letterSpacing: 0.8,
-                          ),
-                        ),
-                        Text(
-                          'Maya (94% Synergy) is 18m away!',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.textPrimary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      HapticFeedback.mediumImpact();
-                      RealtimeChatService.instance.sendMessage(
-                        'Maya',
-                        '👋 Waved at your Proximity Beacon (18m away)!',
-                      );
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Wave sent to Maya’s chat! 🌊 Check Matches for her reply.',
-                          ),
-                          backgroundColor: AppTheme.sparkCoral,
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.sparkCoral,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      minimumSize: Size.zero,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Text(
-                      'Wave 🌊',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  OutlinedButton(
-                    onPressed: () {
-                      HapticFeedback.selectionClick();
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder: (ctx) => const BleProximitySheet(),
-                      );
-                    },
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(
-                        color: AppTheme.neonCyan.withValues(alpha: 0.6),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 6,
-                      ),
-                      minimumSize: Size.zero,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Text(
-                      'Radar 📡',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppTheme.neonCyan,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        // Map Category Filter Bar + #28 Privacy Fuzzing + #31 Weather Smart Suggestion
-        Positioned(
-          top: 80,
-          left: 16,
-          right: 16,
+          top: 10,
+          left: 14,
+          right: 14,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (ctx) => const BleProximitySheet(),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: AppTheme.bgSurface.withValues(alpha: 0.94),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: AppTheme.neonCyan.withValues(alpha: 0.5),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.neonCyan.withValues(alpha: 0.15),
+                        blurRadius: 12,
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.asset(
+                          'assets/images/maya.png',
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '📡 PROXIMITY BEACON DETECTED',
+                              style: TextStyle(
+                                fontSize: 8.5,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.neonCyan,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                            Text(
+                              'Maya (94% Synergy) is 18m away!',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.textPrimary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          HapticFeedback.mediumImpact();
+                          RealtimeChatService.instance.sendMessage(
+                            'Maya',
+                            '👋 Waved at your Proximity Beacon (18m away)!',
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Wave sent to Maya’s chat! 🌊 Check Matches for her reply.',
+                              ),
+                              backgroundColor: AppTheme.sparkCoral,
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.sparkCoral,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 9,
+                            vertical: 5,
+                          ),
+                          minimumSize: Size.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: const Text(
+                          'Wave 🌊',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      OutlinedButton(
+                        onPressed: () {
+                          HapticFeedback.selectionClick();
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (ctx) => const BleProximitySheet(),
+                          );
+                        },
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(
+                            color: AppTheme.neonCyan.withValues(alpha: 0.6),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 5,
+                          ),
+                          minimumSize: Size.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: const Text(
+                          'Radar 📡',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            color: AppTheme.neonCyan,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -618,7 +716,31 @@ class _MapScreenState extends State<MapScreen>
   }
 
   Widget _buildLiveFlutterMap() {
+    String urlTemplate;
+    List<String> subdomains;
+    double maxZoom;
+
+    switch (_mapTileMode) {
+      case 'google_hybrid':
+        urlTemplate = 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
+        subdomains = const ['0', '1', '2', '3'];
+        maxZoom = 20.0;
+        break;
+      case 'osm':
+        urlTemplate = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+        subdomains = const [];
+        maxZoom = 19.0;
+        break;
+      case 'google_roadmap':
+      default:
+        urlTemplate = 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+        subdomains = const ['0', '1', '2', '3'];
+        maxZoom = 20.0;
+        break;
+    }
+
     return FlutterMap(
+      key: ValueKey(_mapTileMode),
       mapController: _mapController,
       options: MapOptions(
         initialCenter: _userLocation,
@@ -628,13 +750,12 @@ class _MapScreenState extends State<MapScreen>
         ),
       ),
       children: [
-        // TileLayer for Dark Matter CartoDB tiles with high contrast night mode
+        // TileLayer dynamically rendered from selected provider (Google Maps default)
         TileLayer(
-          urlTemplate:
-              'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-          subdomains: const ['a', 'b', 'c', 'd'],
+          urlTemplate: urlTemplate,
+          subdomains: subdomains,
           userAgentPackageName: 'com.sparkquest.sparkquest',
-          maxZoom: 19,
+          maxZoom: maxZoom,
         ),
         // 500m Privacy Shield / Fuzz Radius around User
         if (_privacyFuzzActive)

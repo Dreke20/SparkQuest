@@ -255,4 +255,25 @@ void main() {
     );
     expect(rewardedEmbers, 25);
   });
+
+  test('Phase 17: Sign Out & Google Maps Tile Provider Integration', () async {
+    // 1. Sign In & Sign Out Flow
+    await SupabaseService.instance.signOut();
+    expect(SupabaseService.instance.isSignedIn, isFalse);
+    await SupabaseService.instance.signInWithEmail('test.explorer@sparkquest.app', 'SecretPass2026!');
+    expect(SupabaseService.instance.isSignedIn, isTrue);
+    expect(StorageService.instance.getUserEmail(), 'test.explorer@sparkquest.app');
+
+    // Sign Out
+    await SupabaseService.instance.signOut();
+    expect(SupabaseService.instance.isSignedIn, isFalse);
+    expect(StorageService.instance.getUserEmail(), isNull);
+
+    // 2. Google Maps Tile Mode Persistence
+    expect(StorageService.instance.getMapTileMode(), 'google_roadmap');
+    await StorageService.instance.saveMapTileMode('google_hybrid');
+    expect(StorageService.instance.getMapTileMode(), 'google_hybrid');
+    await StorageService.instance.saveMapTileMode('osm');
+    expect(StorageService.instance.getMapTileMode(), 'osm');
+  });
 }

@@ -701,101 +701,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               ),
             ),
           ),
-
-          // Season Spark Pass Button
-          IconButton(
-            visualDensity: VisualDensity.compact,
-            padding: const EdgeInsets.all(4),
-            icon: const Text('⭐', style: TextStyle(fontSize: 16)),
-            tooltip: 'Season 1 Spark Pass',
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (ctx) => SparkPassDialog(
-                  currentXP: QuestProgressionService.instance.seasonXp,
-                  onRewardClaimed: (val) {
-                    _addEmbers(val);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          '🎉 +$val Embers unlocked from Spark Pass!',
-                        ),
-                        backgroundColor: AppTheme.questGold,
-                      ),
-                    );
-                  },
-                ),
-              );
-            },
-          ),
-
-          // Daily Fortune Wheel Button
-          IconButton(
-            visualDensity: VisualDensity.compact,
-            padding: const EdgeInsets.all(4),
-            icon: const Text('🎡', style: TextStyle(fontSize: 16)),
-            tooltip: 'Daily Fortune Wheel',
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (ctx) => DailySpinWheelDialog(
-                  onAwardEmbers: (val) {
-                    _addEmbers(val);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('🎉 +$val Embers added to your vault!'),
-                        backgroundColor: AppTheme.questGold,
-                      ),
-                    );
-                  },
-                ),
-              );
-            },
-          ),
-
-          // Drop-In Voice Lounges (v2.1.0 Roadmap Feature)
-          IconButton(
-            visualDensity: VisualDensity.compact,
-            padding: const EdgeInsets.all(4),
-            icon: const Text('🎙️', style: TextStyle(fontSize: 16)),
-            tooltip: 'Live Voice Lounges',
-            onPressed: () {
-              HapticFeedback.selectionClick();
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (ctx) => const VoiceLoungesSheet(),
-              );
-            },
-          ),
-
-          // BLE Proximity Radar (v2.1.0 Roadmap Feature)
-          IconButton(
-            visualDensity: VisualDensity.compact,
-            padding: const EdgeInsets.all(4),
-            icon: const Text('📡', style: TextStyle(fontSize: 16)),
-            tooltip: 'BLE Proximity Radar',
-            onPressed: () {
-              HapticFeedback.selectionClick();
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (ctx) => BleProximitySheet(
-                  onEmberSpent: () => setState(
-                    () => _embers = StorageService.instance.getEmbers(),
-                  ),
-                ),
-              );
-            },
-          ),
+          const SizedBox(width: 4),
 
           // Date Guard & Guardian Angel SOS Button
           IconButton(
             visualDensity: VisualDensity.compact,
             padding: const EdgeInsets.all(4),
-            icon: const Icon(Icons.shield, color: AppTheme.neonCyan, size: 19),
+            icon: const Icon(Icons.shield, color: AppTheme.neonCyan, size: 20),
             tooltip: 'Date Guard Safety Shield',
             onPressed: () {
               showDialog(
@@ -803,6 +715,136 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 builder: (ctx) => const DateGuardDialog(),
               );
             },
+          ),
+
+          // Feature Hub Popover (Wheel, Pass, Voice Lounges, BLE Radar)
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.widgets_outlined, color: Colors.white, size: 21),
+            tooltip: 'Discovery Hub',
+            color: AppTheme.bgCard,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            onSelected: (val) {
+              if (val == 'wheel') {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => DailySpinWheelDialog(
+                    onAwardEmbers: (reward) {
+                      _addEmbers(reward);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('🎉 +$reward Embers added to your vault!'),
+                          backgroundColor: AppTheme.questGold,
+                        ),
+                      );
+                    },
+                  ),
+                );
+              } else if (val == 'pass') {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => SparkPassDialog(
+                    currentXP: QuestProgressionService.instance.seasonXp,
+                    onRewardClaimed: (reward) {
+                      _addEmbers(reward);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('🎉 +$reward Embers unlocked from Spark Pass!'),
+                          backgroundColor: AppTheme.questGold,
+                        ),
+                      );
+                    },
+                  ),
+                );
+              } else if (val == 'lounges') {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (ctx) => const VoiceLoungesSheet(),
+                );
+              } else if (val == 'ble') {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (ctx) => BleProximitySheet(
+                    onEmberSpent: () => setState(
+                      () => _embers = StorageService.instance.getEmbers(),
+                    ),
+                  ),
+                );
+              }
+            },
+            itemBuilder: (ctx) => [
+              const PopupMenuItem(
+                value: 'wheel',
+                child: Row(
+                  children: [
+                    Text('🎡', style: TextStyle(fontSize: 16)),
+                    SizedBox(width: 10),
+                    Text(
+                      'Daily Fortune Wheel',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'pass',
+                child: Row(
+                  children: [
+                    Text('⭐', style: TextStyle(fontSize: 16)),
+                    SizedBox(width: 10),
+                    Text(
+                      'Season 1 Spark Pass',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'lounges',
+                child: Row(
+                  children: [
+                    Text('🎙️', style: TextStyle(fontSize: 16)),
+                    SizedBox(width: 10),
+                    Text(
+                      'Drop-In Voice Lounges',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'ble',
+                child: Row(
+                  children: [
+                    Text('📡', style: TextStyle(fontSize: 16)),
+                    SizedBox(width: 10),
+                    Text(
+                      'BLE Proximity Radar',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(width: 6),
         ],

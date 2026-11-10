@@ -8,9 +8,27 @@ This document maintains the version history, short release notes, and future roa
 
 | Version | Build | Release Date | Channel | Status | Key Highlights |
 | :--- | :--- | :--- | :--- | :---: | :--- |
-| **v2.0.0** | `+7` | Nov 2026 | Production / Closed Beta | 🟢 **Live** | Google AdMob Ads (Rewarded Videos for Free Embers & Bonus Wheel Spins, Quests Banner, Deck Interstitials, Gold VIP Ad-Free Guarantee), Secure Release Build |
+| **v2.0.0** | `+8` | Nov 2026 | Production / Closed Beta | 🟢 **Live** | Google Maps Tiles (Roadmap & Satellite Hybrid), Profile Sign Out Button, Zero UI Overlaps & Discovery Hub AppBar, Google AdMob |
+| **v2.0.0** | `+7` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Google AdMob Ads (Rewarded Videos for Free Embers & Bonus Wheel Spins, Quests Banner, Deck Interstitials, Gold VIP Ad-Free Guarantee) |
 | **v2.0.0** | `+6` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Google Play Reviewer Hardening, Manifest Backup Disabled, Clean UI |
-| **v2.1.0** | `+8` | Q1 2027 | Internal Testing | 🟡 Planned | Drop-in Audio Lounges, Guild Boss Battles, AR Moment Prompts |
+| **v2.1.0** | `+9` | Q1 2027 | Internal Testing | 🟡 Planned | Drop-in Audio Lounges, Guild Boss Battles, AR Moment Prompts |
+
+---
+
+## 🚀 Live Release: v2.0.0+8 (Google Maps, Sign Out & UI Polish)
+
+### 🗺️ 1. Google Maps Integration & Layer Switcher
+- **Google Maps Roadmap by Default**: Replaced CartoDB tiles with high-performance Google Maps raster tiles (`https://mt{s}.google.com/vt/lyrs=m...`), completely eliminating Carto API key requirements and watermarks.
+- **Dynamic Map Layer Switcher**: New `Icons.layers` control allows users to switch between **Google Maps (Roadmap)**, **Google Satellite Hybrid**, and **OpenStreetMap Standard** on the fly, with selections persisted to local storage.
+
+### 🚪 2. In-App Sign Out & Account Cloud Sync
+- **Dedicated Sign Out Button**: Added prominent Sign Out button with confirmation dialog on the Profile screen, cleanly invalidating active session tokens while keeping local cache safe.
+- **Account Status Indicator**: Displays live authenticated email address and cloud sync verification badge.
+
+### 📐 3. UI Alignment & Overlap Fixes
+- **Unified AppBar Discovery Hub**: Streamlined the top navigation bar from 6 crowded action buttons into 3 perfectly spaced elements: Embers Vault Chip, Date Guard SOS Shield, and a sleek `Widgets` Discovery Hub menu (Wheel, Spark Pass, Voice Lounges, BLE Radar).
+- **Sequential Map Top Header**: Combined the Proximity Beacon alert and category filter chips into a single vertical column with guaranteed spacing, preventing overlap on narrow screens.
+- **Explore Action Buttons Alignment**: Wrapped card swipe controls in `SafeArea` with calibrated button sizes for edge-to-edge Android displays.
 
 ---
 

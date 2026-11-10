@@ -332,4 +332,19 @@ class StorageService {
       _prefs?.getBool('messages_matches_only') ?? true;
   Future<void> setMatchesOnlyMessagesEnabled(bool matchesOnly) async =>
       await _prefs?.setBool('messages_matches_only', matchesOnly);
+
+  // --- User Auth & Email Session ---
+  String? getUserEmail() => _prefs?.getString('user_auth_email');
+  Future<void> saveUserEmail(String? email) async {
+    if (email == null) {
+      await _prefs?.remove('user_auth_email');
+    } else {
+      await _prefs?.setString('user_auth_email', email);
+    }
+  }
+
+  // --- Map Tile Provider Preference ---
+  String getMapTileMode() => _prefs?.getString('map_tile_mode') ?? 'google_roadmap';
+  Future<void> saveMapTileMode(String mode) async =>
+      await _prefs?.setString('map_tile_mode', mode);
 }

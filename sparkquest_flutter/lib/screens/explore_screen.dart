@@ -1577,30 +1577,50 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
-                  children: profile.tags
-                      .map(
-                        (t) => Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppTheme.bgSurface.withValues(alpha: 0.8),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.1),
+                  children: [
+                    ...profile.tags.take(3).map(
+                          (t) => Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 9,
+                              vertical: 3.5,
                             ),
-                          ),
-                          child: Text(
-                            t,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.white,
+                            decoration: BoxDecoration(
+                              color: AppTheme.bgSurface.withValues(alpha: 0.8),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.1),
+                              ),
+                            ),
+                            child: Text(
+                              t,
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ),
-                      )
-                      .toList(),
+                    if (profile.tags.length > 3)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3.5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.bgSurface.withValues(alpha: 0.6),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: Colors.white12),
+                        ),
+                        child: Text(
+                          '+${profile.tags.length - 3}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.neonCyan,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 10),
                 // Voice Spark Pill
@@ -1663,47 +1683,50 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   Widget _buildActionButtons() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          // Rewind
-          _circleButton(
-            icon: Icons.replay,
-            color: AppTheme.questGold,
-            size: 48,
-            onTap: _rewind,
-          ),
-          // Pass
-          _circleButton(
-            icon: Icons.close,
-            color: AppTheme.sparkCoral,
-            size: 60,
-            onTap: () => _swipe(false),
-          ),
-          // SuperLike (25 Embers or Harmonic Bard Free Perk)
-          _circleButton(
-            icon: Icons.star,
-            color: AppTheme.neonCyan,
-            size: 52,
-            onTap: _superSpark,
-          ),
-          // Like
-          _circleButton(
-            icon: Icons.favorite,
-            color: AppTheme.emeraldGreen,
-            size: 60,
-            onTap: () => _swipe(true),
-          ),
-          // Boost (60 Embers or 1 Owned Spotlight)
-          _circleButton(
-            icon: Icons.bolt,
-            color: AppTheme.electricViolet,
-            size: 48,
-            onTap: _activateSpotlightBoost,
-          ),
-        ],
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 6, top: 4),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            // Rewind
+            _circleButton(
+              icon: Icons.replay,
+              color: AppTheme.questGold,
+              size: 46,
+              onTap: _rewind,
+            ),
+            // Pass
+            _circleButton(
+              icon: Icons.close,
+              color: AppTheme.sparkCoral,
+              size: 56,
+              onTap: () => _swipe(false),
+            ),
+            // SuperLike (25 Embers or Harmonic Bard Free Perk)
+            _circleButton(
+              icon: Icons.star,
+              color: AppTheme.neonCyan,
+              size: 50,
+              onTap: _superSpark,
+            ),
+            // Like
+            _circleButton(
+              icon: Icons.favorite,
+              color: AppTheme.emeraldGreen,
+              size: 56,
+              onTap: () => _swipe(true),
+            ),
+            // Boost (60 Embers or 1 Owned Spotlight)
+            _circleButton(
+              icon: Icons.bolt,
+              color: AppTheme.electricViolet,
+              size: 46,
+              onTap: _activateSpotlightBoost,
+            ),
+          ],
+        ),
       ),
     );
   }
