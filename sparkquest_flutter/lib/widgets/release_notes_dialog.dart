@@ -74,7 +74,7 @@ class ReleaseNotesDialog extends StatelessWidget {
                     _buildVersionCard(
                       badge: 'CURRENT RELEASE',
                       badgeColor: AppTheme.emeraldGreen,
-                      version: 'v2.0.0+4',
+                      version: 'v2.0.0+5',
                       date: 'October 2026',
                       title: 'Live Map, Restored Neon Branding & 50 Top-Tier Features',
                       highlights: const [
@@ -134,14 +134,14 @@ class ReleaseNotesDialog extends StatelessWidget {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('✓ You are running the latest version (v2.0.0+4)!'),
+                        content: Text('✓ You are running the latest version (v2.0.0+5)!'),
                         backgroundColor: AppTheme.emeraldGreen,
                       ),
                     );
                   },
                   icon: const Icon(Icons.check_circle_outline, size: 18),
                   label: const Text(
-                    'Close • Up to Date (v2.0.0+4)',
+                    'Close • Up to Date (v2.0.0+5)',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                 ),

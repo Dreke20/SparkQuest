@@ -56,7 +56,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   void _onBadgeStateChanged() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {
+        _embers = StorageService.instance.getEmbers();
+      });
+    }
   }
 
   void _initStorageAndServices() async {
@@ -270,7 +274,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       child: Text(
                         IAPService.instance.isBillingAvailable
                             ? 'Google Play In-App Billing Active'
-                            : 'Google Play Billing Sandbox • Closed Beta',
+                            : 'Google Play Billing Unavailable',
                         style: const TextStyle(
                           fontSize: 10,
                           color: AppTheme.textSecondary,
@@ -322,17 +326,21 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   final p = IAPService.instance.products.firstWhere(
                     (prod) => prod.id == 'sparkquest_embers_100',
                   );
-                  await IAPService.instance.purchase(
-                    p,
-                    onEmbersAdded: (amt) => _addEmbers(amt, isRawPurchase: true),
-                  );
-                  if (mounted) {
+                  final launched = await IAPService.instance.purchase(p);
+                  if (!launched && mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text(
-                          '💎 Purchase Successful! +150 Embers added to vault.',
+                          'Google Play Billing is unavailable. Please check your network or Google Play account.',
                         ),
-                        backgroundColor: AppTheme.questGold,
+                        backgroundColor: Colors.redAccent,
+                      ),
+                    );
+                  } else if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Connecting to Google Play Store...'),
+                        duration: Duration(seconds: 2),
                       ),
                     );
                   }
@@ -349,17 +357,21 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   final p = IAPService.instance.products.firstWhere(
                     (prod) => prod.id == 'sparkquest_embers_500',
                   );
-                  await IAPService.instance.purchase(
-                    p,
-                    onEmbersAdded: (amt) => _addEmbers(amt, isRawPurchase: true),
-                  );
-                  if (mounted) {
+                  final launched = await IAPService.instance.purchase(p);
+                  if (!launched && mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text(
-                          '🔥 Purchase Successful! +600 Embers added to vault.',
+                          'Google Play Billing is unavailable. Please check your network or Google Play account.',
                         ),
-                        backgroundColor: AppTheme.sparkCoral,
+                        backgroundColor: Colors.redAccent,
+                      ),
+                    );
+                  } else if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Connecting to Google Play Store...'),
+                        duration: Duration(seconds: 2),
                       ),
                     );
                   }
@@ -376,17 +388,21 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   final p = IAPService.instance.products.firstWhere(
                     (prod) => prod.id == 'sparkquest_embers_1500',
                   );
-                  await IAPService.instance.purchase(
-                    p,
-                    onEmbersAdded: (amt) => _addEmbers(amt, isRawPurchase: true),
-                  );
-                  if (mounted) {
+                  final launched = await IAPService.instance.purchase(p);
+                  if (!launched && mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text(
-                          '👑 Sovereign Vault Unlocked! +1,500 Embers & +1 Boost added.',
+                          'Google Play Billing is unavailable. Please check your network or Google Play account.',
                         ),
-                        backgroundColor: AppTheme.electricViolet,
+                        backgroundColor: Colors.redAccent,
+                      ),
+                    );
+                  } else if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Connecting to Google Play Store...'),
+                        duration: Duration(seconds: 2),
                       ),
                     );
                   }
@@ -403,14 +419,21 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   final p = IAPService.instance.products.firstWhere(
                     (prod) => prod.id == 'sparkquest_spotlight_boost',
                   );
-                  await IAPService.instance.purchase(p);
-                  if (mounted) {
+                  final launched = await IAPService.instance.purchase(p);
+                  if (!launched && mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text(
-                          '⚡ Spotlight Boost Active! You are now featured locally.',
+                          'Google Play Billing is unavailable. Please check your network or Google Play account.',
                         ),
-                        backgroundColor: Color(0xFFF59E0B),
+                        backgroundColor: Colors.redAccent,
+                      ),
+                    );
+                  } else if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Connecting to Google Play Store...'),
+                        duration: Duration(seconds: 2),
                       ),
                     );
                   }
@@ -428,14 +451,21 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     final p = IAPService.instance.products.firstWhere(
                       (prod) => prod.id == 'sparkquest_gold_monthly',
                     );
-                    await IAPService.instance.purchase(p);
-                    if (mounted) {
+                    final launched = await IAPService.instance.purchase(p);
+                    if (!launched && mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text(
-                            '👑 Welcome to SparkQuest Gold VIP! 2x Embers & Unlimited Perks unlocked.',
+                            'Google Play Billing is unavailable. Please check your network or Google Play account.',
                           ),
-                          backgroundColor: AppTheme.questGold,
+                          backgroundColor: Colors.redAccent,
+                        ),
+                      );
+                    } else if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Connecting to Google Play Store...'),
+                          duration: Duration(seconds: 2),
                         ),
                       );
                     }

@@ -159,3 +159,28 @@ ON CONFLICT (id) DO UPDATE SET
   topic = EXCLUDED.topic,
   is_active = true;
 
+-- 6. Google Play Compliance: Web Account Deletion Requests Table
+CREATE TABLE IF NOT EXISTS public.deletion_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT NOT NULL,
+    scope TEXT NOT NULL DEFAULT 'all',
+    reason TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    processed_at TIMESTAMPTZ,
+    notes TEXT
+);
+
+ALTER TABLE public.deletion_requests ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public can submit account deletion requests" ON public.deletion_requests;
+CREATE POLICY "Public can submit account deletion requests" ON public.deletion_requests
+    FOR INSERT
+    WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Service role manages deletion requests" ON public.deletion_requests;
+CREATE POLICY "Service role manages deletion requests" ON public.deletion_requests
+    FOR ALL
+    USING (auth.role() = 'service_role');
+
+

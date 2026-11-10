@@ -63,7 +63,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    IAPService.instance.addListener(_onIapChanged);
     _loadProfilePrefs();
+  }
+
+  void _onIapChanged() {
+    if (mounted) {
+      setState(() {
+        _isGoldVip = StorageService.instance.isGoldVip();
+      });
+    }
   }
 
   void _loadProfilePrefs() {
@@ -76,6 +85,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _smartPhotosEnabled = StorageService.instance.isSmartPhotosEnabled();
     _userPrompts = StorageService.instance.getUserPrompts();
     _matchesOnlyMessages = StorageService.instance.isMatchesOnlyMessagesEnabled();
+    _isGoldVip = StorageService.instance.isGoldVip();
   }
 
   void _openSparkyWingmanModal() {
@@ -96,6 +106,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   void dispose() {
+    IAPService.instance.removeListener(_onIapChanged);
     _voiceTimer?.cancel();
     super.dispose();
   }
@@ -424,15 +435,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Navigator.pop(ctx);
               HapticFeedback.heavyImpact();
               final product = IAPService.instance.products.first; // Gold VIP
-              await IAPService.instance.purchase(product);
-              setState(() => _isGoldVip = true);
-              if (mounted) {
+              final launched = await IAPService.instance.purchase(product);
+              if (!launched && mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text(
-                      '👑 Google Play Purchase Confirmed! Welcome to SparkQuest Gold VIP.',
+                      'Google Play Billing is currently unavailable. Please verify your Google Play account.',
                     ),
-                    backgroundColor: AppTheme.questGold,
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
+              } else if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Connecting to Google Play Store...'),
+                    duration: Duration(seconds: 2),
                   ),
                 );
               }
@@ -1380,7 +1397,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(width: 8),
                         const Text(
-                          'SparkQuest v2.0.0+4',
+                          'SparkQuest v2.0.0+5',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 13,

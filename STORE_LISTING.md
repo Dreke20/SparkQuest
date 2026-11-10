@@ -2,7 +2,7 @@
 
 ## 1. Release Artifacts & Signing Configuration
 * **Application ID / Package**: `com.sparkquest.sparkquest`
-* **Version**: `2.0.0+4` (`versionName: 2.0.0`, `versionCode: 4`)
+* **Version**: `2.0.0+5` (`versionName: 2.0.0`, `versionCode: 5`)
 * **Category**: Dating / Social Communication
 * **Target Audience**: **18+ Strictly (Adults Only)**
 * **Official Upload Keystore**: `sparkquest_flutter/android/app/upload-keystore.jks` (configured via `key.properties`, ignored by git)

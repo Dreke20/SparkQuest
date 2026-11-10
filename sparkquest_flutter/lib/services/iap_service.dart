@@ -150,29 +150,38 @@ class IAPService extends ChangeNotifier {
     }
   }
 
-  /// Purchase an IAP product via Google Play Billing
+  /// Purchase an IAP product via Google Play Billing.
+  /// Launches the Google Play Billing purchase flow.
+  /// Returns true if the billing flow was initiated successfully.
+  /// Delivers products ONLY when Google Play purchaseStream confirms completion.
   Future<bool> purchase(
     IAPProduct product, {
     Function(int embers)? onEmbersAdded,
   }) async {
-    if (isBillingAvailable && serverProducts.containsKey(product.id)) {
-      final productDetails = serverProducts[product.id]!;
+    if (!isBillingAvailable) {
+      debugPrint('Google Play Billing is not available on this device.');
+      return false;
+    }
+
+    final productDetails = serverProducts[product.id];
+    if (productDetails == null) {
+      debugPrint(
+        'Product ${product.id} not found in Google Play Console active catalog.',
+      );
+      return false;
+    }
+
+    try {
       final purchaseParam = PurchaseParam(productDetails: productDetails);
       if (product.isSubscription) {
         return await _iap.buyNonConsumable(purchaseParam: purchaseParam);
       } else {
         return await _iap.buyConsumable(purchaseParam: purchaseParam);
       }
+    } catch (e) {
+      debugPrint('Google Play purchase flow initiation error: $e');
+      return false;
     }
-
-    // Sandbox / Closed Beta mode fallback when products are not yet active on Play Console:
-    await Future.delayed(const Duration(milliseconds: 600));
-    await _deliverProduct(product.id);
-    if (product.embersReward > 0) {
-      onEmbersAdded?.call(product.embersReward);
-    }
-    notifyListeners();
-    return true;
   }
 
   /// Restore Google Play purchases

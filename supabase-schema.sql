@@ -404,5 +404,30 @@ DROP POLICY IF EXISTS "Users can join or update lounge presence" ON public.voice
 CREATE POLICY "Users can join or update lounge presence" ON public.voice_lounge_members
     FOR ALL USING (auth.uid()::text = user_id OR user_id = 'user_me');
 
+-- 11. Google Play Web Account Deletion Requests
+CREATE TABLE IF NOT EXISTS public.deletion_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT NOT NULL,
+    scope TEXT NOT NULL DEFAULT 'all',
+    reason TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    processed_at TIMESTAMPTZ,
+    notes TEXT
+);
+
+ALTER TABLE public.deletion_requests ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public can submit account deletion requests" ON public.deletion_requests;
+CREATE POLICY "Public can submit account deletion requests" ON public.deletion_requests
+    FOR INSERT
+    WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Service role manages deletion requests" ON public.deletion_requests;
+CREATE POLICY "Service role manages deletion requests" ON public.deletion_requests
+    FOR ALL
+    USING (auth.role() = 'service_role');
+
+
 
 

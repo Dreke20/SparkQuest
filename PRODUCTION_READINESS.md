@@ -65,7 +65,7 @@ This document outlines the architecture, security hardening, and deployment proc
    - Community Safe Haven passes, 500m Map Privacy Blur shield, Weather-Smart Golden Hour suggestions, Crossed Paths ("Missed Connections") radar, community venue safety ratings, and Co-Op check-ins.
 5. **Phases 10–12 — Fortress Safety, RPG Guilds, Ember Tavern & Scale (#33–#50)**:
    - 7-Day Streak Calendar with Streak Freeze Shield, Ember Tavern Shop, Adventurer Interest Guilds (`public.guilds`), RPG Class Evolution Skill Tree, Campfire Snooze mode, Contact Exclusion Shield, Wingman Referrals (`SPARK-ALEX-100`), `nearby_profiles` geospatial RPC, and `public.analytics_events` telemetry.
-6. **v2.0.0+4 Polish — Restored Branding, 60fps Optimization & Balanced Monetization**:
+6. **v2.0.0+5 Release — Restored Branding, 60fps Optimization, Play Billing Hardening & Web Deletion Form**:
    - Restored the original neon flaming-heart **SparkQuest** logo across `assets/images/logo.jpg`, Android `mipmap-*` launcher icons, `AppBar`, Onboarding FTUE, and Cloud Auth modals.
    - Added `RepaintBoundary` layers and resolution-aware `cacheWidth` decoding across card decks and grids (~65% lower GPU texture memory).
    - Balanced the Ember economy (`150🔥` starter balance, `spendEmbers` sufficiency guards, 1x/day Daily Spark Grant cooldown, persistent Tavern Inventory, and `2x` Gold VIP multiplier).
