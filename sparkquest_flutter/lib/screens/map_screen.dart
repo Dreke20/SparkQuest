@@ -1150,7 +1150,7 @@ class _MapScreenState extends State<MapScreen>
                   Text('🎁 ', style: TextStyle(fontSize: 18)),
                   Expanded(
                     child: Text(
-                      'QR Pass: SPARK-15 (15% Off Total Bill + Free 2nd Espresso) • Angel Shot Protocol Active',
+                      'Safe Haven Check-In: Community Vetted Meetup Spot • Safe Date Protocol Active',
                       style: TextStyle(
                         color: AppTheme.textPrimary,
                         fontSize: 12,

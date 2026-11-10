@@ -44,9 +44,9 @@ Welcome to **SparkQuest** — the adventure dating app built to replace endless,
 - **Live Dark Radar & Vibe Filters**: Pan and zoom real city streets using high-contrast CartoDB Dark Matter maps with 500m privacy blur protection. Discover nearby singles who share your exact dating archetype and active vibe.
 - **In-Chat Icebreaker Arcade**: Skip "hey, how's your week?" and challenge your match to live 2-player **Trivia Duels**, **2 Truths & 1 Lie**, **Would You Rather**, or **Emoji Charades**.
 - **Comfort Blur Calls**: Jump on a voice or video date directly in chat. Video dates start with gentle **Comfort Blur** that only reveals when both of you are ready, accompanied by **Sparky AI Wingman** prompts.
-- **Safe Haven Partners**: Check in at verified local coffee shops, cocktail lounges, and bouldering gyms offering QR discounts (`SPARK-15`) and safety-trained angel-shot staff.
-- **Date Shield 2.0 & Anti-Catfish Scan**: Built-in 3D liveness face verification, discreet Emergency Fake Escape Call, and live GPS sharing with trusted guardian friends.
-- **Fair Play Economy**: Powered by Google Play In-App Billing for certified safe, transparent subscriptions and digital spark embers.
+- **Curated Safe Havens**: Discover popular local coffee shops, lounges, and public venues with community-reviewed date vibes, safety ratings, and first-date meetup recommendations.
+- **Date Shield 2.0 & Anti-Catfish Scan**: Built-in 3D liveness face verification, discreet Emergency Fake Escape Call, and safety check-in alerts with trusted guardian friends.
+- **Fair Play Economy**: Powered by Google Play In-App Billing for transparent subscriptions and digital spark embers.
 
 ---
 

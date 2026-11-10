@@ -1785,7 +1785,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     Text(
-                      'Live GPS sharing & discrete safety triggers',
+                      'Safety check-in alerts & discreet emergency triggers',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppTheme.textSecondary,

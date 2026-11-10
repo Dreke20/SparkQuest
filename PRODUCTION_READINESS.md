@@ -62,7 +62,7 @@ This document outlines the architecture, security hardening, and deployment proc
 3. **Phase 8 — Next-Gen Chat, AI Wingman & Co-Op Social (#17–#25)**:
    - Double-tap & long-press emoji reactions (`❤️`, `🔥`, `😂`, `⚡`, `🙌`), quote-reply threading, `✓✓ Read` receipts, `⚡ Your Turn` badges, 72h match expiry + `+24h Extend`, context-aware AI Wingman chips, View-Once Snaps, and `"We Met IRL! (+50🔥)"` post-date check-ins.
 4. **Phase 9 — Real-World Map, Venue QR Perks & Crossed Paths (#26–#32)**:
-   - Safe Haven QR Pass (`SPARK-15`), 500m Map Privacy Blur shield, Weather-Smart Golden Hour suggestions, Crossed Paths ("Missed Connections") radar, community venue safety ratings, and Co-Op GPS check-ins.
+   - Community Safe Haven passes, 500m Map Privacy Blur shield, Weather-Smart Golden Hour suggestions, Crossed Paths ("Missed Connections") radar, community venue safety ratings, and Co-Op check-ins.
 5. **Phases 10–12 — Fortress Safety, RPG Guilds, Ember Tavern & Scale (#33–#50)**:
    - 7-Day Streak Calendar with Streak Freeze Shield, Ember Tavern Shop, Adventurer Interest Guilds (`public.guilds`), RPG Class Evolution Skill Tree, Campfire Snooze mode, Contact Exclusion Shield, Wingman Referrals (`SPARK-ALEX-100`), `nearby_profiles` geospatial RPC, and `public.analytics_events` telemetry.
 6. **v2.0.0+4 Polish — Restored Branding, 60fps Optimization & Balanced Monetization**:

@@ -34,7 +34,7 @@ This document maintains the version history, short release notes, and future roa
 - **Gold VIP Entitlements**: Automatic `2x` multiplier on earned embers, unlimited rewinds, and free admirer unblurring.
 
 ### 🛡️ 4. Fortress Safety & Store Compliance
-- **Date Shield 2.0**: Live GPS sharing, discrete Emergency Fake Escape Call, and Safe Haven partner passes (`SPARK-15`).
+- **Date Shield 2.0**: Safety check-in alerts, discreet Emergency Fake Escape Call, and community Safe Haven passes.
 - **Google Play Compliance**: 3D Anti-Catfish liveness selfie check, user reporting with categorization, permanent blocking, and instant Account Deletion.
 
 ---
@@ -54,7 +54,7 @@ This document maintains the version history, short release notes, and future roa
 ### Short Release Notes (Draft)
 - **⌚ WearOS & Apple Watch Companion**: Discrete emergency panic button and heart-rate spike SOS alert.
 - **🌐 Global Passport 2.0**: Seamless multi-city teleportation with real-time translation for international travelers.
-- **🎟️ Direct Venue Reservations**: In-app reservations at verified partner speakeasies with exclusive SparkQuest discounts.
+- **🎟️ Direct Venue Reservations**: In-app reservations at curated community meetup spots and cafes.
 
 ---
 

@@ -81,7 +81,7 @@ class ReleaseNotesDialog extends StatelessWidget {
                         '🗺️ Live OpenStreetMap & CartoDB Dark Radar: Pan, pinch, and zoom live city streets with anchored Safe Havens and 500m privacy blur radius.',
                         '🔥 Restored Original Neon Flaming-Heart Logo across AppBar, Android launcher icons, and onboarding.',
                         '⚖️ Balanced Monetization: 150🔥 starter balance, anti-cheat purchase guards, daily grant cooldown, and 2x Gold VIP multipliers.',
-                        '🛡️ Fortress Safety: Date Shield 2.0 with Fake Escape Call, Angel-Shot venue passes (SPARK-15), and 3D Anti-Catfish scan.',
+                        '🛡️ Fortress Safety: Date Shield 2.0 with Fake Escape Call, community Safe Haven check-ins, and 3D Anti-Catfish scan.',
                         '⚡ 60fps Optimization: RepaintBoundary layers & resolution-aware image decoding reduce texture memory by ~65%.',
                       ],
                     ),
@@ -110,7 +110,7 @@ class ReleaseNotesDialog extends StatelessWidget {
                       highlights: const [
                         '⌚ Wearable SOS: Apple Watch and WearOS discreet heart-rate spike emergency alert.',
                         '🌐 Global Teleport 2.0: Instant multi-city passports with live automated language translation.',
-                        '🎟️ In-App Venue Ticket Booking: Direct reservations at verified partner cafes and lounges.',
+                        '🎟️ In-App Venue Meetup Booking: Direct reservations at curated meetup cafes and lounges.',
                       ],
                     ),
                   ],
