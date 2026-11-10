@@ -307,7 +307,8 @@ class StorageService {
       await _prefs?.setStringList('joined_guilds', guilds);
 
   List<String> getRevealedAdmirers() =>
-      _prefs?.getStringList('revealed_admirer_ids') ?? ['jordan'];
+      _prefs?.getStringList('revealed_admirer_ids') ??
+      (isReviewerAccount() ? ['jordan'] : <String>[]);
   Future<void> saveRevealedAdmirers(List<String> ids) async =>
       await _prefs?.setStringList('revealed_admirer_ids', ids);
 
@@ -362,10 +363,7 @@ class StorageService {
   // --- Google Play Reviewer Account Detection ---
   bool isReviewerAccount() {
     final email = getUserEmail()?.toLowerCase().trim() ?? '';
-    if (email == 'reviewer@sparkquest.app' || email.contains('reviewer') || email.contains('test.play')) {
-      return true;
-    }
-    return _prefs?.getBool('is_reviewer_mode') ?? false;
+    return email == 'reviewer@sparkquest.app';
   }
 
   Future<void> setReviewerMode(bool enabled) async =>

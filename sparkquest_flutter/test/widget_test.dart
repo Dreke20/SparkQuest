@@ -223,10 +223,11 @@ void main() {
     final reviewerSession = await SupabaseService.instance.signInAsReviewer();
     expect(reviewerSession['user']['email'], 'reviewer@sparkquest.app');
     expect(StorageService.instance.getUserName(), 'Google Play Reviewer');
+    expect(StorageService.instance.isReviewerAccount(), isTrue);
 
-    final emailSession = await SupabaseService.instance.signInWithEmail('reviewer@sparkquest.app', 'SecretPass2026!');
-    expect(emailSession, isNotNull);
-    expect(emailSession?['user']['email'], 'reviewer@sparkquest.app');
+    // Verification that fallback backdoors are removed: offline signInWithEmail returns null
+    final noBackdoorSession = await SupabaseService.instance.signInWithEmail('fake.test@sparkquest.app', 'SecretPass2026!');
+    expect(noBackdoorSession, isNull);
   });
 
   test('Phase 16: Google AdMob Service & Gold VIP Ad-Free Exemption', () async {
@@ -284,14 +285,20 @@ void main() {
     // 1. Sign In & Sign Out Flow
     await SupabaseService.instance.signOut();
     expect(SupabaseService.instance.isSignedIn, isFalse);
-    await SupabaseService.instance.signInWithEmail('test.explorer@sparkquest.app', 'SecretPass2026!');
+    expect(StorageService.instance.getUserEmail(), isNull);
+    expect(StorageService.instance.isReviewerAccount(), isFalse);
+
+    // Sign In as Reviewer
+    await SupabaseService.instance.signInAsReviewer();
     expect(SupabaseService.instance.isSignedIn, isTrue);
-    expect(StorageService.instance.getUserEmail(), 'test.explorer@sparkquest.app');
+    expect(StorageService.instance.getUserEmail(), 'reviewer@sparkquest.app');
+    expect(StorageService.instance.isReviewerAccount(), isTrue);
 
     // Sign Out
     await SupabaseService.instance.signOut();
     expect(SupabaseService.instance.isSignedIn, isFalse);
     expect(StorageService.instance.getUserEmail(), isNull);
+    expect(StorageService.instance.isReviewerAccount(), isFalse);
 
     // 2. Google Maps Tile Mode Persistence
     expect(StorageService.instance.getMapTileMode(), 'google_roadmap');
@@ -306,10 +313,35 @@ void main() {
     await StorageService.instance.saveUserEmail('normal.explorer@sparkquest.app');
     expect(StorageService.instance.isReviewerAccount(), isFalse);
 
+    // Ensure email with substring 'reviewer' or 'test' is NOT granted reviewer mode
+    await StorageService.instance.saveUserEmail('test.reviewer.imposter@gmail.com');
+    expect(StorageService.instance.isReviewerAccount(), isFalse);
+
+    // Set back to clean normal user
+    await StorageService.instance.saveUserEmail('alice@example.com');
+    expect(StorageService.instance.isReviewerAccount(), isFalse);
+
     RealtimeChatService.instance.reloadConversations();
     final normalConvos = RealtimeChatService.instance.getConversations();
     // Normal users should not have seed conversations
     expect(normalConvos.any((c) => c.name.contains('[Review Demo]')), isFalse);
+
+    // Adding a real match should not pull in seed conversations
+    final testMatch = const Profile(
+      id: 'real_user_1',
+      name: 'Elena Real',
+      age: 27,
+      occupation: 'Biochemist',
+      distance: '3 mi away',
+      photoAsset: 'assets/images/logo.jpg',
+      tags: ['🧪 Science'],
+      compatPct: 91,
+      compatLevel: 'high',
+    );
+    RealtimeChatService.instance.addMatchFromProfile(testMatch);
+    final convosAfterMatch = RealtimeChatService.instance.getConversations();
+    expect(convosAfterMatch.any((c) => c.name.contains('[Review Demo]')), isFalse);
+    expect(convosAfterMatch.any((c) => c.id == 'real_user_1'), isTrue);
 
     // 2. Reviewer user: Fake seed profiles appear with explicit Google Review labels
     await StorageService.instance.saveUserEmail('reviewer@sparkquest.app');

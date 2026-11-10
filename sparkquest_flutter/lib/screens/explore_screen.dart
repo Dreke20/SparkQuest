@@ -232,22 +232,25 @@ class _ExploreScreenState extends State<ExploreScreen> {
         ? 'Alex (Night Owl Strategist)'
         : StorageService.instance.getPartyWingman();
 
-    final duos = [
-      {
-        'names': 'Sophia & Maya',
-        'classes': '🎨 Creative Alchemist × 🌿 Zen Pathfinder',
-        'quest': '🍹 Rooftop Trivia & Tacos at El Techo (Tonight 7:30 PM)',
-        'synergy': '96% 2v2 Party Synergy',
-        'leadProfile': Profile.seedProfiles.first,
-      },
-      {
-        'names': 'Taylor & Riley',
-        'classes': '✨ Arcane Architect × 🛡️ Guardian Healer',
-        'quest': '🕹️ Emporium Arcade 2v2 Mario Kart Showdown',
-        'synergy': '93% 2v2 Party Synergy',
-        'leadProfile': Profile.seedProfiles.last,
-      },
-    ];
+    final isReviewer = StorageService.instance.isReviewerAccount();
+    final duos = isReviewer
+        ? [
+            {
+              'names': 'Sophia & Maya [Review Demo]',
+              'classes': '🎨 Creative Alchemist × 🌿 Zen Pathfinder',
+              'quest': '🍹 Rooftop Trivia & Tacos at El Techo (Tonight 7:30 PM)',
+              'synergy': '96% 2v2 Party Synergy • Review Demo',
+              'leadProfile': Profile.seedProfiles.first,
+            },
+            {
+              'names': 'Taylor & Riley [Review Demo]',
+              'classes': '✨ Arcane Architect × 🛡️ Guardian Healer',
+              'quest': '🕹️ Emporium Arcade 2v2 Mario Kart Showdown',
+              'synergy': '93% 2v2 Party Synergy • Review Demo',
+              'leadProfile': Profile.seedProfiles.last,
+            },
+          ]
+        : <Map<String, dynamic>>[];
 
     showModalBottomSheet(
       context: context,
@@ -347,104 +350,178 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  ...duos.map((d) {
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(14),
+                  if (duos.isEmpty)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: AppTheme.bgCard,
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: AppTheme.questGold.withValues(alpha: 0.4),
-                        ),
+                        border: Border.all(color: Colors.white10),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: const Column(
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                '👯 ${d['names']}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.emeraldGreen.withValues(
-                                    alpha: 0.2,
-                                  ),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  d['synergy'] as String,
-                                  style: const TextStyle(
-                                    color: AppTheme.emeraldGreen,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
+                          Icon(
+                            Icons.diversity_3_outlined,
+                            color: AppTheme.neonCyan,
+                            size: 36,
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 10),
                           Text(
-                            d['classes'] as String,
-                            style: const TextStyle(
-                              color: AppTheme.neonCyan,
-                              fontSize: 11.5,
+                            'No 2v2 Parties Queued Nearby',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(height: 6),
+                          SizedBox(height: 6),
                           Text(
-                            d['quest'] as String,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12.5,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.questGold,
-                                foregroundColor: Colors.black,
-                              ),
-                              onPressed: () {
-                                final lead = d['leadProfile'] as Profile;
-                                Navigator.pop(ctx);
-                                widget.onBonusEmbers?.call(25);
-                                RealtimeChatService.instance
-                                    .addMatchFromProfile(lead);
-                                RealtimeChatService.instance.sendMessage(
-                                  lead.name,
-                                  '🛡️ 2v2 Party Invite! Me + $selectedWingman are down for: ${d['quest']}',
-                                );
-                                RealtimeChatService
-                                        .instance
-                                        .pendingOpenMatchName =
-                                    lead.name;
-                                widget.onOpenChat();
-                              },
-                              icon: const Icon(Icons.bolt, size: 16),
-                              label: const Text(
-                                'Send 2v2 Party Spark (+25🔥)',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
+                            'Select your wingman above and start a party! When nearby pairs queue for double-dates or trivia quests, they will show up here.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 12,
                             ),
                           ),
                         ],
                       ),
-                    );
-                  }),
+                    )
+                  else ...[
+                    if (isReviewer)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.questGold.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: AppTheme.questGold.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              color: AppTheme.questGold,
+                              size: 14,
+                            ),
+                            SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'Google Reviewer Demo: Showing test duos. Real users only match with genuine pairs.',
+                                style: TextStyle(
+                                  color: AppTheme.questGold,
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ...duos.map((d) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppTheme.bgCard,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: AppTheme.questGold.withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '👯 ${d['names']}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.emeraldGreen.withValues(
+                                      alpha: 0.2,
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    d['synergy'] as String,
+                                    style: const TextStyle(
+                                      color: AppTheme.emeraldGreen,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              d['classes'] as String,
+                              style: const TextStyle(
+                                color: AppTheme.neonCyan,
+                                fontSize: 11.5,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              d['quest'] as String,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12.5,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppTheme.questGold,
+                                  foregroundColor: Colors.black,
+                                ),
+                                onPressed: () {
+                                  final lead = d['leadProfile'] as Profile;
+                                  Navigator.pop(ctx);
+                                  widget.onBonusEmbers?.call(25);
+                                  RealtimeChatService.instance
+                                      .addMatchFromProfile(lead);
+                                  RealtimeChatService.instance.sendMessage(
+                                    lead.name,
+                                    '🛡️ 2v2 Party Invite! Me + $selectedWingman are down for: ${d['quest']}',
+                                  );
+                                  RealtimeChatService
+                                          .instance
+                                          .pendingOpenMatchName =
+                                      lead.name;
+                                  widget.onOpenChat();
+                                },
+                                icon: const Icon(Icons.bolt, size: 16),
+                                label: const Text(
+                                  'Send 2v2 Party Spark (+25🔥)',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
                 ],
               ),
             ),
@@ -864,9 +941,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           color: AppTheme.sparkCoral.withValues(alpha: 0.55),
                         ),
                       ),
-                      child: const Text(
-                        '💘 4 Liked You',
-                        style: TextStyle(
+                      child: Text(
+                        StorageService.instance.isReviewerAccount()
+                            ? '💘 4 Liked You'
+                            : '💘 Likes Vault',
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                           fontSize: 11.5,
@@ -878,9 +957,25 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   // Mystery Match
                   InkWell(
                     onTap: () {
+                      final isReviewer = StorageService.instance.isReviewerAccount();
+                      final available = _cards
+                          .where((p) => isReviewer || !p.isDemoProfile)
+                          .toList();
+                      if (available.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              '🔍 No explorers nearby for Mystery Match yet. Expand your radius in Settings!',
+                            ),
+                            backgroundColor: AppTheme.electricViolet,
+                          ),
+                        );
+                        return;
+                      }
                       showDialog(
                         context: context,
                         builder: (ctx) => MysteryBlindMatchDialog(
+                          candidateProfiles: available,
                           onAwardEmbers: (val) {
                             if (widget.onBonusEmbers != null) {
                               widget.onBonusEmbers!(val);

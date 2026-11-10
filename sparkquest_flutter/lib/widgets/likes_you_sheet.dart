@@ -35,56 +35,65 @@ class _LikesYouSheetState extends State<LikesYouSheet> {
     }
   }
 
-  final List<Profile> _admirers = const [
-    Profile(
-      id: 'jordan',
-      name: 'Jordan',
-      age: 28,
-      occupation: 'Music Producer',
-      distance: '1 mi away',
-      photoAsset: 'assets/images/jordan.png',
-      tags: ['🎵 Music', '🎬 Film', '🍷 Wine'],
-      compatPct: 94,
-      compatLevel: 'high',
-      voicePromptText: 'Liked your Co-Op Trivia badge ⚡',
-    ),
-    Profile(
-      id: 'taylor',
-      name: 'Taylor',
-      age: 26,
-      occupation: 'Product Designer',
-      distance: '3 mi away',
-      photoAsset: 'assets/images/taylor.png',
-      tags: ['🎨 Design', '☕ Coffee', '🎸 Guitar'],
-      compatPct: 91,
-      compatLevel: 'high',
-      voicePromptText: 'Super-Sparked your Sunday morning prompt 🌟',
-    ),
-    Profile(
-      id: 'riley',
-      name: 'Riley',
-      age: 24,
-      occupation: 'Med Student',
-      distance: '2 mi away',
-      photoAsset: 'assets/images/riley.png',
-      tags: ['🏃 Running', '🐕 Dogs', '📖 Reading'],
-      compatPct: 88,
-      compatLevel: 'high',
-      voicePromptText: 'Liked your rooftop sunset photo 🌅',
-    ),
-    Profile(
-      id: 'sophia',
-      name: 'Sophia',
-      age: 24,
-      occupation: 'Photographer',
-      distance: '2 mi away',
-      photoAsset: 'assets/images/sophia.png',
-      tags: ['🎨 Art', '🏔️ Hiking', '☕ Coffee'],
-      compatPct: 92,
-      compatLevel: 'high',
-      voicePromptText: 'Waved from Neon Roasters ☕',
-    ),
-  ];
+  List<Profile> get _admirers {
+    if (!StorageService.instance.isReviewerAccount()) {
+      return const <Profile>[];
+    }
+    return const [
+      Profile(
+        id: 'jordan',
+        name: 'Jordan [Review Demo]',
+        age: 28,
+        occupation: 'Music Producer • Fake Profile for Review',
+        distance: '1 mi away',
+        photoAsset: 'assets/images/jordan.png',
+        tags: ['🎵 Music', '🎬 Film', '🍷 Wine'],
+        compatPct: 94,
+        compatLevel: 'high',
+        voicePromptText: 'Liked your Co-Op Trivia badge ⚡',
+        isDemoProfile: true,
+      ),
+      Profile(
+        id: 'taylor',
+        name: 'Taylor [Review Demo]',
+        age: 26,
+        occupation: 'Product Designer • Fake Profile for Review',
+        distance: '3 mi away',
+        photoAsset: 'assets/images/taylor.png',
+        tags: ['🎨 Design', '☕ Coffee', '🎸 Guitar'],
+        compatPct: 91,
+        compatLevel: 'high',
+        voicePromptText: 'Super-Sparked your Sunday morning prompt 🌟',
+        isDemoProfile: true,
+      ),
+      Profile(
+        id: 'riley',
+        name: 'Riley [Review Demo]',
+        age: 24,
+        occupation: 'Med Student • Fake Profile for Review',
+        distance: '2 mi away',
+        photoAsset: 'assets/images/riley.png',
+        tags: ['🏃 Running', '🐕 Dogs', '📖 Reading'],
+        compatPct: 88,
+        compatLevel: 'high',
+        voicePromptText: 'Liked your rooftop sunset photo 🌅',
+        isDemoProfile: true,
+      ),
+      Profile(
+        id: 'sophia',
+        name: 'Sophia [Review Demo]',
+        age: 24,
+        occupation: 'Photographer • Fake Profile for Review',
+        distance: '2 mi away',
+        photoAsset: 'assets/images/sophia.png',
+        tags: ['🎨 Art', '🏔️ Hiking', '☕ Coffee'],
+        compatPct: 92,
+        compatLevel: 'high',
+        voicePromptText: 'Waved from Neon Roasters ☕',
+        isDemoProfile: true,
+      ),
+    ];
+  }
 
   void _revealSingle(Profile admirer) {
     if (!IAPService.instance.isGoldVip) {
@@ -171,21 +180,21 @@ class _LikesYouSheetState extends State<LikesYouSheet> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Text('💘 ', style: TextStyle(fontSize: 22)),
+                    const Text('💘 ', style: TextStyle(fontSize: 22)),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Admirer Vault (4 Liked You)',
-                          style: TextStyle(
+                          'Admirer Vault (${_admirers.length} Liked You)',
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
                         ),
-                        Text(
+                        const Text(
                           'Explorers who already sent you a Spark',
                           style: TextStyle(
                             fontSize: 12,
@@ -196,7 +205,7 @@ class _LikesYouSheetState extends State<LikesYouSheet> {
                     ),
                   ],
                 ),
-                if (_revealedIds.length < _admirers.length)
+                if (_admirers.isNotEmpty && _revealedIds.length < _admirers.length)
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.questGold,
@@ -224,11 +233,87 @@ class _LikesYouSheetState extends State<LikesYouSheet> {
               ],
             ),
             const SizedBox(height: 16),
-            SizedBox(
-              height: 340,
-              child: GridView.builder(
-                itemCount: _admirers.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            if (_admirers.isEmpty)
+              Container(
+                height: 280,
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppTheme.bgCard,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white10),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppTheme.sparkCoral.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.favorite_border_rounded,
+                        color: AppTheme.sparkCoral,
+                        size: 38,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'No Incoming Sparks Yet',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'When adventurers near you spark your prompts or send a wave, their cards appear here in your Admirer Vault.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: AppTheme.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else ...[
+              if (StorageService.instance.isReviewerAccount())
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.questGold.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppTheme.questGold.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.info_outline, color: AppTheme.questGold, size: 16),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Google Reviewer Mode: Showing test demo admirers. Real users never see simulated profiles.',
+                          style: TextStyle(
+                            color: AppTheme.questGold,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              SizedBox(
+                height: 340,
+                child: GridView.builder(
+                  itemCount: _admirers.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,
@@ -398,9 +483,10 @@ class _LikesYouSheetState extends State<LikesYouSheet> {
               ),
             ),
           ],
-        ),
+        ],
       ),
-    );
+    ),
+  );
   }
 }
 

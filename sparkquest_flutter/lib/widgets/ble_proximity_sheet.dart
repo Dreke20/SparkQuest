@@ -33,60 +33,65 @@ class _BleProximitySheetState extends State<BleProximitySheet>
     'Boba Run 🧋',
   ];
 
-  final List<_BleExplorer> _explorers = [
-    _BleExplorer(
-      id: 'maya',
-      name: 'Maya',
-      rpgClass: 'Bard',
-      level: 4,
-      avatar: 'assets/images/maya.png',
-      distanceMeters: 18,
-      rssi: -48,
-      vibe: 'Looking for Coffee ☕',
-      synergy: 94,
-      bonusText: '+25% Bard Synergy',
-      relativeAngle: 0.85,
-    ),
-    _BleExplorer(
-      id: 'sophia',
-      name: 'Sophia',
-      rpgClass: 'Mage',
-      level: 5,
-      avatar: 'assets/images/sophia.png',
-      distanceMeters: 29,
-      rssi: -62,
-      vibe: 'Ready for Trivia 🧠',
-      synergy: 89,
-      bonusText: '+20% Lore Synergy',
-      relativeAngle: 2.3,
-    ),
-    _BleExplorer(
-      id: 'alex',
-      name: 'Alex',
-      rpgClass: 'Paladin',
-      level: 6,
-      avatar: 'assets/images/alex.png',
-      distanceMeters: 42,
-      rssi: -75,
-      vibe: 'Sunset Stroll 🌅',
-      synergy: 84,
-      bonusText: '+15% Quest Defense',
-      relativeAngle: 4.1,
-    ),
-    _BleExplorer(
-      id: 'jordan',
-      name: 'Jordan',
-      rpgClass: 'Rogue',
-      level: 5,
-      avatar: 'assets/images/jordan.png',
-      distanceMeters: 48,
-      rssi: -81,
-      vibe: 'Board Games 🎲',
-      synergy: 81,
-      bonusText: '+10% Speed Bonus',
-      relativeAngle: 5.4,
-    ),
-  ];
+  List<_BleExplorer> get _explorers {
+    if (!StorageService.instance.isReviewerAccount()) {
+      return const <_BleExplorer>[];
+    }
+    return [
+      _BleExplorer(
+        id: 'maya',
+        name: 'Maya [Review Demo]',
+        rpgClass: 'Bard',
+        level: 4,
+        avatar: 'assets/images/maya.png',
+        distanceMeters: 18,
+        rssi: -48,
+        vibe: 'Looking for Coffee ☕',
+        synergy: 94,
+        bonusText: '+25% Bard Synergy • Review Demo',
+        relativeAngle: 0.85,
+      ),
+      _BleExplorer(
+        id: 'sophia',
+        name: 'Sophia [Review Demo]',
+        rpgClass: 'Mage',
+        level: 5,
+        avatar: 'assets/images/sophia.png',
+        distanceMeters: 29,
+        rssi: -62,
+        vibe: 'Ready for Trivia 🧠',
+        synergy: 89,
+        bonusText: '+20% Lore Synergy • Review Demo',
+        relativeAngle: 2.3,
+      ),
+      _BleExplorer(
+        id: 'alex',
+        name: 'Alex [Review Demo]',
+        rpgClass: 'Paladin',
+        level: 6,
+        avatar: 'assets/images/alex.png',
+        distanceMeters: 42,
+        rssi: -75,
+        vibe: 'Sunset Stroll 🌅',
+        synergy: 84,
+        bonusText: '+15% Quest Defense • Review Demo',
+        relativeAngle: 4.1,
+      ),
+      _BleExplorer(
+        id: 'jordan',
+        name: 'Jordan [Review Demo]',
+        rpgClass: 'Rogue',
+        level: 5,
+        avatar: 'assets/images/jordan.png',
+        distanceMeters: 48,
+        rssi: -81,
+        vibe: 'Board Games 🎲',
+        synergy: 81,
+        bonusText: '+10% Speed Bonus • Review Demo',
+        relativeAngle: 5.4,
+      ),
+    ];
+  }
 
   @override
   void initState() {
@@ -483,8 +488,81 @@ class _BleProximitySheetState extends State<BleProximitySheet>
                       ),
                     ),
                   )
-                else
+                else if (_explorers.isEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: AppTheme.bgCard,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white10),
+                    ),
+                    child: const Column(
+                      children: [
+                        Icon(
+                          Icons.radar_rounded,
+                          color: AppTheme.neonCyan,
+                          size: 30,
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Radar Scanning...',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Broadcasting your vibe beacon. When an adventurer carrying SparkQuest steps into your BLE radius, they will appear here.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 11.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else ...[
+                  if (StorageService.instance.isReviewerAccount())
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.questGold.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: AppTheme.questGold.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            color: AppTheme.questGold,
+                            size: 14,
+                          ),
+                          SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Google Reviewer Demo: Showing test BLE nodes. Real users scan genuine physical devices.',
+                              style: TextStyle(
+                                color: AppTheme.questGold,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ..._explorers.map((explorer) => _buildExplorerCard(explorer)),
+                ],
 
                 const SizedBox(height: 16),
 

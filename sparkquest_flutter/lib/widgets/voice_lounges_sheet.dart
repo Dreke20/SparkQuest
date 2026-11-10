@@ -399,58 +399,72 @@ class _VoiceLoungeRoomModalState extends State<VoiceLoungeRoomModal>
   Timer? _speakerSimulationTimer;
   int _activeSpeakerIndex = 0;
 
-  final List<Map<String, dynamic>> _speakers = [
-    {
-      'name': 'Maya',
-      'role': 'Host 👑',
-      'avatar': 'assets/images/maya.png',
-      'isSpeaking': true,
-    },
-    {
-      'name': 'Alex',
-      'role': 'Speaker',
-      'avatar': 'assets/images/alex.png',
-      'isSpeaking': false,
-    },
-    {
-      'name': 'Jordan',
-      'role': 'Listener',
-      'avatar': 'assets/images/jordan.png',
-      'isSpeaking': false,
-    },
-    {
-      'name': 'Sophia',
-      'role': 'Listener',
-      'avatar': 'assets/images/sophia.png',
-      'isSpeaking': false,
-    },
-    {
-      'name': 'You',
-      'role': 'Adventurer',
-      'avatar': 'assets/images/logo.jpg',
-      'isSpeaking': false,
-    },
-  ];
+  late final List<Map<String, dynamic>> _speakers;
 
   @override
   void initState() {
     super.initState();
+    final isReviewer = StorageService.instance.isReviewerAccount();
+    _speakers = isReviewer
+        ? [
+            {
+              'name': 'Maya [Review Demo]',
+              'role': 'Host 👑',
+              'avatar': 'assets/images/maya.png',
+              'isSpeaking': true,
+            },
+            {
+              'name': 'Alex [Review Demo]',
+              'role': 'Speaker',
+              'avatar': 'assets/images/alex.png',
+              'isSpeaking': false,
+            },
+            {
+              'name': 'Jordan [Review Demo]',
+              'role': 'Listener',
+              'avatar': 'assets/images/jordan.png',
+              'isSpeaking': false,
+            },
+            {
+              'name': 'Sophia [Review Demo]',
+              'role': 'Listener',
+              'avatar': 'assets/images/sophia.png',
+              'isSpeaking': false,
+            },
+            {
+              'name': 'You',
+              'role': 'Adventurer',
+              'avatar': 'assets/images/logo.jpg',
+              'isSpeaking': false,
+            },
+          ]
+        : [
+            {
+              'name': 'You',
+              'role': 'Host 👑',
+              'avatar': 'assets/images/logo.jpg',
+              'isSpeaking': false,
+            },
+          ];
+
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     )..repeat(reverse: true);
 
-    // Simulate ambient speaking turns for immersive demo
-    _speakerSimulationTimer = Timer.periodic(const Duration(seconds: 4), (_) {
-      if (mounted) {
-        setState(() {
-          _activeSpeakerIndex = (_activeSpeakerIndex + 1) % 2;
-          for (int i = 0; i < _speakers.length; i++) {
-            _speakers[i]['isSpeaking'] = (i == _activeSpeakerIndex);
-          }
-        });
-      }
-    });
+    // Simulate ambient speaking turns for reviewer demo only
+    if (isReviewer) {
+      _speakerSimulationTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+        if (mounted) {
+          setState(() {
+            _activeSpeakerIndex = (_activeSpeakerIndex + 1) % 2;
+            for (int i = 0; i < _speakers.length; i++) {
+              _speakers[i]['isSpeaking'] = (i == _activeSpeakerIndex);
+            }
+          });
+        }
+      });
+    }
 
     SupabaseService.instance.joinVoiceLounge(
       loungeId: widget.lounge['id'] ?? 'lounge_default',

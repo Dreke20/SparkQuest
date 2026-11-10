@@ -27,8 +27,8 @@ class RealtimeChatService extends ChangeNotifier {
   }
 
   List<MatchConversation> getConversations() {
+    final isReviewer = StorageService.instance.isReviewerAccount();
     if (_matchList == null) {
-      final isReviewer = StorageService.instance.isReviewerAccount();
       final convos = <MatchConversation>[];
       if (isReviewer) {
         convos.addAll(MatchConversation.seedConversations);
@@ -36,6 +36,11 @@ class RealtimeChatService extends ChangeNotifier {
       final saved = StorageService.instance.getSavedMatches();
       for (final item in saved) {
         final parsed = MatchConversation.fromJson(item);
+        final isDemo = parsed.name.contains('[Review Demo]') ||
+            parsed.lastMessage.contains('[Play Review Demo]');
+        if (!isReviewer && isDemo) {
+          continue;
+        }
         if (!convos.any((s) => s.id.toLowerCase() == parsed.id.toLowerCase())) {
           convos.insert(0, parsed);
         }
@@ -45,7 +50,15 @@ class RealtimeChatService extends ChangeNotifier {
 
     final blocked = StorageService.instance.getBlockedUsers();
     return _matchList!
-        .where((c) => !blocked.contains(c.id.toLowerCase()))
+        .where((c) {
+          if (blocked.contains(c.id.toLowerCase())) return false;
+          if (!isReviewer &&
+              (c.name.contains('[Review Demo]') ||
+                  c.lastMessage.contains('[Play Review Demo]'))) {
+            return false;
+          }
+          return true;
+        })
         .toList();
   }
 
@@ -79,9 +92,7 @@ class RealtimeChatService extends ChangeNotifier {
       ],
     );
 
-    _matchList ??= List<MatchConversation>.from(
-      MatchConversation.seedConversations,
-    );
+    _matchList ??= getConversations();
     _matchList!.insert(0, newConvo);
     _persistMatchList();
     notifyListeners();
@@ -101,8 +112,16 @@ class RealtimeChatService extends ChangeNotifier {
 
   void _persistMatchList() {
     if (_matchList == null) return;
+    final isReviewer = StorageService.instance.isReviewerAccount();
+    final toPersist = isReviewer
+        ? _matchList!
+        : _matchList!
+            .where((c) =>
+                !c.name.contains('[Review Demo]') &&
+                !c.lastMessage.contains('[Play Review Demo]'))
+            .toList();
     StorageService.instance.saveMatches(
-      _matchList!.map((c) => c.toJson()).toList(),
+      toPersist.map((c) => c.toJson()).toList(),
     );
   }
 

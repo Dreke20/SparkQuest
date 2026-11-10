@@ -6,16 +6,19 @@ import 'package:confetti/confetti.dart';
 
 import '../models/profile.dart';
 import '../services/realtime_chat_service.dart';
+import '../services/storage_service.dart';
 import '../theme/app_theme.dart';
 
 class MysteryBlindMatchDialog extends StatefulWidget {
   final Function(int) onAwardEmbers;
   final VoidCallback onOpenChat;
+  final List<Profile> candidateProfiles;
 
   const MysteryBlindMatchDialog({
     super.key,
     required this.onAwardEmbers,
     required this.onOpenChat,
+    this.candidateProfiles = const [],
   });
 
   @override
@@ -58,8 +61,25 @@ class _MysteryBlindMatchDialogState extends State<MysteryBlindMatchDialog> {
     _confettiController = ConfettiController(
       duration: const Duration(seconds: 2),
     );
-    final seeds = Profile.seedProfiles;
-    _mysteryProfile = seeds[Random().nextInt(seeds.length)];
+    final isReviewer = StorageService.instance.isReviewerAccount();
+    final candidates = widget.candidateProfiles.isNotEmpty
+        ? widget.candidateProfiles
+        : (isReviewer ? Profile.seedProfiles : <Profile>[]);
+    if (candidates.isNotEmpty) {
+      _mysteryProfile = candidates[Random().nextInt(candidates.length)];
+    } else {
+      _mysteryProfile = const Profile(
+        id: 'nearby_explorer',
+        name: 'Nearby Explorer',
+        age: 25,
+        occupation: 'Adventurer',
+        distance: 'Nearby',
+        photoAsset: 'assets/images/logo.jpg',
+        tags: ['✨ Adventure', '☕ Coffee'],
+        compatPct: 90,
+        compatLevel: 'high',
+      );
+    }
   }
 
   @override
@@ -273,6 +293,29 @@ class _MysteryBlindMatchDialogState extends State<MysteryBlindMatchDialog> {
                     ),
                   ),
                 ] else ...[
+                  if (_mysteryProfile.isDemoProfile)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.questGold.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppTheme.questGold.withValues(alpha: 0.6),
+                        ),
+                      ),
+                      child: const Text(
+                        'Google Play Review Demo Profile',
+                        style: TextStyle(
+                          color: AppTheme.questGold,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   Text(
                     '${_mysteryProfile.name}, ${_mysteryProfile.age}',
                     style: const TextStyle(

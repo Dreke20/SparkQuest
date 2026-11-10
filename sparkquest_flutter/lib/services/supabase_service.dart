@@ -165,19 +165,6 @@ class SupabaseService {
         }
       }
     } catch (_) {}
-
-    // Test / fallback session for reviewer test accounts
-    if (email.contains('reviewer') || email.contains('test')) {
-      accessToken = 'auth_token_${DateTime.now().millisecondsSinceEpoch}';
-      currentUserId = 'user_${email.split('@').first}';
-      await StorageService.instance.saveUserName('Google Reviewer');
-      await StorageService.instance.saveUserEmail(email);
-      await StorageService.instance.setReviewerMode(true);
-      return {
-        'access_token': accessToken,
-        'user': {'id': currentUserId, 'email': email},
-      };
-    }
     return null;
   }
 
@@ -204,16 +191,7 @@ class SupabaseService {
         }
       }
     } catch (_) {}
-
-    // Simulated session if offline
-    accessToken = 'auth_token_${DateTime.now().millisecondsSinceEpoch}';
-    currentUserId = 'user_new';
-    await StorageService.instance.saveUserName(email.split('@').first);
-    await StorageService.instance.saveUserEmail(email);
-    return {
-      'access_token': accessToken,
-      'user': {'id': currentUserId, 'email': email},
-    };
+    return null;
   }
 
   /// Sign In with Reviewer Account (Standard Auth without Free Entitlement Bypasses)

@@ -8,17 +8,36 @@ This document maintains the version history, short release notes, and future roa
 
 | Version | Build | Release Date | Channel | Status | Key Highlights |
 | :--- | :--- | :--- | :--- | :---: | :--- |
-| **v2.0.0** | `+11` | Nov 2026 | Production / Closed Beta | 🟢 **Live** | Fake Profiles Removed for Real Users, Reviewer-Exclusive Demo Profiles Labeled for Google Review, Signed Build 11 |
+| **v2.0.0** | `+12` | Nov 2026 | Production / Closed Beta | 🟢 **Live** | Strict Reviewer Auth (Backdoor Eliminated), Comprehensive Demo Profile Isolation (Likes, Radar, Duos, Blind Match), Exact `reviewer@sparkquest.app` Verification, Signed Build 12 |
+| **v2.0.0** | `+11` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Fake Profiles Removed for Real Users, Reviewer-Exclusive Demo Profiles Labeled for Google Review, Signed Build 11 |
 | **v2.0.0** | `+10` | Nov 2026 | Production / Closed Beta | ⚪ Archive | In-App VIP 2× Rewarded Embers Multiplier, "Privacy choices" Consent Button in Settings, AdMob Privacy Policy Updates, Version 10 Build |
 | **v2.0.0** | `+9` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Production Google AdMob Credentials (Live App ID & Ad Unit IDs for Banner, Interstitial, and Rewarded Ads), Signed Release Build |
 | **v2.0.0** | `+8` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Google Maps Tiles (Roadmap & Satellite Hybrid), Profile Sign Out Button, Zero UI Overlaps & Discovery Hub AppBar |
 | **v2.0.0** | `+7` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Google AdMob Ads (Rewarded Videos for Free Embers & Bonus Wheel Spins, Quests Banner, Deck Interstitials, Gold VIP Ad-Free Guarantee) |
 | **v2.0.0** | `+6` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Google Play Reviewer Hardening, Manifest Backup Disabled, Clean UI |
-| **v2.1.0** | `+12` | Q1 2027 | Internal Testing | 🟡 Planned | Drop-in Audio Lounges, Guild Boss Battles, AR Moment Prompts |
+| **v2.1.0** | `+13` | Q1 2027 | Internal Testing | 🟡 Planned | Drop-in Audio Lounges, Guild Boss Battles, AR Moment Prompts |
 
 ---
 
-## 🚀 Live Release: v2.0.0+11 (Reviewer-Exclusive Labeled Demo Profiles)
+## 🚀 Live Release: v2.0.0+12 (Comprehensive Reviewer Isolation & Auth Hardening)
+
+### 🛡️ 1. Zero Fake Profiles Across All App Surfaces
+- **Likes You Vault**: Hardcoded admirers (Jordan, Taylor, Riley, Sophia) completely removed for normal accounts. Regular users see a polished "No Incoming Sparks Yet" empty state. Only `reviewer@sparkquest.app` receives sample admirers, each carrying an explicit `[Review Demo]` banner and `Fake Profile for Review` disclaimer.
+- **Map Proximity Radar & Beacon**: Normal users see an active radar widget broadcasting their BLE signal. The simulated beacon ("Maya (94% Synergy) is 18m away") is strictly guarded and only rendered for reviewers, with unmistakable `[Review Demo]` labels.
+- **Crossed Paths Radar**: Shows 0 crossed paths and an invitation to visit local hubs for regular users; demo footsteps are restricted to the reviewer account with Google Play testing notices.
+- **2v2 Party Duos**: 2v2 double-date pairings (Sophia & Maya, Taylor & Riley) are removed for standard users, presenting an empty party state until genuine explorer pairs queue up.
+- **Live Event Hangout Attendees**: Replaced static demo avatar heads with generic group icons for regular users; demo avatars appear only for reviewers.
+- **Mystery Blind Match**: Prevents seed profile leakage; selects strictly from genuine cloud profiles or reviewer test profiles with clear demo indicators.
+- **Chat Match Persistence Guard**: Purged simulated match additions in `RealtimeChatService` that previously pulled `seedConversations` into regular accounts upon sparking. Demo chats cannot be loaded or persisted by non-reviewer accounts.
+
+### 🔐 2. Email Auth Hardening & Backdoor Elimination
+- **Deleted Offline / Test Fallback Login**: Removed simulated session backdoors in `signInWithEmail` and `signUpWithEmail` that automatically granted authenticated sessions for emails containing "reviewer" or "test".
+- **Strict Supabase Cryptographic Auth**: Sign in and sign up now strictly require genuine HTTP 200/201 responses with valid JWT tokens from Supabase Auth (`kqvjntbiagzywstijtsz.supabase.co`).
+- **Exact Reviewer Email Verification**: Updated `isReviewerAccount()` in `StorageService` to strictly check `email == 'reviewer@sparkquest.app'`. Substring matches like `contains('reviewer')` or `contains('test.play')` are completely eliminated.
+
+---
+
+## 📦 Previous Release: v2.0.0+11 (Reviewer-Exclusive Labeled Demo Profiles)
 
 ### 🛡️ 1. Zero Fake Profiles for Regular Production Users
 - **Clean Production Deck**: Regular users never see hardcoded seed profiles. The swipe deck, Daily Standouts list, and chat conversations populate strictly from real cloud profiles in Supabase (`public.profiles`).
