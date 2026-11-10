@@ -468,8 +468,9 @@ class _LegalCenterDialogState extends State<LegalCenterDialog> {
           'Public URL: https://dreke20.github.io/SparkQuest/privacy.html\n\n'
           '1. Data Collection & Purpose: We collect your profile name, age, bio, uploaded photos, voice streams, and GPS coordinates (fuzzed to a 500m privacy blur by default) to power Radar discovery, Safe Haven check-ins, and Co-Op Quests.\n\n'
           '2. Privacy Shield & Liveness Verification: Map locations are geofenced with a 500m privacy radius. Liveness verification selfies are used solely for anti-catfish 3D badge verification.\n\n'
-          '3. Google Play Billing: All virtual currency (Embers) and subscriptions (Gold VIP) are processed securely through Google Play Billing. We never collect or store payment card numbers.\n\n'
-          '4. Right to Erasure (Account Deletion): You may permanently delete your account and all cloud records at any time in-app or via our public web portal at: https://dreke20.github.io/SparkQuest/delete-account.html';
+          '3. Advertising & Google AdMob: SparkQuest shows ads through Google AdMob, which may use your device\'s advertising ID and approximate location to show and measure ads, and that EU/UK users can change their choice anytime in Settings via the "Privacy choices" option.\n\n'
+          '4. Google Play Billing: All virtual currency (Embers) and subscriptions (Gold VIP) are processed securely through Google Play Billing. We never collect or store payment card numbers.\n\n'
+          '5. Right to Erasure (Account Deletion): You may permanently delete your account and all cloud records at any time in-app or via our public web portal at: https://dreke20.github.io/SparkQuest/delete-account.html';
     } else if (index == 1) {
       return 'TERMS OF SERVICE & ELIGIBILITY\n\n'
           '1. Age Requirement: You must be at least 18 years old to create a SparkQuest account.\n\n'

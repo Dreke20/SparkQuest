@@ -15,6 +15,7 @@ import '../widgets/onboarding_ftue_dialog.dart';
 import '../widgets/spark_pass_dialog.dart';
 import '../services/iap_service.dart';
 import '../services/storage_service.dart';
+import '../services/supabase_service.dart';
 import '../services/realtime_chat_service.dart';
 import '../services/quest_progression_service.dart';
 import '../services/admob_service.dart';
@@ -170,6 +171,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       _embers = (_embers + effectiveDelta).clamp(0, 999999);
     });
     StorageService.instance.saveEmbers(_embers);
+    if (SupabaseService.instance.isSignedIn) {
+      SupabaseService.instance.updateProfileField('embers', _embers);
+    }
   }
 
   void _openDateShieldModal() {
@@ -318,20 +322,24 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               ),
               const SizedBox(height: 8),
               _storeOption(
-                '🎬 Watch Sponsored Video (+25🔥)',
-                'Support SparkQuest & earn 25 free Embers',
-                'FREE +25🔥',
+                isVip ? '🎬 Watch Sponsored Video (+10🔥 VIP 2×)' : '🎬 Watch Sponsored Video (+5🔥)',
+                isVip ? 'VIP 2× Perk Active: Earn 10 free Embers' : 'Support SparkQuest & earn 5 free Embers (VIP gets 10🔥)',
+                isVip ? 'FREE +10🔥' : 'FREE +5🔥',
                 () {
                   Navigator.pop(ctx);
                   AdMobService.instance.showRewardedAd(
                     context: context,
                     onRewarded: (amount) {
-                      _addEmbers(25);
+                      _addEmbers(amount, isRawPurchase: true);
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('🎬 +25 Embers earned from sponsored video!'),
-                            backgroundColor: Color(0xFF10B981),
+                          SnackBar(
+                            content: Text(
+                              isVip
+                                  ? '🎬 +$amount Embers earned from sponsored video (VIP 2× Boost)!'
+                                  : '🎬 +$amount Embers earned from sponsored video!',
+                            ),
+                            backgroundColor: const Color(0xFF10B981),
                           ),
                         );
                       }

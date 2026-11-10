@@ -246,14 +246,38 @@ void main() {
     await StorageService.instance.setGoldVip(true);
     expect(StorageService.instance.isGoldVip(), isTrue);
 
-    // 3. Rewarded Ad reward callback works safely in test/mock environment
+    // 3. Rewarded Ad reward callback with VIP 2× doubling
+    // When Gold VIP is active:
     int rewardedEmbers = 0;
     AdMobService.instance.showRewardedAd(
       onRewarded: (amount) {
         rewardedEmbers = amount;
       },
     );
-    expect(rewardedEmbers, 25);
+    expect(rewardedEmbers, 10); // VIP gets 10 (base 5 * 2)
+
+    // When Gold VIP is false:
+    await StorageService.instance.setGoldVip(false);
+    AdMobService.instance.showRewardedAd(
+      onRewarded: (amount) {
+        rewardedEmbers = amount;
+      },
+    );
+    expect(rewardedEmbers, 5); // Non-VIP gets base 5
+
+    // 4. AdMob Privacy Choices & Consent Preferences (GDPR / ePrivacy)
+    expect(StorageService.instance.isPersonalizedAdsEnabled(), isTrue);
+    expect(StorageService.instance.isAdLocationMeasurementEnabled(), isTrue);
+    final adRequest = AdMobService.instance.buildAdRequest();
+    expect(adRequest.nonPersonalizedAds, isFalse);
+
+    await StorageService.instance.setPersonalizedAdsEnabled(false);
+    expect(StorageService.instance.isPersonalizedAdsEnabled(), isFalse);
+    final nonPersonalizedRequest = AdMobService.instance.buildAdRequest();
+    expect(nonPersonalizedRequest.nonPersonalizedAds, isTrue);
+
+    await StorageService.instance.setAdLocationMeasurementEnabled(false);
+    expect(StorageService.instance.isAdLocationMeasurementEnabled(), isFalse);
   });
 
   test('Phase 17: Sign Out & Google Maps Tile Provider Integration', () async {

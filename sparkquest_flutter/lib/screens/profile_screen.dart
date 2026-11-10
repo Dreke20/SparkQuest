@@ -11,6 +11,7 @@ import '../services/supabase_service.dart';
 import '../services/iap_service.dart';
 import '../services/storage_service.dart';
 import '../services/quest_progression_service.dart';
+import '../services/admob_service.dart';
 import '../widgets/sparky_ai_wingman_sheet.dart';
 import '../widgets/moderation_dialogs.dart';
 import '../widgets/release_notes_dialog.dart';
@@ -1158,6 +1159,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
             },
           ),
 
+          const Divider(color: Colors.white10, height: 20),
+          // EU/UK & Global AdMob Privacy Choices (GDPR & ePrivacy Consent Form)
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              HapticFeedback.selectionClick();
+              AdMobService.instance.showPrivacyChoicesDialog(context);
+            },
+            child: const Row(
+              children: [
+                Icon(Icons.shield_outlined, color: AppTheme.neonCyan, size: 22),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Privacy choices',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Manage Google AdMob ad consent & device ID tracking',
+                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right, color: AppTheme.neonCyan, size: 20),
+              ],
+            ),
+          ),
+
           const SizedBox(height: 10),
           // #38: Block Known Contacts
           OutlinedButton.icon(
@@ -1360,6 +1398,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 10),
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF06B6D4),
+              minimumSize: const Size.fromHeight(42),
+              side: BorderSide(
+                color: const Color(0xFF06B6D4).withValues(alpha: 0.5),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () {
+              HapticFeedback.selectionClick();
+              AdMobService.instance.showPrivacyChoicesDialog(context);
+            },
+            icon: const Icon(Icons.shield_outlined, size: 18),
+            label: const Text(
+              'Privacy choices',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            ),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
               foregroundColor: AppTheme.sparkCoral,
               minimumSize: const Size.fromHeight(42),
               side: BorderSide(
@@ -1429,7 +1489,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(width: 8),
                         const Text(
-                          'SparkQuest v2.0.0+9',
+                          'SparkQuest v2.0.0+10',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 13,
@@ -1461,7 +1521,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Build: 2026.11 • SparkQuest v2.0.0+9',
+                  'Build: 2026.11 • SparkQuest v2.0.0+10',
                   style: TextStyle(color: AppTheme.textDim, fontSize: 10.5),
                 ),
                 const SizedBox(height: 10),

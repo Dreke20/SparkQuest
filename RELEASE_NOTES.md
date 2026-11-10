@@ -8,15 +8,31 @@ This document maintains the version history, short release notes, and future roa
 
 | Version | Build | Release Date | Channel | Status | Key Highlights |
 | :--- | :--- | :--- | :--- | :---: | :--- |
-| **v2.0.0** | `+9` | Nov 2026 | Production / Closed Beta | 🟢 **Live** | Production Google AdMob Credentials (Live App ID & Ad Unit IDs for Banner, Interstitial, and Rewarded Ads), Signed Release Build |
+| **v2.0.0** | `+10` | Nov 2026 | Production / Closed Beta | 🟢 **Live** | In-App VIP 2× Rewarded Embers Multiplier, "Privacy choices" Consent Button in Settings, AdMob Privacy Policy Updates, Version 10 Build |
+| **v2.0.0** | `+9` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Production Google AdMob Credentials (Live App ID & Ad Unit IDs for Banner, Interstitial, and Rewarded Ads), Signed Release Build |
 | **v2.0.0** | `+8` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Google Maps Tiles (Roadmap & Satellite Hybrid), Profile Sign Out Button, Zero UI Overlaps & Discovery Hub AppBar |
 | **v2.0.0** | `+7` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Google AdMob Ads (Rewarded Videos for Free Embers & Bonus Wheel Spins, Quests Banner, Deck Interstitials, Gold VIP Ad-Free Guarantee) |
 | **v2.0.0** | `+6` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Google Play Reviewer Hardening, Manifest Backup Disabled, Clean UI |
-| **v2.1.0** | `+10` | Q1 2027 | Internal Testing | 🟡 Planned | Drop-in Audio Lounges, Guild Boss Battles, AR Moment Prompts |
+| **v2.1.0** | `+11` | Q1 2027 | Internal Testing | 🟡 Planned | Drop-in Audio Lounges, Guild Boss Battles, AR Moment Prompts |
 
 ---
 
-## 🚀 Live Release: v2.0.0+9 (Production Google AdMob Credentials)
+## 🚀 Live Release: v2.0.0+10 (VIP 2× Rewarded Multiplier & AdMob Privacy Choices)
+
+### 🛡️ 1. Google AdMob Consent & "Privacy choices" Button
+- **In-App "Privacy choices" Settings Button**: Users can reopen the Google UMP consent form anytime in `Profile -> Settings -> Privacy choices` to update their tracking and ad personalization preferences in compliance with GDPR and ePrivacy directives.
+- **Interactive Consent Modal**: Direct toggles for Personalized Ads and Approximate Location Ad Measurement, with instant persistence in `StorageService`.
+- **Privacy Policy Updates**: Added explicit advertising sections to both public web (`docs/privacy.html`) and in-app legal center:
+  > *"SparkQuest shows ads through Google AdMob, which may use your device's advertising ID and approximate location to show and measure ads, and that EU/UK users can change their choice anytime in Settings via Privacy choices."*
+
+### 👑 2. In-App VIP 2× Rewarded Ad Embers
+- **App-Code Doubling**: Rewarded ad unit reward is kept at 5 in AdMob; in the app code rewarded callback, VIP status (`isGoldVip`) dynamically doubles the reward to 10 Embers (`isGoldVip ? base * 2 : base`), while non-VIP users receive 5 Embers.
+- **Dynamic Vault Storefront**: Embers Vault button and reward banners adapt between `+5🔥` (standard) and `+10🔥 VIP 2×` with distinct celebration toasts.
+- **Supabase Cloud Sync**: Real-time cloud sync ensures awarded Embers are persisted both locally and to Supabase `profiles.embers`.
+
+---
+
+## 📦 Previous Release: v2.0.0+9 (Production Google AdMob Credentials)
 
 ### 💰 1. Production AdMob Integration
 - **Live Google AdMob Application ID**: Configured production App ID `ca-app-pub-3920607003046699~4123861578` in `AndroidManifest.xml`.

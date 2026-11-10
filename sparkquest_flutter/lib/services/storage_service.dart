@@ -347,4 +347,15 @@ class StorageService {
   String getMapTileMode() => _prefs?.getString('map_tile_mode') ?? 'google_roadmap';
   Future<void> saveMapTileMode(String mode) async =>
       await _prefs?.setString('map_tile_mode', mode);
+
+  // --- AdMob Privacy Choices (GDPR / ePrivacy) ---
+  bool isPersonalizedAdsEnabled() =>
+      _prefs?.getBool('ad_personalized_consent') ?? true;
+  Future<void> setPersonalizedAdsEnabled(bool enabled) async =>
+      await _prefs?.setBool('ad_personalized_consent', enabled);
+
+  bool isAdLocationMeasurementEnabled() =>
+      _prefs?.getBool('ad_location_consent') ?? true;
+  Future<void> setAdLocationMeasurementEnabled(bool enabled) async =>
+      await _prefs?.setBool('ad_location_consent', enabled);
 }
