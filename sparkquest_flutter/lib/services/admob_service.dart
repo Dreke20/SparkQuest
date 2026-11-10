@@ -19,26 +19,37 @@ class AdMobService {
   int _swipeCounter = 0;
   static const int _interstitialSwipeThreshold = 15;
 
-  // --- Official Google Test Ad Unit IDs ---
+  // --- Google AdMob Ad Unit IDs ---
+  // In debug mode, official Google test ad unit IDs are used to protect your account from invalid traffic penalties.
+  // In release builds, your live production ad units are loaded automatically.
   String get bannerAdUnitId {
     if (kIsWeb) return '';
-    if (Platform.isAndroid) return 'ca-app-pub-3940256099942544/6300978111';
-    if (Platform.isIOS) return 'ca-app-pub-3940256099942544/2934735716';
-    return 'ca-app-pub-3940256099942544/6300978111';
+    if (kDebugMode) {
+      if (Platform.isAndroid) return 'ca-app-pub-3940256099942544/6300978111';
+      if (Platform.isIOS) return 'ca-app-pub-3940256099942544/2934735716';
+      return 'ca-app-pub-3940256099942544/6300978111';
+    }
+    return 'ca-app-pub-3920607003046699/7588463864';
   }
 
   String get interstitialAdUnitId {
     if (kIsWeb) return '';
-    if (Platform.isAndroid) return 'ca-app-pub-3940256099942544/1033173712';
-    if (Platform.isIOS) return 'ca-app-pub-3940256099942544/4411468910';
-    return 'ca-app-pub-3940256099942544/1033173712';
+    if (kDebugMode) {
+      if (Platform.isAndroid) return 'ca-app-pub-3940256099942544/1033173712';
+      if (Platform.isIOS) return 'ca-app-pub-3940256099942544/4411468910';
+      return 'ca-app-pub-3940256099942544/1033173712';
+    }
+    return 'ca-app-pub-3920607003046699/1094548563';
   }
 
   String get rewardedAdUnitId {
     if (kIsWeb) return '';
-    if (Platform.isAndroid) return 'ca-app-pub-3940256099942544/5224354917';
-    if (Platform.isIOS) return 'ca-app-pub-3940256099942544/1712485313';
-    return 'ca-app-pub-3940256099942544/5224354917';
+    if (kDebugMode) {
+      if (Platform.isAndroid) return 'ca-app-pub-3940256099942544/5224354917';
+      if (Platform.isIOS) return 'ca-app-pub-3940256099942544/1712485313';
+      return 'ca-app-pub-3940256099942544/5224354917';
+    }
+    return 'ca-app-pub-3920607003046699/1262728662';
   }
 
   bool get isSupportedPlatform {

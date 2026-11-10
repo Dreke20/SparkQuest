@@ -8,14 +8,26 @@ This document maintains the version history, short release notes, and future roa
 
 | Version | Build | Release Date | Channel | Status | Key Highlights |
 | :--- | :--- | :--- | :--- | :---: | :--- |
-| **v2.0.0** | `+8` | Nov 2026 | Production / Closed Beta | 🟢 **Live** | Google Maps Tiles (Roadmap & Satellite Hybrid), Profile Sign Out Button, Zero UI Overlaps & Discovery Hub AppBar, Google AdMob |
+| **v2.0.0** | `+9` | Nov 2026 | Production / Closed Beta | 🟢 **Live** | Production Google AdMob Credentials (Live App ID & Ad Unit IDs for Banner, Interstitial, and Rewarded Ads), Signed Release Build |
+| **v2.0.0** | `+8` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Google Maps Tiles (Roadmap & Satellite Hybrid), Profile Sign Out Button, Zero UI Overlaps & Discovery Hub AppBar |
 | **v2.0.0** | `+7` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Google AdMob Ads (Rewarded Videos for Free Embers & Bonus Wheel Spins, Quests Banner, Deck Interstitials, Gold VIP Ad-Free Guarantee) |
 | **v2.0.0** | `+6` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Google Play Reviewer Hardening, Manifest Backup Disabled, Clean UI |
-| **v2.1.0** | `+9` | Q1 2027 | Internal Testing | 🟡 Planned | Drop-in Audio Lounges, Guild Boss Battles, AR Moment Prompts |
+| **v2.1.0** | `+10` | Q1 2027 | Internal Testing | 🟡 Planned | Drop-in Audio Lounges, Guild Boss Battles, AR Moment Prompts |
 
 ---
 
-## 🚀 Live Release: v2.0.0+8 (Google Maps, Sign Out & UI Polish)
+## 🚀 Live Release: v2.0.0+9 (Production Google AdMob Credentials)
+
+### 💰 1. Production AdMob Integration
+- **Live Google AdMob Application ID**: Configured production App ID `ca-app-pub-3920607003046699~4123861578` in `AndroidManifest.xml`.
+- **Live Banner Ad Unit**: Bound `ca-app-pub-3920607003046699/7588463864` on the Quests screen banner.
+- **Live Interstitial Ad Unit**: Bound `ca-app-pub-3920607003046699/1094548563` for natural Explore deck breaks.
+- **Live Rewarded Ad Unit**: Bound `ca-app-pub-3920607003046699/1262728662` in the Embers Vault (+25🔥) and Daily Fortune Wheel bonus spins.
+- **Account Protection Safety Guard**: Automatically serves Google test ad units during development/testing (`kDebugMode`) to shield your AdMob account from invalid traffic strikes, switching to live production ad units in signed release packages.
+
+---
+
+## 📦 Previous Release: v2.0.0+8 (Google Maps, Sign Out & UI Polish)
 
 ### 🗺️ 1. Google Maps Integration & Layer Switcher
 - **Google Maps Roadmap by Default**: Replaced CartoDB tiles with high-performance Google Maps raster tiles (`https://mt{s}.google.com/vt/lyrs=m...`), completely eliminating Carto API key requirements and watermarks.

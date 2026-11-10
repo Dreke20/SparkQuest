@@ -1429,7 +1429,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(width: 8),
                         const Text(
-                          'SparkQuest v2.0.0+8',
+                          'SparkQuest v2.0.0+9',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 13,
@@ -1461,7 +1461,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Build: 2026.11 • SparkQuest v2.0.0+8',
+                  'Build: 2026.11 • SparkQuest v2.0.0+9',
                   style: TextStyle(color: AppTheme.textDim, fontSize: 10.5),
                 ),
                 const SizedBox(height: 10),

@@ -57,7 +57,7 @@
         <!-- Google AdMob Application ID (Required by Google Mobile Ads SDK) -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713"/>
+            android:value="ca-app-pub-3920607003046699~4123861578"/>
     </application>
     <queries>
         <intent>
