@@ -8,13 +8,24 @@ This document maintains the version history, short release notes, and future roa
 
 | Version | Build | Release Date | Channel | Status | Key Highlights |
 | :--- | :--- | :--- | :--- | :---: | :--- |
-| **v2.0.0** | `+4` | Oct 2026 | Production / Closed Beta | 🟢 **Live** | Live Map, Restored Neon Logo, 50 Dating App Improvements, Balanced Economy |
-| **v2.1.0** | `+5` | Q1 2027 | Internal Testing | 🟡 Planned | Drop-in Audio Lounges, Guild Boss Battles, AR Moment Prompts |
-| **v2.2.0** | `+6` | Q2 2027 | Conceptual / Backlog | ⚪ Roadmap | Wearable Heart-Rate SOS, Global Passport 2.0, In-App Venue Reservations |
+| **v2.0.0** | `+7` | Nov 2026 | Production / Closed Beta | 🟢 **Live** | Google AdMob Ads (Rewarded Videos for Free Embers & Bonus Wheel Spins, Quests Banner, Deck Interstitials, Gold VIP Ad-Free Guarantee), Secure Release Build |
+| **v2.0.0** | `+6` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Google Play Reviewer Hardening, Manifest Backup Disabled, Clean UI |
+| **v2.1.0** | `+8` | Q1 2027 | Internal Testing | 🟡 Planned | Drop-in Audio Lounges, Guild Boss Battles, AR Moment Prompts |
 
 ---
 
-## 🚀 Live Release: v2.0.0+6 (Production Release)
+## 🚀 Live Release: v2.0.0+7 (Google AdMob & Production Release)
+
+### 📢 1. Google AdMob Integration & Rewarded Economy
+- **Rewarded Video Ads (Embers Vault)**: Watch opt-in sponsored video ads in the Embers Vault to earn `+25🔥` Embers for free without in-app purchases.
+- **Bonus Fortune Wheel Spins**: Exhausted your daily free spin? Watch a sponsored video ad to unlock an instant bonus spin on the Daily Fortune Wheel.
+- **Non-Intrusive Quests Banner Ad**: Clean, standard 320x50 banner ad integrated at the base of the Quests screen with compliant "SPONSORED" badge.
+- **Natural Deck Break Interstitials**: Frequency-capped interstitial ads after extended Exploration deck browsing (every 15 passes), never interrupting match celebrations or active chats.
+- **100% Ad-Free Guarantee for Gold VIP**: All banner and interstitial ads are automatically suppressed for Gold VIP subscribers.
+
+---
+
+## 📦 Previous Release: v2.0.0+6 (Review Hardening)
 
 ### 🗺️ 1. Live OpenStreetMap & CartoDB Dark Radar Map
 - **True Interactive Geographic Mapping**: Migrated from a static abstract grid to a full-featured `FlutterMap` layer using high-performance CartoDB Dark Matter / OSM tiles with smooth pinch-to-zoom, pan, and real street-level navigation.

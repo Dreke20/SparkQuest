@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 
 import '../services/storage_service.dart';
+import '../services/admob_service.dart';
 import '../theme/app_theme.dart';
 
 class DailySpinWheelDialog extends StatefulWidget {
@@ -143,6 +144,27 @@ class _DailySpinWheelDialogState extends State<DailySpinWheelDialog>
         _resultText = '🎉 You won ${winningSlice['label']}! (+$reward Embers)';
       });
     });
+  }
+
+  void _watchAdForBonusSpin() {
+    if (_isSpinning) return;
+    AdMobService.instance.showRewardedAd(
+      context: context,
+      onRewarded: (amount) {
+        if (mounted) {
+          setState(() {
+            _hasSpunToday = false;
+            _resultText = '🎬 Bonus spin unlocked! Tap SPIN below!';
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('🎬 Bonus spin unlocked by watching ad!'),
+              backgroundColor: Color(0xFF10B981),
+            ),
+          );
+        }
+      },
+    );
   }
 
   @override
@@ -299,6 +321,28 @@ class _DailySpinWheelDialogState extends State<DailySpinWheelDialog>
                     ),
                   ),
                 ),
+                if (_hasSpunToday) ...[
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: _isSpinning ? null : _watchAdForBonusSpin,
+                    icon: const Icon(Icons.play_circle_fill, color: AppTheme.questGold, size: 20),
+                    label: const Text(
+                      'WATCH AD FOR BONUS SPIN 🎬',
+                      style: TextStyle(
+                        color: AppTheme.questGold,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppTheme.questGold),
+                      minimumSize: const Size(double.infinity, 44),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

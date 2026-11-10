@@ -6,6 +6,7 @@ import '../models/quest.dart';
 import '../theme/app_theme.dart';
 import '../services/quest_progression_service.dart';
 import '../services/storage_service.dart';
+import '../widgets/ad_banner_widget.dart';
 
 class QuestsScreen extends StatefulWidget {
   final int streakDays;
@@ -708,6 +709,8 @@ class _QuestsScreenState extends State<QuestsScreen> {
               );
             }),
             const SizedBox(height: 16),
+            const AdBannerWidget(),
+            const SizedBox(height: 24),
           ],
         ),
       ],

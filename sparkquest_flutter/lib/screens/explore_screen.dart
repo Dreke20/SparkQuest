@@ -18,6 +18,7 @@ import '../services/storage_service.dart';
 import '../services/supabase_service.dart';
 import '../services/realtime_chat_service.dart';
 import '../services/quest_progression_service.dart';
+import '../services/admob_service.dart';
 
 class ExploreScreen extends StatefulWidget {
   final VoidCallback onEmbersEarned;
@@ -166,6 +167,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
       RealtimeChatService.instance.addMatchFromProfile(top);
       QuestProgressionService.instance.incrementQuest('engage1', xpGain: 15);
       _showMatchDialog(top);
+    } else {
+      // Natural deck break interstitial (every 15 swipes, ad-free for Gold VIP)
+      AdMobService.instance.recordSwipeAndMaybeShowInterstitial();
     }
   }
 

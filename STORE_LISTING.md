@@ -61,6 +61,7 @@ Welcome to **SparkQuest** — the adventure dating app built to replace endless,
 | **Public Privacy Policy URL** | ✅ Hosted via GitHub Pages | `docs/privacy.html` |
 | **Target Audience** | ✅ 18+ Strictly (Adults Only) | `DATA_SAFETY.md` |
 | **Google Play Billing** | ✅ Integrated (`in_app_purchase: 3.3.1`) | `lib/services/iap_service.dart` |
+| **Google AdMob Monetization** | ✅ Integrated (`google_mobile_ads: 9.2.0`) with Gold VIP Ad-Free Guarantee | `lib/services/admob_service.dart` |
 | **Permissions Declared** | ✅ Location, Camera, Audio, Billing, Biometrics | `AndroidManifest.xml` |
 | **Child Safety Standards Policy URL** | ✅ Hosted via GitHub Pages | `docs/child-safety.html` |
 | **Child Safety In-App Reporting** | ✅ Implemented with P0 Escalation | `lib/widgets/moderation_dialogs.dart` |

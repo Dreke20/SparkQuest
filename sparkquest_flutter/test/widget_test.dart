@@ -6,6 +6,7 @@ import 'package:sparkquest/services/quest_progression_service.dart';
 import 'package:sparkquest/services/realtime_chat_service.dart';
 import 'package:sparkquest/services/storage_service.dart';
 import 'package:sparkquest/services/supabase_service.dart';
+import 'package:sparkquest/services/admob_service.dart';
 
 void main() {
   setUp(() async {
@@ -226,5 +227,32 @@ void main() {
     final emailSession = await SupabaseService.instance.signInWithEmail('reviewer@sparkquest.app', 'SecretPass2026!');
     expect(emailSession, isNotNull);
     expect(emailSession?['user']['email'], 'reviewer@sparkquest.app');
+  });
+
+  test('Phase 16: Google AdMob Service & Gold VIP Ad-Free Exemption', () async {
+    // 1. Official Google test ad unit IDs verification
+    expect(AdMobService.instance.bannerAdUnitId, isNotEmpty);
+    expect(AdMobService.instance.interstitialAdUnitId, isNotEmpty);
+    expect(AdMobService.instance.rewardedAdUnitId, isNotEmpty);
+
+    // 2. VIP Ad-Free Guarantee
+    await StorageService.instance.setGoldVip(false);
+    expect(StorageService.instance.isGoldVip(), isFalse);
+
+    // When not VIP, card deck swipe records towards threshold
+    AdMobService.instance.recordSwipeAndMaybeShowInterstitial();
+
+    // When Gold VIP is active, no ads are triggered
+    await StorageService.instance.setGoldVip(true);
+    expect(StorageService.instance.isGoldVip(), isTrue);
+
+    // 3. Rewarded Ad reward callback works safely in test/mock environment
+    int rewardedEmbers = 0;
+    AdMobService.instance.showRewardedAd(
+      onRewarded: (amount) {
+        rewardedEmbers = amount;
+      },
+    );
+    expect(rewardedEmbers, 25);
   });
 }

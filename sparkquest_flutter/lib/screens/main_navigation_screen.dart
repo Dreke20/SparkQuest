@@ -17,6 +17,7 @@ import '../services/iap_service.dart';
 import '../services/storage_service.dart';
 import '../services/realtime_chat_service.dart';
 import '../services/quest_progression_service.dart';
+import '../services/admob_service.dart';
 import '../widgets/notification_banner.dart';
 import '../widgets/biometric_lock_screen.dart';
 import '../widgets/video_call_screen.dart';
@@ -313,6 +314,29 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       ),
                     );
                   }
+                },
+              ),
+              const SizedBox(height: 8),
+              _storeOption(
+                '🎬 Watch Sponsored Video (+25🔥)',
+                'Support SparkQuest & earn 25 free Embers',
+                'FREE +25🔥',
+                () {
+                  Navigator.pop(ctx);
+                  AdMobService.instance.showRewardedAd(
+                    context: context,
+                    onRewarded: (amount) {
+                      _addEmbers(25);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('🎬 +25 Embers earned from sponsored video!'),
+                            backgroundColor: Color(0xFF10B981),
+                          ),
+                        );
+                      }
+                    },
+                  );
                 },
               ),
               const SizedBox(height: 8),
