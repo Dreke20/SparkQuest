@@ -216,6 +216,159 @@ class _MatchesChatScreenState extends State<MatchesChatScreen> {
     }
   }
 
+  void _showFilterModeDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final current =
+              StorageService.instance.isMatchesOnlyMessagesEnabled();
+          return AlertDialog(
+            backgroundColor: AppTheme.bgCard,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: const BorderSide(color: AppTheme.neonCyan, width: 1.2),
+            ),
+            title: const Text(
+              '💬 Message Permissions',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Choose who can send you direct messages & spark whispers:',
+                  style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                ),
+                const SizedBox(height: 16),
+                _buildMessageOption(
+                  title: '🔒 Matches Only (Recommended)',
+                  description:
+                      'Only adventurers you mutually spark with can send messages. Keeps your inbox clean.',
+                  selected: current,
+                  onTap: () async {
+                    HapticFeedback.selectionClick();
+                    final messenger = ScaffoldMessenger.of(context);
+                    final nav = Navigator.of(context);
+                    await StorageService.instance
+                        .setMatchesOnlyMessagesEnabled(true);
+                    if (!mounted) return;
+                    setDialogState(() {});
+                    setState(() {});
+                    nav.pop();
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          '🔒 Message Filter Active: Only mutual matches can message you.',
+                        ),
+                        backgroundColor: AppTheme.neonCyan,
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+                _buildMessageOption(
+                  title: '🌐 Anyone (Open DMs)',
+                  description:
+                      'Anyone from the Live Map, BLE Radar, or Explore deck can send you direct messages.',
+                  selected: !current,
+                  onTap: () async {
+                    HapticFeedback.selectionClick();
+                    final messenger = ScaffoldMessenger.of(context);
+                    final nav = Navigator.of(context);
+                    await StorageService.instance
+                        .setMatchesOnlyMessagesEnabled(false);
+                    if (!mounted) return;
+                    setDialogState(() {});
+                    setState(() {});
+                    nav.pop();
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          '🌐 Open DMs Active: Anyone can send you direct spark messages.',
+                        ),
+                        backgroundColor: AppTheme.sparkCoral,
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text(
+                  'Done',
+                  style: TextStyle(color: AppTheme.neonCyan),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildMessageOption({
+    required String title,
+    required String description,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppTheme.neonCyan.withValues(alpha: 0.12)
+              : AppTheme.bgInput,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? AppTheme.neonCyan : Colors.white12,
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: selected ? AppTheme.neonCyan : Colors.white,
+                    ),
+                  ),
+                ),
+                if (selected)
+                  const Icon(
+                    Icons.check_circle,
+                    color: AppTheme.neonCyan,
+                    size: 16,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              description,
+              style: const TextStyle(fontSize: 11, color: AppTheme.textDim),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final conversations = _visibleConversations;
@@ -328,16 +481,67 @@ class _MatchesChatScreenState extends State<MatchesChatScreen> {
           ),
         ),
         const Divider(color: Colors.white12, height: 24),
-        // Active Chats List Header
+        // Active Chats List Header + Message Privacy Filter Badge
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: const Text(
-            'Messages',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Messages',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  _showFilterModeDialog();
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color:
+                        StorageService.instance.isMatchesOnlyMessagesEnabled()
+                            ? AppTheme.neonCyan.withValues(alpha: 0.15)
+                            : AppTheme.sparkCoral.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color:
+                          StorageService.instance.isMatchesOnlyMessagesEnabled()
+                              ? AppTheme.neonCyan.withValues(alpha: 0.4)
+                              : AppTheme.sparkCoral.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        StorageService.instance.isMatchesOnlyMessagesEnabled()
+                            ? '🔒 Matches Only'
+                            : '🌐 Open DMs',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color:
+                              StorageService.instance
+                                      .isMatchesOnlyMessagesEnabled()
+                                  ? AppTheme.neonCyan
+                                  : AppTheme.sparkCoral,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.tune, size: 12, color: Colors.white70),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         Expanded(

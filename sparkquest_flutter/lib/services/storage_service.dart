@@ -326,4 +326,10 @@ class StorageService {
       _prefs?.getInt('ble_beacon_range_meters') ?? 50;
   Future<void> saveBleBeaconRangeMeters(int meters) async =>
       await _prefs?.setInt('ble_beacon_range_meters', meters);
+
+  // --- Message Permissions (Matches Only vs Anyone) ---
+  bool isMatchesOnlyMessagesEnabled() =>
+      _prefs?.getBool('messages_matches_only') ?? true;
+  Future<void> setMatchesOnlyMessagesEnabled(bool matchesOnly) async =>
+      await _prefs?.setBool('messages_matches_only', matchesOnly);
 }

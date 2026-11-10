@@ -27,7 +27,7 @@ class _AuthDialogState extends State<AuthDialog> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _confettiController = ConfettiController(duration: const Duration(seconds: 2));
   }
 
@@ -111,6 +111,26 @@ class _AuthDialogState extends State<AuthDialog> with SingleTickerProviderStateM
     }
   }
 
+  void _signInAsReviewer() async {
+    HapticFeedback.heavyImpact();
+    setState(() => _isLoading = true);
+    await SupabaseService.instance.signInAsReviewer();
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    _confettiController.play();
+    widget.onAuthenticated();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          '🎉 Google Play Reviewer session active! VIP & Embers unlocked.',
+        ),
+        backgroundColor: Color(0xFF10B981),
+      ),
+    );
+    Navigator.pop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -183,6 +203,7 @@ class _AuthDialogState extends State<AuthDialog> with SingleTickerProviderStateM
                       tabs: const [
                         Tab(text: '📱 Phone SMS'),
                         Tab(text: '🌐 Google'),
+                        Tab(text: '🛡️ Reviewer'),
                       ],
                     ),
                   ),
@@ -296,6 +317,75 @@ class _AuthDialogState extends State<AuthDialog> with SingleTickerProviderStateM
                               child: Text(
                                 'Secure Single Sign-On powered by Supabase Auth',
                                 style: TextStyle(color: Colors.white38, fontSize: 11),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        // Tab 3: Google Play Reviewer Access
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF06B6D4).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: const Color(0xFF06B6D4).withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: const Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Google Play Review Credentials',
+                                    style: TextStyle(
+                                      color: Color(0xFF06B6D4),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Email: reviewer@sparkquest.app\nPass: PlayReviewer2026! (Bypasses SMS)',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF10B981),
+                                foregroundColor: Colors.black,
+                                padding: const EdgeInsets.symmetric(vertical: 13),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              onPressed: _isLoading ? null : _signInAsReviewer,
+                              icon: const Text('🛡️', style: TextStyle(fontSize: 15)),
+                              label: _isLoading
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : const Text(
+                                      'Enter as Play Reviewer 🚀',
+                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                            ),
+                            const SizedBox(height: 8),
+                            const Center(
+                              child: Text(
+                                'Grants 500 Embers, Gold VIP & Preloaded Matches',
+                                style: TextStyle(color: Colors.white38, fontSize: 10),
                               ),
                             ),
                           ],

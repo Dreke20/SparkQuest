@@ -203,4 +203,26 @@ void main() {
     await StorageService.instance.saveBleBeaconRangeMeters(30);
     expect(StorageService.instance.getBleBeaconRangeMeters(), 30);
   });
+
+  test('Phase 15: Message Permissions (Matches Only vs Anyone) & Reviewer Account', () async {
+    // 1. Message permissions default to true (Matches only)
+    expect(StorageService.instance.isMatchesOnlyMessagesEnabled(), isTrue);
+
+    // Maya is a seed conversation (mutual match)
+    expect(RealtimeChatService.instance.canReceiveMessageFrom('Maya'), isTrue);
+    // Non-match user is blocked when Matches Only is enabled
+    expect(RealtimeChatService.instance.canReceiveMessageFrom('RandomExplorer99'), isFalse);
+
+    // Switch to Anyone (Open DMs)
+    await StorageService.instance.setMatchesOnlyMessagesEnabled(false);
+    expect(StorageService.instance.isMatchesOnlyMessagesEnabled(), isFalse);
+    expect(RealtimeChatService.instance.canReceiveMessageFrom('RandomExplorer99'), isTrue);
+
+    // 2. Google Play Reviewer Account
+    final reviewerSession = await SupabaseService.instance.signInAsReviewer();
+    expect(reviewerSession['user']['email'], 'reviewer@sparkquest.app');
+    expect(StorageService.instance.getUserName(), 'Google Play Reviewer');
+    expect(StorageService.instance.isGoldVip(), isTrue);
+    expect(StorageService.instance.getEmbers(), greaterThanOrEqualTo(500));
+  });
 }

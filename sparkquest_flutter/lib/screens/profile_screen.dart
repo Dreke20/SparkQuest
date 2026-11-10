@@ -35,6 +35,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _biometricEnabled = false;
   bool _ghostModeEnabled = false;
   bool _campfireSnoozeEnabled = false;
+  bool _matchesOnlyMessages = true;
 
   bool _isVerified = false;
   bool _isRecordingVoice = false;
@@ -74,6 +75,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _userArchetype = StorageService.instance.getUserArchetype();
     _smartPhotosEnabled = StorageService.instance.isSmartPhotosEnabled();
     _userPrompts = StorageService.instance.getUserPrompts();
+    _matchesOnlyMessages = StorageService.instance.isMatchesOnlyMessagesEnabled();
   }
 
   void _openSparkyWingmanModal() {
@@ -1133,6 +1135,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     backgroundColor: val
                         ? AppTheme.electricViolet
                         : Colors.grey.shade800,
+                  ),
+                );
+              }
+            },
+          ),
+
+          const Divider(color: Colors.white10, height: 20),
+          // Message Permissions: Matches Only vs Anyone
+          _buildSecuritySwitchRow(
+            title: 'Receive Messages from Matches Only',
+            subtitle: _matchesOnlyMessages
+                ? '🔒 Only mutual sparks can message you'
+                : '🌐 Open DMs: Anyone can send you direct spark messages',
+            value: _matchesOnlyMessages,
+            activeColor: AppTheme.neonCyan,
+            onChanged: (val) async {
+              HapticFeedback.selectionClick();
+              await StorageService.instance.setMatchesOnlyMessagesEnabled(val);
+              setState(() => _matchesOnlyMessages = val);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      val
+                          ? '🔒 Message Filter Active: Only mutual matches can message you.'
+                          : '🌐 Open DMs Active: Anyone can send you direct spark messages.',
+                    ),
+                    duration: const Duration(seconds: 2),
+                    backgroundColor:
+                        val ? AppTheme.neonCyan : AppTheme.sparkCoral,
                   ),
                 );
               }

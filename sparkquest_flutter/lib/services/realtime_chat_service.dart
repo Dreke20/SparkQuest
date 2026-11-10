@@ -177,6 +177,14 @@ class RealtimeChatService extends ChangeNotifier {
     _persistMatchList();
   }
 
+  bool canReceiveMessageFrom(String senderName) {
+    if (!StorageService.instance.isMatchesOnlyMessagesEnabled()) {
+      return true; // Anyone can send direct messages (Open DMs)
+    }
+    final convos = getConversations();
+    return convos.any((c) => c.name.toLowerCase() == senderName.toLowerCase());
+  }
+
   void _simulateMatchReply(String matchName, String userText) {
     // 1. Start typing after 1.2s
     Timer(const Duration(milliseconds: 1200), () {
@@ -208,8 +216,10 @@ class RealtimeChatService extends ChangeNotifier {
         _persist(matchName);
         notifyListeners();
 
-        // Trigger in-app push notification
-        onIncomingNotification?.call(matchName, replyText);
+        // Trigger in-app push notification if allowed by message permissions
+        if (canReceiveMessageFrom(matchName)) {
+          onIncomingNotification?.call(matchName, replyText);
+        }
       });
     });
   }

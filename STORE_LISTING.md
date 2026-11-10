@@ -59,10 +59,21 @@ Welcome to **SparkQuest** — the adventure dating app built to replace endless,
 | **Target Audience** | ✅ 18+ Strictly (Adults Only) | `DATA_SAFETY.md` |
 | **Google Play Billing** | ✅ Integrated (`in_app_purchase: 3.3.1`) | `lib/services/iap_service.dart` |
 | **Permissions Declared** | ✅ Location, Camera, Audio, Billing, Biometrics | `AndroidManifest.xml` |
+| **Reviewer Demo Account** | ✅ Pre-configured (`reviewer@sparkquest.app`) | `GOOGLE_PLAY_REVIEWER_INSTRUCTIONS.md` |
 
 ---
 
-## 5. Closed Testing Instructions (Personal Accounts)
+## 5. Play Console App Access (Reviewer Credentials)
+
+Under **Policy and programs &rarr; App content &rarr; App access**:
+* **Email**: `reviewer@sparkquest.app`
+* **Password**: `PlayReviewer2026!`
+* **Phone / OTP**: `+1 (555) 019-2026` / `123456`
+* See [`GOOGLE_PLAY_REVIEWER_INSTRUCTIONS.md`](file:///c:/Users/dreke/OneDrive/Desktop/SparkQuest/SparkQuest-master/GOOGLE_PLAY_REVIEWER_INSTRUCTIONS.md) for full review setup details.
+
+---
+
+## 6. Closed Testing Instructions (Personal Accounts)
 
 1. Navigate to **Google Play Console &rarr; Testing &rarr; Closed testing**.
 2. Create an **Alpha** or **Closed Beta** track and upload `app-release.aab`.

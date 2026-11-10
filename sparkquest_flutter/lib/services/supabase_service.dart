@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
+import 'storage_service.dart';
 
 /// Supabase Service for SparkQuest Flutter App
 /// Project Ref: kqvjntbiagzywstijtsz
@@ -134,6 +135,25 @@ class SupabaseService {
     } catch (_) {
       return true;
     }
+  }
+
+  /// Sign In with Google Play Console Reviewer Account
+  /// Grants full VIP and starter balance access for Google's review team.
+  Future<Map<String, dynamic>> signInAsReviewer() async {
+    accessToken = 'play_reviewer_token_${DateTime.now().millisecondsSinceEpoch}';
+    currentUserId = 'user_google_reviewer';
+    await StorageService.instance.saveUserName('Google Play Reviewer');
+    await StorageService.instance.addEmbers(500);
+    await StorageService.instance.setGoldVip(true);
+    return {
+      'access_token': accessToken,
+      'user': {
+        'id': currentUserId,
+        'email': 'reviewer@sparkquest.app',
+        'role': 'play_console_reviewer',
+        'is_verified': true,
+      }
+    };
   }
 
   /// Sign Out
