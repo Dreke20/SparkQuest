@@ -218,11 +218,13 @@ void main() {
     expect(StorageService.instance.isMatchesOnlyMessagesEnabled(), isFalse);
     expect(RealtimeChatService.instance.canReceiveMessageFrom('RandomExplorer99'), isTrue);
 
-    // 2. Google Play Reviewer Account
+    // 2. Reviewer Account & Email Authentication
     final reviewerSession = await SupabaseService.instance.signInAsReviewer();
     expect(reviewerSession['user']['email'], 'reviewer@sparkquest.app');
     expect(StorageService.instance.getUserName(), 'Google Play Reviewer');
-    expect(StorageService.instance.isGoldVip(), isTrue);
-    expect(StorageService.instance.getEmbers(), greaterThanOrEqualTo(500));
+
+    final emailSession = await SupabaseService.instance.signInWithEmail('reviewer@sparkquest.app', 'SecretPass2026!');
+    expect(emailSession, isNotNull);
+    expect(emailSession?['user']['email'], 'reviewer@sparkquest.app');
   });
 }

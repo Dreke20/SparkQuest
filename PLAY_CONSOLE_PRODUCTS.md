@@ -85,3 +85,4 @@ To ensure the 12 testers are **never charged real money** when testing the IAP s
 4. Click **Save changes**.
 5. When testers tap to purchase in the app, Google Play displays a green badge:
    `"Test card, always approves"` with zero real credit card charge.
+

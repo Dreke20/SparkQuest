@@ -2,7 +2,7 @@
 
 ## 1. Release Artifacts & Signing Configuration
 * **Application ID / Package**: `com.sparkquest.sparkquest`
-* **Version**: `2.0.0+5` (`versionName: 2.0.0`, `versionCode: 5`)
+* **Version**: `2.0.0+6` (`versionName: 2.0.0`, `versionCode: 6`)
 * **Category**: Dating / Social Communication
 * **Target Audience**: **18+ Strictly (Adults Only)**
 * **Official Upload Keystore**: `sparkquest_flutter/android/app/upload-keystore.jks` (configured via `key.properties`, ignored by git)
@@ -72,7 +72,7 @@ Welcome to **SparkQuest** — the adventure dating app built to replace endless,
 
 Under **Policy and programs &rarr; App content &rarr; App access**:
 * **Email**: `reviewer@sparkquest.app`
-* **Password**: `PlayReviewer2026!`
+* **Password**: `[Configured in Supabase Dashboard &rarr; Authentication &rarr; Users]`
 * **Phone / OTP**: `+1 (555) 019-2026` / `123456`
 * See [`GOOGLE_PLAY_REVIEWER_INSTRUCTIONS.md`](file:///c:/Users/dreke/OneDrive/Desktop/SparkQuest/SparkQuest-master/GOOGLE_PLAY_REVIEWER_INSTRUCTIONS.md) for full review setup details.
 

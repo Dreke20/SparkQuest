@@ -642,123 +642,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
 
-          const SizedBox(height: 12),
-
-          // Supabase Linked Cloud Card
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF10B981).withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: const Color(0xFF10B981).withValues(alpha: 0.3),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      const Text('🟢 ', style: TextStyle(fontSize: 12)),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Supabase Cloud',
-                              style: TextStyle(
-                                color: Color(0xFF10B981),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                            Text(
-                              'Ref: ${SupabaseService.projectRef}',
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white54,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      onPressed: () {
-                        HapticFeedback.selectionClick();
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => AuthDialog(
-                            onAuthenticated: () {
-                              setState(() {});
-                            },
-                          ),
-                        );
-                      },
-                      child: const Text(
-                        'Auth / SMS',
-                        style: TextStyle(
-                          color: Color(0xFF06B6D4),
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      onPressed: () async {
-                        HapticFeedback.lightImpact();
-                        final ok = await SupabaseService.instance
-                            .checkConnection();
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                ok
-                                    ? '🟢 Supabase connected successfully!'
-                                    : '⚠️ Offline fallback active',
-                              ),
-                              backgroundColor: ok
-                                  ? const Color(0xFF10B981)
-                                  : Colors.amber.shade800,
-                            ),
-                          );
-                        }
-                      },
-                      child: const Text(
-                        'Test Ping',
-                        style: TextStyle(
-                          color: Color(0xFF10B981),
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
           // Liveness Verification Banner / Badge
           _buildVerificationBanner(),
@@ -1277,27 +1161,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.bgInput,
-              foregroundColor: AppTheme.questGold,
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF06B6D4),
               minimumSize: const Size.fromHeight(42),
+              side: BorderSide(
+                color: const Color(0xFF06B6D4).withValues(alpha: 0.45),
+              ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
-                side: BorderSide(
-                  color: AppTheme.questGold.withValues(alpha: 0.4),
-                ),
               ),
             ),
-
             onPressed: () {
-              HapticFeedback.heavyImpact();
-              widget.onTriggerLock?.call();
+              HapticFeedback.selectionClick();
+              showDialog(
+                context: context,
+                builder: (ctx) => AuthDialog(
+                  onAuthenticated: () {
+                    setState(() {
+                      _loadProfilePrefs();
+                    });
+                  },
+                ),
+              );
             },
-            icon: const Icon(Icons.fingerprint, size: 18),
+            icon: const Icon(Icons.cloud_sync_outlined, size: 18),
             label: const Text(
-              'Lock App Now (Test Biometrics)',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              'Account & Cloud Sync (Sign In)',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
             ),
           ),
           const SizedBox(height: 10),
@@ -1397,7 +1288,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(width: 8),
                         const Text(
-                          'SparkQuest v2.0.0+5',
+                          'SparkQuest v2.0.0+6',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 13,
@@ -1429,7 +1320,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Build: 2026.11 • Flutter 3.47.7 • Supabase Cloud Live',
+                  'Build: 2026.11 • SparkQuest v2.0.0+6',
                   style: TextStyle(color: AppTheme.textDim, fontSize: 10.5),
                 ),
                 const SizedBox(height: 10),

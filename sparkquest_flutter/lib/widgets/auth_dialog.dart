@@ -18,9 +18,11 @@ class _AuthDialogState extends State<AuthDialog> with SingleTickerProviderStateM
   final TextEditingController _phoneController = TextEditingController(text: '+1 (555) 839-2049');
   final TextEditingController _otpController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
 
   bool _isCodeSent = false;
   bool _isLoading = false;
+  bool _isSignUp = false;
   int _resendCountdown = 30;
   Timer? _countdownTimer;
 
@@ -39,6 +41,7 @@ class _AuthDialogState extends State<AuthDialog> with SingleTickerProviderStateM
     _phoneController.dispose();
     _otpController.dispose();
     _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -111,24 +114,50 @@ class _AuthDialogState extends State<AuthDialog> with SingleTickerProviderStateM
     }
   }
 
-  void _signInAsReviewer() async {
-    HapticFeedback.heavyImpact();
+  void _signInWithEmailAndPassword() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter email and password.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    HapticFeedback.mediumImpact();
     setState(() => _isLoading = true);
-    await SupabaseService.instance.signInAsReviewer();
+    final res = _isSignUp
+        ? await SupabaseService.instance.signUpWithEmail(email, password)
+        : await SupabaseService.instance.signInWithEmail(email, password);
     if (!mounted) return;
     setState(() => _isLoading = false);
 
-    _confettiController.play();
-    widget.onAuthenticated();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          '🎉 Google Play Reviewer session active! VIP & Embers unlocked.',
+    if (res != null) {
+      HapticFeedback.heavyImpact();
+      _confettiController.play();
+      widget.onAuthenticated();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _isSignUp
+                ? '🎉 Account created! Welcome to SparkQuest.'
+                : '🎉 Welcome back to SparkQuest Cloud!',
+          ),
+          backgroundColor: const Color(0xFF10B981),
         ),
-        backgroundColor: Color(0xFF10B981),
-      ),
-    );
-    Navigator.pop(context);
+      );
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Authentication failed. Please verify your credentials.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
   @override
@@ -202,15 +231,15 @@ class _AuthDialogState extends State<AuthDialog> with SingleTickerProviderStateM
                       indicatorSize: TabBarIndicatorSize.tab,
                       tabs: const [
                         Tab(text: '📱 Phone SMS'),
+                        Tab(text: '✉️ Email'),
                         Tab(text: '🌐 Google'),
-                        Tab(text: '🛡️ Reviewer'),
                       ],
                     ),
                   ),
                   const SizedBox(height: 18),
 
                   SizedBox(
-                    height: 240,
+                    height: 250,
                     child: TabBarView(
                       controller: _tabController,
                       children: [
@@ -288,7 +317,73 @@ class _AuthDialogState extends State<AuthDialog> with SingleTickerProviderStateM
                           ],
                         ),
 
-                        // Tab 2: Google Sign-In
+                        // Tab 2: Email & Password Sign-In
+                        SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              TextField(
+                                controller: _emailController,
+                                keyboardType: TextInputType.emailAddress,
+                                style: const TextStyle(color: Colors.white),
+                                decoration: InputDecoration(
+                                  filled: true,
+                                  fillColor: Colors.white.withValues(alpha: 0.05),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                  prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF06B6D4)),
+                                  hintText: 'name@example.com',
+                                  hintStyle: const TextStyle(color: Colors.white30),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              TextField(
+                                controller: _passwordController,
+                                obscureText: true,
+                                style: const TextStyle(color: Colors.white),
+                                decoration: InputDecoration(
+                                  filled: true,
+                                  fillColor: Colors.white.withValues(alpha: 0.05),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                  prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF06B6D4)),
+                                  hintText: 'Password',
+                                  hintStyle: const TextStyle(color: Colors.white30),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF06B6D4),
+                                  foregroundColor: Colors.black,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                                onPressed: _isLoading ? null : _signInWithEmailAndPassword,
+                                child: _isLoading
+                                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                                    : Text(
+                                        _isSignUp ? 'Create Account 🚀' : 'Sign In 🚀',
+                                        style: const TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                              ),
+                              const SizedBox(height: 6),
+                              Center(
+                                child: TextButton(
+                                  onPressed: () => setState(() => _isSignUp = !_isSignUp),
+                                  child: Text(
+                                    _isSignUp
+                                        ? 'Already have an account? Sign In'
+                                        : 'Need an account? Sign Up',
+                                    style: const TextStyle(color: Colors.white54, fontSize: 11),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Tab 3: Google Sign-In
                         Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -317,75 +412,6 @@ class _AuthDialogState extends State<AuthDialog> with SingleTickerProviderStateM
                               child: Text(
                                 'Secure Single Sign-On powered by Supabase Auth',
                                 style: TextStyle(color: Colors.white38, fontSize: 11),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        // Tab 3: Google Play Reviewer Access
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF06B6D4).withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: const Color(0xFF06B6D4).withValues(alpha: 0.3),
-                                ),
-                              ),
-                              child: const Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Google Play Review Credentials',
-                                    style: TextStyle(
-                                      color: Color(0xFF06B6D4),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  SizedBox(height: 4),
-                                  Text(
-                                    'Email: reviewer@sparkquest.app\nPass: PlayReviewer2026! (Bypasses SMS)',
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF10B981),
-                                foregroundColor: Colors.black,
-                                padding: const EdgeInsets.symmetric(vertical: 13),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              onPressed: _isLoading ? null : _signInAsReviewer,
-                              icon: const Text('🛡️', style: TextStyle(fontSize: 15)),
-                              label: _isLoading
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
-                                    )
-                                  : const Text(
-                                      'Enter as Play Reviewer 🚀',
-                                      style: TextStyle(fontWeight: FontWeight.bold),
-                                    ),
-                            ),
-                            const SizedBox(height: 8),
-                            const Center(
-                              child: Text(
-                                'Grants 500 Embers, Gold VIP & Preloaded Matches',
-                                style: TextStyle(color: Colors.white38, fontSize: 10),
                               ),
                             ),
                           ],
