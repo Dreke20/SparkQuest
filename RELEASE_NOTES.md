@@ -8,7 +8,8 @@ This document maintains the version history, short release notes, and future roa
 
 | Version | Build | Release Date | Channel | Status | Key Highlights |
 | :--- | :--- | :--- | :--- | :---: | :--- |
-| **v2.0.0** | `+13` | Nov 2026 | Production / Closed Beta | 🟢 **Live** | Native Android Push Notifications & Supabase Realtime WebSockets, Live P2P WebRTC Video/Voice Calls (`flutter_webrtc`), Marketing Landing Site (`docs/index.html`), Automated Crash Telemetry & Diagnostics Viewer |
+| **v2.0.0** | `+14` | Nov 2026 | Production / Closed Beta | 🟢 **Live** | Version bump for Google Play Console (`versionCode=14`) carrying Native Push Alerts, Live WebRTC Calls, Marketing Site & Crash Telemetry |
+| **v2.0.0** | `+13` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Native Android Push Notifications & Supabase Realtime WebSockets, Live P2P WebRTC Video/Voice Calls (`flutter_webrtc`), Marketing Landing Site (`docs/index.html`), Automated Crash Telemetry & Diagnostics Viewer |
 | **v2.0.0** | `+12` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Strict Reviewer Auth (Backdoor Eliminated), Comprehensive Demo Profile Isolation (Likes, Radar, Duos, Blind Match), Exact `reviewer@sparkquest.app` Verification, Signed Build 12 |
 | **v2.0.0** | `+11` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Fake Profiles Removed for Real Users, Reviewer-Exclusive Demo Profiles Labeled for Google Review, Signed Build 11 |
 | **v2.0.0** | `+10` | Nov 2026 | Production / Closed Beta | ⚪ Archive | In-App VIP 2× Rewarded Embers Multiplier, "Privacy choices" Consent Button in Settings, AdMob Privacy Policy Updates, Version 10 Build |
@@ -20,7 +21,7 @@ This document maintains the version history, short release notes, and future roa
 
 ---
 
-## 🚀 Live Release: v2.0.0+13 (Push Alerts, Live WebRTC Video, Web Launch & Crash Telemetry)
+## 🚀 Live Release: v2.0.0+14 (Push Alerts, Live WebRTC Video, Web Launch & Crash Telemetry)
 
 ### 🔔 1. Native Android Push Notifications & Live Supabase Realtime
 - **Android System Tray Notifications**: Added native `MethodChannel` notification bridge (`sparks`, `messages`, `calls` high-priority channels) and Android 13+ `POST_NOTIFICATIONS` runtime permission prompt.

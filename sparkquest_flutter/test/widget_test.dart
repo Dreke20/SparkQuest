@@ -464,7 +464,7 @@ void main() {
     expect(logs.length, 1);
     expect(logs.first['source'], 'unit_test');
     expect(logs.first['error'], contains('Simulated test exception'));
-    expect(logs.first['app_version'], '2.0.0+13');
+    expect(logs.first['app_version'], '2.0.0+14');
     expect(logs.first['synced'], isFalse);
 
     final fallbackWidget = CrashReportingService.buildErrorFallbackWidget(
