@@ -428,6 +428,18 @@ CREATE POLICY "Service role manages deletion requests" ON public.deletion_reques
     FOR ALL
     USING (auth.role() = 'service_role');
 
+-- =========================================================
+-- Phase 14: WebRTC SDP/ICE Signaling, Push Tokens & Realtime
+-- =========================================================
+ALTER TABLE public.call_signals
+  ADD COLUMN IF NOT EXISTS sdp_offer TEXT,
+  ADD COLUMN IF NOT EXISTS sdp_answer TEXT,
+  ADD COLUMN IF NOT EXISTS ice_candidates JSONB DEFAULT '[]'::jsonb NOT NULL;
+
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS fcm_token TEXT;
+
+
 
 
 

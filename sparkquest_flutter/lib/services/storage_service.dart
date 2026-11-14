@@ -368,4 +368,48 @@ class StorageService {
 
   Future<void> setReviewerMode(bool enabled) async =>
       await _prefs?.setBool('is_reviewer_mode', enabled);
+
+  // --- Push Notification Preferences ---
+  bool isNotifySparksEnabled() => _prefs?.getBool('notify_sparks') ?? true;
+  Future<void> setNotifySparksEnabled(bool enabled) async =>
+      await _prefs?.setBool('notify_sparks', enabled);
+
+  bool isNotifyMessagesEnabled() => _prefs?.getBool('notify_messages') ?? true;
+  Future<void> setNotifyMessagesEnabled(bool enabled) async =>
+      await _prefs?.setBool('notify_messages', enabled);
+
+  bool isNotifyCallsEnabled() => _prefs?.getBool('notify_calls') ?? true;
+  Future<void> setNotifyCallsEnabled(bool enabled) async =>
+      await _prefs?.setBool('notify_calls', enabled);
+
+  // --- Crash & Diagnostics Telemetry Queue ---
+  List<Map<String, dynamic>> getCrashLogs() {
+    final raw = _prefs?.getString('crash_logs_queue');
+    if (raw == null || raw.isEmpty) return [];
+    try {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      return decoded.whereType<Map<String, dynamic>>().toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> appendCrashLog(Map<String, dynamic> entry) async {
+    final current = getCrashLogs();
+    current.insert(0, entry);
+    // Keep at most 30 recent crash diagnostics locally to bound storage
+    final capped = current.length > 30 ? current.sublist(0, 30) : current;
+    await _prefs?.setString('crash_logs_queue', jsonEncode(capped));
+  }
+
+  Future<void> markCrashLogsSynced() async {
+    final current = getCrashLogs();
+    final updated = current
+        .map((e) => <String, dynamic>{...e, 'synced': true})
+        .toList();
+    await _prefs?.setString('crash_logs_queue', jsonEncode(updated));
+  }
+
+  Future<void> clearCrashLogs() async =>
+      await _prefs?.remove('crash_logs_queue');
 }

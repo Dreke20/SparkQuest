@@ -640,6 +640,88 @@ class SupabaseService {
     }
   }
 
+  /// Publish WebRTC SDP Offer to `public.call_signals`
+  Future<bool> updateCallSignalOffer({
+    required String roomId,
+    required String sdpOffer,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/rest/v1/call_signals?room_id=eq.$roomId');
+      final request = await _httpClient.patchUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      request.write(jsonEncode({'sdp_offer': sdpOffer}));
+      final response = await request.close();
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Publish WebRTC SDP Answer and mark call accepted
+  Future<bool> updateCallSignalAnswer({
+    required String roomId,
+    required String sdpAnswer,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/rest/v1/call_signals?room_id=eq.$roomId');
+      final request = await _httpClient.patchUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      request.write(jsonEncode({
+        'sdp_answer': sdpAnswer,
+        'status': 'accepted',
+      }));
+      final response = await request.close();
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Fetch latest Call Signal record (SDP offer/answer/ICE candidates)
+  Future<Map<String, dynamic>?> fetchCallSignal(String roomId) async {
+    try {
+      final uri = Uri.parse(
+        '$baseUrl/rest/v1/call_signals?room_id=eq.$roomId&limit=1',
+      );
+      final request = await _httpClient.getUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(body) as List<dynamic>;
+        if (decoded.isNotEmpty) {
+          return decoded.first as Map<String, dynamic>;
+        }
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Append a WebRTC ICE candidate to `public.call_signals.ice_candidates`
+  Future<bool> appendIceCandidate({
+    required String roomId,
+    required Map<String, dynamic> candidate,
+  }) async {
+    try {
+      final existing = await fetchCallSignal(roomId);
+      final currentList = <dynamic>[
+        ...(existing?['ice_candidates'] as List<dynamic>? ?? const []),
+      ];
+      currentList.add(candidate);
+
+      final uri = Uri.parse('$baseUrl/rest/v1/call_signals?room_id=eq.$roomId');
+      final request = await _httpClient.patchUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      request.write(jsonEncode({'ice_candidates': currentList}));
+      final response = await request.close();
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // ==========================================
   // PHASE 12: GUILDS, GEOSPATIAL RPC & TELEMETRY
   // ==========================================

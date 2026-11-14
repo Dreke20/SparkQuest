@@ -12,6 +12,8 @@ import '../services/iap_service.dart';
 import '../services/storage_service.dart';
 import '../services/quest_progression_service.dart';
 import '../services/admob_service.dart';
+import '../services/push_notification_service.dart';
+import '../services/crash_reporting_service.dart';
 import '../widgets/sparky_ai_wingman_sheet.dart';
 import '../widgets/moderation_dialogs.dart';
 import '../widgets/release_notes_dialog.dart';
@@ -37,6 +39,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _ghostModeEnabled = false;
   bool _campfireSnoozeEnabled = false;
   bool _matchesOnlyMessages = true;
+  bool _notifySparks = true;
+  bool _notifyMessages = true;
+  bool _notifyCalls = true;
 
   bool _isVerified = false;
   bool _isRecordingVoice = false;
@@ -86,7 +91,220 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _smartPhotosEnabled = StorageService.instance.isSmartPhotosEnabled();
     _userPrompts = StorageService.instance.getUserPrompts();
     _matchesOnlyMessages = StorageService.instance.isMatchesOnlyMessagesEnabled();
+    _notifySparks = StorageService.instance.isNotifySparksEnabled();
+    _notifyMessages = StorageService.instance.isNotifyMessagesEnabled();
+    _notifyCalls = StorageService.instance.isNotifyCallsEnabled();
     _isGoldVip = StorageService.instance.isGoldVip();
+  }
+
+  void _openDiagnosticsSheet() {
+    HapticFeedback.selectionClick();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF121629),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            final logs = CrashReportingService.instance.getRecentLogs();
+            final realtimeUp =
+                PushNotificationService.instance.isRealtimeConnected;
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                child: SizedBox(
+                  height: MediaQuery.of(ctx).size.height * 0.68,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.monitor_heart_outlined,
+                            color: AppTheme.neonCyan,
+                          ),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text(
+                              'Diagnostics & Crash Telemetry',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: (realtimeUp
+                                      ? AppTheme.emeraldGreen
+                                      : AppTheme.questGold)
+                                  .withValues(alpha: 0.16),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: realtimeUp
+                                    ? AppTheme.emeraldGreen
+                                    : AppTheme.questGold,
+                              ),
+                            ),
+                            child: Text(
+                              realtimeUp ? 'WS LIVE' : 'STANDBY',
+                              style: TextStyle(
+                                color: realtimeUp
+                                    ? AppTheme.emeraldGreen
+                                    : AppTheme.questGold,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Errors this session: ${CrashReportingService.instance.sessionErrorCount} • Queued logs: ${logs.length}',
+                        style: const TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () async {
+                                await CrashReportingService.instance
+                                    .sendTestDiagnosticPing();
+                                setSheetState(() {});
+                              },
+                              icon: const Icon(Icons.bug_report_outlined, size: 16),
+                              label: const Text('Log Test Ping'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppTheme.neonCyan,
+                                side: const BorderSide(color: AppTheme.neonCyan),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () async {
+                                await CrashReportingService.instance
+                                    .flushPendingReports();
+                                setSheetState(() {});
+                              },
+                              icon: const Icon(Icons.cloud_upload_outlined, size: 16),
+                              label: const Text('Sync Queue'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppTheme.emeraldGreen,
+                                side: const BorderSide(color: AppTheme.emeraldGreen),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            tooltip: 'Clear Local Logs',
+                            onPressed: () async {
+                              await CrashReportingService.instance.clearLogs();
+                              setSheetState(() {});
+                            },
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              color: AppTheme.textDim,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: logs.isEmpty
+                            ? const Center(
+                                child: Text(
+                                  'All systems nominal. Zero crash events captured.',
+                                  style: TextStyle(
+                                    color: AppTheme.textSecondary,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              )
+                            : ListView.separated(
+                                itemCount: logs.length,
+                                separatorBuilder: (_, _) =>
+                                    const SizedBox(height: 8),
+                                itemBuilder: (_, index) {
+                                  final item = logs[index];
+                                  final synced = item['synced'] == true;
+                                  return Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.bgCard,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Colors.white12,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                '${item['source']} • ${item['timestamp']}',
+                                                style: const TextStyle(
+                                                  color: AppTheme.neonCyan,
+                                                  fontSize: 10.5,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            Text(
+                                              synced ? 'SYNCED' : 'LOCAL',
+                                              style: TextStyle(
+                                                color: synced
+                                                    ? AppTheme.emeraldGreen
+                                                    : AppTheme.questGold,
+                                                fontSize: 9.5,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          item['error']?.toString() ?? '',
+                                          maxLines: 3,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   void _openSparkyWingmanModal() {
@@ -1160,6 +1378,109 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
 
           const Divider(color: Colors.white10, height: 20),
+          // Push Notification Alerting & Android Tray Toggles
+          _buildSecuritySwitchRow(
+            title: 'Push Alerts: New Sparks',
+            subtitle: 'Notify when you unlock a mutual Spark or Super Spark',
+            value: _notifySparks,
+            activeColor: AppTheme.sparkCoral,
+            onChanged: (val) async {
+              HapticFeedback.selectionClick();
+              if (val) {
+                await PushNotificationService.instance.requestPermission();
+              }
+              await StorageService.instance.setNotifySparksEnabled(val);
+              setState(() => _notifySparks = val);
+            },
+          ),
+          const Divider(color: Colors.white10, height: 20),
+          _buildSecuritySwitchRow(
+            title: 'Push Alerts: Messages & Wingman',
+            subtitle: 'Notify on incoming Guild & Date Chat messages',
+            value: _notifyMessages,
+            activeColor: AppTheme.neonCyan,
+            onChanged: (val) async {
+              HapticFeedback.selectionClick();
+              if (val) {
+                await PushNotificationService.instance.requestPermission();
+              }
+              await StorageService.instance.setNotifyMessagesEnabled(val);
+              setState(() => _notifyMessages = val);
+            },
+          ),
+          const Divider(color: Colors.white10, height: 20),
+          _buildSecuritySwitchRow(
+            title: 'Push Alerts: Video & Voice Calls',
+            subtitle: 'High-priority incoming Spark Call alerts',
+            value: _notifyCalls,
+            activeColor: AppTheme.emeraldGreen,
+            onChanged: (val) async {
+              HapticFeedback.selectionClick();
+              if (val) {
+                await PushNotificationService.instance.requestPermission();
+              }
+              await StorageService.instance.setNotifyCallsEnabled(val);
+              setState(() => _notifyCalls = val);
+            },
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.neonCyan,
+                    side: const BorderSide(color: AppTheme.neonCyan),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () async {
+                    HapticFeedback.selectionClick();
+                    final messenger = ScaffoldMessenger.of(context);
+                    final ok = await PushNotificationService.instance
+                        .sendTestNotification();
+                    if (!mounted) return;
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          ok
+                              ? '🔔 Test Notification pushed to Android tray!'
+                              : '🔔 In-app notification check sent!',
+                        ),
+                        backgroundColor: AppTheme.bgCard,
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.notifications_active_outlined, size: 17),
+                  label: const Text(
+                    'Test Alert',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.electricViolet,
+                    side: const BorderSide(color: AppTheme.electricViolet),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: _openDiagnosticsSheet,
+                  icon: const Icon(Icons.monitor_heart_outlined, size: 17),
+                  label: const Text(
+                    'Crash Logs',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const Divider(color: Colors.white10, height: 20),
           // EU/UK & Global AdMob Privacy Choices (GDPR & ePrivacy Consent Form)
           GestureDetector(
             behavior: HitTestBehavior.opaque,
@@ -1489,7 +1810,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(width: 8),
                         const Text(
-                          'SparkQuest v2.0.0+12',
+                          'SparkQuest v2.0.0+13',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 13,
@@ -1521,7 +1842,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Build: 2026.11 • SparkQuest v2.0.0+12',
+                  'Build: 2026.11 • SparkQuest v2.0.0+13',
                   style: TextStyle(color: AppTheme.textDim, fontSize: 10.5),
                 ),
                 const SizedBox(height: 10),

@@ -17,6 +17,7 @@ import '../services/iap_service.dart';
 import '../services/storage_service.dart';
 import '../services/supabase_service.dart';
 import '../services/realtime_chat_service.dart';
+import '../services/push_notification_service.dart';
 import '../services/quest_progression_service.dart';
 import '../services/admob_service.dart';
 import '../widgets/notification_banner.dart';
@@ -101,66 +102,82 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       }
     }
 
-    RealtimeChatService.instance.onIncomingNotification = (sender, text) {
-      if (mounted && _currentIndex != 2) {
-        HapticFeedback.mediumImpact();
+    RealtimeChatService.instance.onIncomingNotification = _showBannerNotification;
+    PushNotificationService.instance.onInAppBanner = _showBannerNotification;
+    RealtimeChatService.instance.onIncomingCall = _handleIncomingCallSignal;
+    PushNotificationService.instance.onIncomingCall = _handleIncomingCallSignal;
+
+    if (!WidgetsBinding.instance.runtimeType.toString().contains('Test')) {
+      PushNotificationService.instance.initialize(requestAndroidPermission: true);
+    }
+  }
+
+  void _showBannerNotification(String sender, String text) {
+    if (!mounted || _currentIndex == 2) return;
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _notificationSender = sender;
+      _notificationText = text;
+    });
+    Timer(const Duration(seconds: 4), () {
+      if (mounted && _notificationSender == sender) {
         setState(() {
-          _notificationSender = sender;
-          _notificationText = text;
-        });
-        Timer(const Duration(seconds: 4), () {
-          if (mounted && _notificationSender == sender) {
-            setState(() {
-              _notificationSender = null;
-              _notificationText = null;
-            });
-          }
+          _notificationSender = null;
+          _notificationText = null;
         });
       }
-    };
+    });
+  }
 
-    RealtimeChatService.instance.onIncomingCall = (signal) {
-      if (!mounted) return;
-      HapticFeedback.heavyImpact();
-      final roomId = signal['room_id']?.toString() ?? 'room_1';
-      final callerName = signal['caller_name']?.toString() ?? 'Maya';
-      final callerAvatar = signal['caller_avatar']?.toString() ?? 'assets/images/maya.png';
-      final isVoiceOnly = signal['is_voice_only'] == true;
+  void _handleIncomingCallSignal(Map<String, dynamic> signal) {
+    if (!mounted) return;
+    HapticFeedback.heavyImpact();
+    final roomId = signal['room_id']?.toString() ?? 'room_1';
+    final callerName = signal['caller_name']?.toString() ?? 'Maya';
+    final callerAvatar =
+        signal['caller_avatar']?.toString() ?? 'assets/images/maya.png';
+    final isVoiceOnly =
+        signal['is_voice_only'] == true || signal['call_type'] == 'voice';
 
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => IncomingCallDialog(
-          roomId: roomId,
-          callerName: callerName,
-          callerAvatar: callerAvatar,
-          isVoiceOnly: isVoiceOnly,
-          onAccept: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => VideoCallScreen(
-                  matchName: callerName,
-                  photoAsset: callerAvatar.startsWith('http')
-                      ? 'assets/images/maya.png'
-                      : callerAvatar,
-                  isVoiceOnly: isVoiceOnly,
-                  onOpenDateShield: _openDateShieldModal,
-                ),
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => IncomingCallDialog(
+        roomId: roomId,
+        callerName: callerName,
+        callerAvatar: callerAvatar,
+        isVoiceOnly: isVoiceOnly,
+        onAccept: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => VideoCallScreen(
+                roomId: roomId,
+                matchName: callerName,
+                photoAsset: callerAvatar.startsWith('http')
+                    ? 'assets/images/maya.png'
+                    : callerAvatar,
+                isVoiceOnly: isVoiceOnly,
+                isCaller: false,
+                onOpenDateShield: _openDateShieldModal,
               ),
-            );
-          },
-          onDecline: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Declined Spark Call from $callerName'),
-                backgroundColor: AppTheme.bgCard,
-              ),
-            );
-          },
-        ),
-      );
-    };
+            ),
+          );
+        },
+        onDecline: () {
+          SupabaseService.instance.updateCallSignalStatus(
+            roomId: roomId,
+            status: 'declined',
+          );
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Declined Spark Call from $callerName'),
+              backgroundColor: AppTheme.bgCard,
+            ),
+          );
+        },
+      ),
+    );
   }
 
   void _addEmbers(int count, {bool isRawPurchase = false}) {

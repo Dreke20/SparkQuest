@@ -74,6 +74,20 @@ class ReleaseNotesDialog extends StatelessWidget {
                     _buildVersionCard(
                       badge: 'CURRENT RELEASE',
                       badgeColor: AppTheme.emeraldGreen,
+                      version: 'v2.0.0+13',
+                      date: 'November 2026',
+                      title: 'WebRTC Video, Push Alerts, Crash Diagnostics & Auth Hardening',
+                      highlights: const [
+                        '🔔 Native Android Push Notifications & Live Supabase Realtime WebSocket alerts for Sparks, Chats & Calls.',
+                        '📹 Real-time P2P WebRTC Video/Voice Calls with front/back camera flip, Comfort Blur, and SDP/ICE signaling.',
+                        '🩺 Automated Crash Telemetry & Settings Diagnostics Viewer syncing offline errors to Supabase analytics.',
+                        '🛡️ Strict Reviewer Account Isolation (`reviewer@sparkquest.app`) with zero demo leaks or auth fallbacks.',
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    _buildVersionCard(
+                      badge: 'ARCHIVED',
+                      badgeColor: AppTheme.neonCyan,
                       version: 'v2.0.0+6',
                       date: 'October 2026',
                       title: 'Live Map, Restored Neon Branding & 50 Top-Tier Features',

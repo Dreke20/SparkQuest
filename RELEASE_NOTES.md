@@ -8,7 +8,8 @@ This document maintains the version history, short release notes, and future roa
 
 | Version | Build | Release Date | Channel | Status | Key Highlights |
 | :--- | :--- | :--- | :--- | :---: | :--- |
-| **v2.0.0** | `+12` | Nov 2026 | Production / Closed Beta | 🟢 **Live** | Strict Reviewer Auth (Backdoor Eliminated), Comprehensive Demo Profile Isolation (Likes, Radar, Duos, Blind Match), Exact `reviewer@sparkquest.app` Verification, Signed Build 12 |
+| **v2.0.0** | `+13` | Nov 2026 | Production / Closed Beta | 🟢 **Live** | Native Android Push Notifications & Supabase Realtime WebSockets, Live P2P WebRTC Video/Voice Calls (`flutter_webrtc`), Marketing Landing Site (`docs/index.html`), Automated Crash Telemetry & Diagnostics Viewer |
+| **v2.0.0** | `+12` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Strict Reviewer Auth (Backdoor Eliminated), Comprehensive Demo Profile Isolation (Likes, Radar, Duos, Blind Match), Exact `reviewer@sparkquest.app` Verification, Signed Build 12 |
 | **v2.0.0** | `+11` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Fake Profiles Removed for Real Users, Reviewer-Exclusive Demo Profiles Labeled for Google Review, Signed Build 11 |
 | **v2.0.0** | `+10` | Nov 2026 | Production / Closed Beta | ⚪ Archive | In-App VIP 2× Rewarded Embers Multiplier, "Privacy choices" Consent Button in Settings, AdMob Privacy Policy Updates, Version 10 Build |
 | **v2.0.0** | `+9` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Production Google AdMob Credentials (Live App ID & Ad Unit IDs for Banner, Interstitial, and Rewarded Ads), Signed Release Build |
@@ -19,7 +20,27 @@ This document maintains the version history, short release notes, and future roa
 
 ---
 
-## 🚀 Live Release: v2.0.0+12 (Comprehensive Reviewer Isolation & Auth Hardening)
+## 🚀 Live Release: v2.0.0+13 (Push Alerts, Live WebRTC Video, Web Launch & Crash Telemetry)
+
+### 🔔 1. Native Android Push Notifications & Live Supabase Realtime
+- **Android System Tray Notifications**: Added native `MethodChannel` notification bridge (`sparks`, `messages`, `calls` high-priority channels) and Android 13+ `POST_NOTIFICATIONS` runtime permission prompt.
+- **Realtime WebSocket Listener**: Connected to Supabase Realtime (`public.messages`, `public.matches`, `public.call_signals`) with automatic reconnect & heartbeat for instant banners and OS alerts.
+- **Settings Controls**: Added granular notification toggles (`New Sparks`, `Messages & Wingman`, `Video & Voice Calls`) plus a one-tap **Test Alert** button in `Profile -> Settings`.
+
+### 📹 2. Live WebRTC P2P Video & Voice Date Calls
+- **Real Media & P2P Signaling**: Integrated `flutter_webrtc` with live front/back camera switching, audio mute/camera toggle, Google STUN traversal, and SDP Offer/Answer/ICE signaling in `public.call_signals`.
+- **Safety-First UX**: Retained Comfort Blur overlay toggle, Sparky AI live prompts, Date Shield quick action, and graceful portrait preview fallback when hardware/permissions are unavailable.
+
+### 🌐 3. Upgraded Marketing Landing Page (`docs/index.html`)
+- **Launch Showcase**: Rebuilt `https://dreke20.github.io/SparkQuest/` with interactive 4-screen phone preview, RPG Synergy Classes showcase, OpenGraph metadata, Google Play / Closed Beta CTAs, and complete legal/safety navigation.
+
+### 🩺 4. Automated Crash Reporting & Diagnostics Viewer
+- **Global Error Capture**: Hooks `FlutterError.onError`, `PlatformDispatcher.instance.onError`, and a dark-themed recovery `ErrorWidget.builder` fallback.
+- **Offline Queue + Cloud Sync**: Queues structured crash telemetry locally and flushes `crash_report` events to Supabase `public.analytics_events`, inspectable anytime via `Profile -> Settings -> Crash Logs`.
+
+---
+
+## 📦 Previous Release: v2.0.0+12 (Comprehensive Reviewer Isolation & Auth Hardening)
 
 ### 🛡️ 1. Zero Fake Profiles Across All App Surfaces
 - **Likes You Vault**: Hardcoded admirers (Jordan, Taylor, Riley, Sophia) completely removed for normal accounts. Regular users see a polished "No Incoming Sparks Yet" empty state. Only `reviewer@sparkquest.app` receives sample admirers, each carrying an explicit `[Review Demo]` banner and `Fake Profile for Review` disclaimer.

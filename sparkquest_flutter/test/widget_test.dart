@@ -1,12 +1,16 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sparkquest/main.dart';
 import 'package:sparkquest/models/profile.dart';
+import 'package:sparkquest/services/crash_reporting_service.dart';
+import 'package:sparkquest/services/push_notification_service.dart';
 import 'package:sparkquest/services/quest_progression_service.dart';
 import 'package:sparkquest/services/realtime_chat_service.dart';
 import 'package:sparkquest/services/storage_service.dart';
 import 'package:sparkquest/services/supabase_service.dart';
 import 'package:sparkquest/services/admob_service.dart';
+import 'package:sparkquest/services/webrtc_call_service.dart';
 
 void main() {
   setUp(() async {
@@ -362,5 +366,138 @@ void main() {
     await StorageService.instance.saveUserEmail(null);
     expect(StorageService.instance.isReviewerAccount(), isFalse);
     RealtimeChatService.instance.reloadConversations();
+  });
+
+  test('Phase 19: Push Notification Settings & Realtime Event Dispatch', () async {
+    expect(StorageService.instance.isNotifySparksEnabled(), isTrue);
+    expect(StorageService.instance.isNotifyMessagesEnabled(), isTrue);
+    expect(StorageService.instance.isNotifyCallsEnabled(), isTrue);
+
+    String? bannerTitle;
+    String? bannerBody;
+    Map<String, dynamic>? incomingCall;
+
+    PushNotificationService.instance.onInAppBanner = (title, body) {
+      bannerTitle = title;
+      bannerBody = body;
+    };
+    PushNotificationService.instance.onIncomingCall = (signal) {
+      incomingCall = signal;
+    };
+
+    // Incoming message triggers banner when enabled
+    await PushNotificationService.instance.processRealtimeChange({
+      'table': 'messages',
+      'type': 'INSERT',
+      'record': {
+        'sender_id': 'other_user_1',
+        'sender_name': 'Elena',
+        'content': 'Ready for that espresso quest?',
+      },
+    });
+    expect(bannerTitle, 'Elena');
+    expect(bannerBody, 'Ready for that espresso quest?');
+
+    // Disabled message toggle suppresses banner dispatch
+    bannerTitle = null;
+    await StorageService.instance.setNotifyMessagesEnabled(false);
+    await PushNotificationService.instance.processRealtimeChange({
+      'table': 'messages',
+      'type': 'INSERT',
+      'record': {
+        'sender_id': 'other_user_1',
+        'sender_name': 'Elena',
+        'content': 'Should be muted',
+      },
+    });
+    expect(bannerTitle, isNull);
+
+    // Match notification triggers when enabled
+    await StorageService.instance.setNotifySparksEnabled(true);
+    await PushNotificationService.instance.processRealtimeChange({
+      'table': 'matches',
+      'type': 'INSERT',
+      'record': {
+        'user_a': 'user_me',
+        'user_b': 'other_user_2',
+        'partner_name': 'Marcus',
+        'synergy_score': 93,
+      },
+    });
+    expect(bannerTitle, 'New Mutual Spark!');
+    expect(bannerBody, contains('Marcus'));
+
+    // Incoming call notification triggers callback
+    await PushNotificationService.instance.processRealtimeChange({
+      'table': 'call_signals',
+      'type': 'INSERT',
+      'record': {
+        'room_id': 'room_webrtc_1',
+        'caller_id': 'other_user_2',
+        'caller_name': 'Marcus',
+        'callee_id': 'user_me',
+        'call_type': 'video',
+        'status': 'ringing',
+      },
+    });
+    expect(incomingCall?['room_id'], 'room_webrtc_1');
+
+    PushNotificationService.instance.onInAppBanner = null;
+    PushNotificationService.instance.onIncomingCall = null;
+  });
+
+  test('Phase 19: CrashReportingService queues structured error logs locally', () async {
+    await CrashReportingService.instance.clearLogs();
+    final initialCount = CrashReportingService.instance.sessionErrorCount;
+
+    await CrashReportingService.instance.recordError(
+      StateError('Simulated test exception'),
+      StackTrace.current,
+      source: 'unit_test',
+      fatal: false,
+      context: {'screen': 'explore'},
+      skipUpload: true,
+    );
+
+    expect(CrashReportingService.instance.sessionErrorCount, initialCount + 1);
+    final logs = CrashReportingService.instance.getRecentLogs();
+    expect(logs.length, 1);
+    expect(logs.first['source'], 'unit_test');
+    expect(logs.first['error'], contains('Simulated test exception'));
+    expect(logs.first['app_version'], '2.0.0+13');
+    expect(logs.first['synced'], isFalse);
+
+    final fallbackWidget = CrashReportingService.buildErrorFallbackWidget(
+      FlutterErrorDetails(exception: Exception('Render glitch')),
+    );
+    expect(fallbackWidget, isA<Container>());
+
+    await CrashReportingService.instance.clearLogs();
+    expect(CrashReportingService.instance.getRecentLogs(), isEmpty);
+  });
+
+  test('Phase 19: WebRtcCallService state transitions and graceful fallback', () async {
+    final rtc = WebRtcCallService();
+    expect(rtc.stage, WebRtcConnectionStage.idle);
+    expect(rtc.isMuted, isFalse);
+    expect(rtc.isCameraOff, isFalse);
+
+    // Graceful fallback when native WebRTC/camera unavailable in unit test VM
+    await rtc.startCall(
+      roomId: 'room_test_13',
+      isCaller: true,
+      isVoiceOnly: false,
+      matchName: 'Elena',
+    );
+    expect(rtc.stage, WebRtcConnectionStage.fallbackPreview);
+
+    rtc.toggleMute();
+    expect(rtc.isMuted, isTrue);
+    rtc.toggleCamera();
+    expect(rtc.isCameraOff, isTrue);
+
+    await rtc.endCall();
+    expect(rtc.stage, WebRtcConnectionStage.ended);
+    rtc.dispose();
   });
 }

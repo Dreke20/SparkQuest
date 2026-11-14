@@ -2,21 +2,27 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../services/realtime_chat_service.dart';
 import '../services/supabase_service.dart';
+import '../services/webrtc_call_service.dart';
 import '../theme/app_theme.dart';
 
 class VideoCallScreen extends StatefulWidget {
+  final String? roomId;
   final String matchName;
   final String photoAsset;
   final bool isVoiceOnly;
+  final bool isCaller;
   final VoidCallback onOpenDateShield;
 
   const VideoCallScreen({
     super.key,
+    this.roomId,
     required this.matchName,
     required this.photoAsset,
     this.isVoiceOnly = false,
+    this.isCaller = true,
     required this.onOpenDateShield,
   });
 
@@ -25,6 +31,7 @@ class VideoCallScreen extends StatefulWidget {
 }
 
 class _VideoCallScreenState extends State<VideoCallScreen> {
+  final WebRtcCallService _webRtc = WebRtcCallService();
   int _seconds = 0;
   Timer? _timer;
   bool _isMuted = false;
@@ -44,11 +51,8 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     super.initState();
     _isCamOff = widget.isVoiceOnly;
     RealtimeChatService.instance.addListener(_onSignalChanged);
-    RealtimeChatService.instance.initiateCallSignal(
-      matchName: widget.matchName,
-      matchAvatar: widget.photoAsset,
-      isVoiceOnly: widget.isVoiceOnly,
-    );
+    _webRtc.addListener(_onSignalChanged);
+    _startWebRtcSession();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
         setState(() {
@@ -62,6 +66,31 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     });
   }
 
+  Future<void> _startWebRtcSession() async {
+    String effectiveRoomId = widget.roomId ?? '';
+    if (widget.isCaller) {
+      await RealtimeChatService.instance.initiateCallSignal(
+        matchName: widget.matchName,
+        matchAvatar: widget.photoAsset,
+        isVoiceOnly: widget.isVoiceOnly,
+      );
+      effectiveRoomId = effectiveRoomId.isNotEmpty
+          ? effectiveRoomId
+          : (RealtimeChatService.instance.activeCallRoomId ??
+              'spark_call_${DateTime.now().millisecondsSinceEpoch}');
+    } else if (effectiveRoomId.isEmpty) {
+      effectiveRoomId = RealtimeChatService.instance.activeCallRoomId ??
+          'spark_call_${DateTime.now().millisecondsSinceEpoch}';
+    }
+
+    await _webRtc.startCall(
+      roomId: effectiveRoomId,
+      isCaller: widget.isCaller,
+      isVoiceOnly: widget.isVoiceOnly,
+      matchName: widget.matchName,
+    );
+  }
+
   void _onSignalChanged() {
     if (mounted) setState(() {});
   }
@@ -69,6 +98,8 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   @override
   void dispose() {
     RealtimeChatService.instance.removeListener(_onSignalChanged);
+    _webRtc.removeListener(_onSignalChanged);
+    _webRtc.dispose();
     _timer?.cancel();
     super.dispose();
   }
@@ -81,17 +112,26 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool showingLiveRemote =
+        !widget.isVoiceOnly && _webRtc.hasRemoteVideo;
+
     return Scaffold(
       backgroundColor: AppTheme.bgDeep,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Background Match Video Stream Simulation
-          Image.asset(
-            widget.photoAsset,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => Container(color: AppTheme.bgDeep),
-          ),
+          // Live Remote WebRTC Video or Graceful Portrait Fallback
+          if (showingLiveRemote)
+            RTCVideoView(
+              _webRtc.remoteRenderer,
+              objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+            )
+          else
+            Image.asset(
+              widget.photoAsset,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => Container(color: AppTheme.bgDeep),
+            ),
 
           // Mystery Comfort Blur Filter or Voice Mode Backdrop
           if (_isMysteryBlurActive || widget.isVoiceOnly)
@@ -214,9 +254,11 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              RealtimeChatService.instance.callSignalState == 'ringing'
-                                  ? 'Ringing ${widget.matchName} (Realtime)...'
-                                  : '${widget.matchName} • $_formattedTime',
+                              _webRtc.stage == WebRtcConnectionStage.connected
+                                  ? '${widget.matchName} • WebRTC P2P • $_formattedTime'
+                                  : (RealtimeChatService.instance.callSignalState == 'ringing'
+                                      ? 'Ringing ${widget.matchName} (WebRTC)...'
+                                      : '${widget.matchName} • $_formattedTime'),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
@@ -350,13 +392,43 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Image.asset(
-                      'assets/images/alex.png',
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => const Center(
-                        child: Icon(Icons.person, color: Colors.white54),
+                    if (_webRtc.hasLocalVideo)
+                      RTCVideoView(
+                        _webRtc.localRenderer,
+                        mirror: _webRtc.isFrontCamera,
+                        objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+                      )
+                    else
+                      Image.asset(
+                        'assets/images/alex.png',
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const Center(
+                          child: Icon(Icons.person, color: Colors.white54),
+                        ),
                       ),
-                    ),
+                    if (_webRtc.hasLocalVideo)
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: GestureDetector(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            _webRtc.switchCamera();
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Colors.black54,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.cameraswitch_outlined,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
                     Positioned(
                       bottom: 6,
                       left: 6,
@@ -369,9 +441,9 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                           color: Colors.black54,
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Text(
-                          'You',
-                          style: TextStyle(fontSize: 10, color: Colors.white),
+                        child: Text(
+                          _webRtc.hasLocalVideo ? 'You • Live' : 'You',
+                          style: const TextStyle(fontSize: 10, color: Colors.white),
                         ),
                       ),
                     ),
@@ -405,6 +477,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                       active: _isMuted,
                       onTap: () {
                         HapticFeedback.selectionClick();
+                        _webRtc.toggleMute();
                         setState(() => _isMuted = !_isMuted);
                       },
                     ),
@@ -414,6 +487,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                       active: _isCamOff,
                       onTap: () {
                         HapticFeedback.selectionClick();
+                        _webRtc.toggleCamera();
                         setState(() => _isCamOff = !_isCamOff);
                       },
                     ),
@@ -430,10 +504,13 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                       },
                     ),
                     GestureDetector(
-                      onTap: () {
+                      onTap: () async {
                         HapticFeedback.heavyImpact();
-                        RealtimeChatService.instance.endCallSignal();
-                        Navigator.pop(context, _seconds);
+                        await _webRtc.endCall();
+                        await RealtimeChatService.instance.endCallSignal();
+                        if (context.mounted) {
+                          Navigator.pop(context, _seconds);
+                        }
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(
