@@ -67,7 +67,7 @@ class MatchConversation {
       MatchConversation(
         id: json['id'] ?? '',
         name: json['name'] ?? '',
-        photoAsset: json['photoAsset'] ?? 'assets/images/sophia.png',
+        photoAsset: json['photoAsset'] ?? 'assets/images/logo.jpg',
         lastMessage: json['lastMessage'] ?? 'New Spark! Say hello ✨',
         time: json['time'] ?? 'Just now',
         unreadCount: json['unreadCount'] ?? 1,

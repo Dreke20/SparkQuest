@@ -115,17 +115,23 @@ class Profile {
     final firstName = rawName.split(' ').first;
     final lower = firstName.toLowerCase();
 
-    String resolvedAsset = 'assets/images/sophia.png';
-    if (lower.contains('maya')) {
-      resolvedAsset = 'assets/images/maya.png';
-    } else if (lower.contains('liam') || lower.contains('jordan')) {
-      resolvedAsset = 'assets/images/jordan.png';
-    } else if (lower.contains('chloe') || lower.contains('riley')) {
-      resolvedAsset = 'assets/images/riley.png';
-    } else if (lower.contains('zoe') || lower.contains('taylor')) {
-      resolvedAsset = 'assets/images/taylor.png';
-    } else if (lower.contains('kael') || lower.contains('alex')) {
-      resolvedAsset = 'assets/images/alex.png';
+    final avatarRaw = (map['avatar_url'] ?? '').toString().trim();
+    final bool isDemo = map['is_demo'] == true;
+    String resolvedAsset = avatarRaw.isNotEmpty
+        ? avatarRaw
+        : 'assets/images/logo.jpg';
+    if (isDemo && avatarRaw.isEmpty) {
+      if (lower.contains('maya')) {
+        resolvedAsset = 'assets/images/maya.png';
+      } else if (lower.contains('liam') || lower.contains('jordan')) {
+        resolvedAsset = 'assets/images/jordan.png';
+      } else if (lower.contains('chloe') || lower.contains('riley')) {
+        resolvedAsset = 'assets/images/riley.png';
+      } else if (lower.contains('zoe') || lower.contains('taylor')) {
+        resolvedAsset = 'assets/images/taylor.png';
+      } else if (lower.contains('kael') || lower.contains('alex')) {
+        resolvedAsset = 'assets/images/alex.png';
+      }
     }
 
     final rawTags = map['tags'];
@@ -140,11 +146,7 @@ class Profile {
       occupation: (map['city'] ?? 'San Francisco, CA').toString(),
       distance: 'Cloud Synced ☁️',
       photoAsset: resolvedAsset,
-      photoGallery: [
-        resolvedAsset,
-        'assets/images/quest_coffee.png',
-        'assets/images/quest_hiking.png',
-      ],
+      photoGallery: [resolvedAsset],
       tags: parsedTags,
       compatPct: 91,
       compatLevel: 'high',

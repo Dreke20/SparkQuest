@@ -59,10 +59,9 @@ class SupabaseService {
       _headers.forEach((key, val) => request.headers.set(key, val));
       request.write(jsonEncode({'phone': phone}));
       final response = await request.close();
-      return response.statusCode == 200;
+      return response.statusCode >= 200 && response.statusCode < 300;
     } catch (_) {
-      // Return true in demo/offline simulation mode
-      return true;
+      return false;
     }
   }
 
@@ -81,28 +80,24 @@ class SupabaseService {
       final body = await response.transform(utf8.decoder).join();
       if (response.statusCode == 200) {
         final decoded = jsonDecode(body);
-        if (decoded is Map<String, dynamic>) {
+        if (decoded is Map<String, dynamic> && decoded['access_token'] != null) {
           accessToken = decoded['access_token'];
           final user = decoded['user'];
           if (user is Map<String, dynamic>) {
-            currentUserId = user['id'];
+            currentUserId = user['id'] ?? 'user_me';
           }
+          await upsertMyProfile();
+          onAuthSessionUpdated?.call();
           return decoded;
         }
       }
     } catch (_) {}
-
-    // Simulated verified session for test/demo mode
-    accessToken = 'demo_access_token_${DateTime.now().millisecondsSinceEpoch}';
-    currentUserId = 'user_me';
-    return {
-      'access_token': accessToken,
-      'user': {'id': currentUserId, 'phone': phone}
-    };
+    return null;
   }
 
   /// Sign In with Google ID Token via Supabase Auth
   Future<Map<String, dynamic>?> signInWithGoogleToken(String idToken) async {
+    if (idToken.isEmpty || idToken.contains('mock')) return null;
     try {
       final uri = Uri.parse('$baseUrl/auth/v1/token?grant_type=id_token');
       final request = await _httpClient.postUrl(uri);
@@ -115,18 +110,23 @@ class SupabaseService {
       final body = await response.transform(utf8.decoder).join();
       if (response.statusCode == 200) {
         final decoded = jsonDecode(body);
-        if (decoded is Map<String, dynamic>) {
+        if (decoded is Map<String, dynamic> && decoded['access_token'] != null) {
           accessToken = decoded['access_token'];
-          await StorageService.instance.saveUserEmail('google.user@sparkquest.app');
+          final user = decoded['user'];
+          if (user is Map<String, dynamic>) {
+            currentUserId = user['id'] ?? 'user_me';
+            final email = user['email']?.toString();
+            if (email != null) {
+              await StorageService.instance.saveUserEmail(email);
+            }
+          }
+          await upsertMyProfile();
+          onAuthSessionUpdated?.call();
           return decoded;
         }
       }
     } catch (_) {}
-
-    // Simulated Google session
-    accessToken = 'google_demo_token_${DateTime.now().millisecondsSinceEpoch}';
-    await StorageService.instance.saveUserEmail('google.user@sparkquest.app');
-    return {'access_token': accessToken, 'user': {'id': 'user_me', 'email': 'explorer@sparkquest.app'}};
+    return null;
   }
 
   /// Send Email Magic Link
@@ -410,12 +410,9 @@ class SupabaseService {
         'details': details ?? '',
       }));
       final response = await request.close();
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        return true;
-      }
-      return true; // Offline / test simulation fallback
+      return response.statusCode >= 200 && response.statusCode < 300;
     } catch (_) {
-      return true;
+      return false;
     }
   }
 
@@ -430,12 +427,9 @@ class SupabaseService {
         'blocked_id': blockedId,
       }));
       final response = await request.close();
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        return true;
-      }
-      return true; // Offline / test simulation fallback
+      return response.statusCode >= 200 && response.statusCode < 300;
     } catch (_) {
-      return true;
+      return false;
     }
   }
 
@@ -461,9 +455,10 @@ class SupabaseService {
         }
       }
     } catch (_) {}
+    final isReviewer = StorageService.instance.isReviewerAccount();
     return {
-      'success': true,
-      'is_match': direction == 'right' || direction == 'superlike',
+      'success': isReviewer,
+      'is_match': isReviewer && (direction == 'right' || direction == 'superlike'),
       'target_id': targetId,
     };
   }
@@ -480,7 +475,7 @@ class SupabaseService {
       return response.statusCode >= 200 && response.statusCode < 300;
     } catch (_) {
       await signOut();
-      return true;
+      return false;
     }
   }
 
@@ -501,12 +496,9 @@ class SupabaseService {
         'lng': lng,
       }));
       final response = await request.close();
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        return true;
-      }
-      return true; // Offline / test simulation fallback
+      return response.statusCode >= 200 && response.statusCode < 300;
     } catch (_) {
-      return true;
+      return false;
     }
   }
 
@@ -894,11 +886,11 @@ class SupabaseService {
   // PHASE 13 (v2.1.0): LIVE DROP-IN VOICE LOUNGES
   // ==========================================
 
-  /// Fetch active Drop-In Voice Lounges from `public.voice_lounges`
-  Future<List<Map<String, dynamic>>> fetchVoiceLounges() async {
+  /// Fetch real top XP profiles for the Season Leaderboard (returns [] if empty/offline)
+  Future<List<Map<String, dynamic>>> fetchLeaderboard({int limit = 5}) async {
     try {
       final uri = Uri.parse(
-        '$baseUrl/rest/v1/voice_lounges?select=*&is_active=eq.true&order=created_at.desc',
+        '$baseUrl/rest/v1/profiles?select=user_id,name,xp,avatar_url&order=xp.desc&limit=$limit',
       );
       final request = await _httpClient.getUrl(uri);
       _headers.forEach((key, val) => request.headers.set(key, val));
@@ -911,40 +903,56 @@ class SupabaseService {
         }
       }
     } catch (_) {}
+    return [];
+  }
 
-    // Fallback seed lounges for simulation / offline mode
+  /// Fetch active Drop-In Voice Lounges from `public.voice_lounges`.
+  /// Non-reviewers receive strictly live cloud rooms (empty list if none active).
+  Future<List<Map<String, dynamic>>> fetchVoiceLounges() async {
+    try {
+      final uri = Uri.parse(
+        '$baseUrl/rest/v1/voice_lounges?select=*&is_active=eq.true&order=created_at.desc',
+      );
+      final request = await _httpClient.getUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(body);
+        if (decoded is List) {
+          final rows = List<Map<String, dynamic>>.from(decoded);
+          if (rows.isNotEmpty || !StorageService.instance.isReviewerAccount()) {
+            return rows;
+          }
+        }
+      }
+    } catch (_) {}
+
+    if (!StorageService.instance.isReviewerAccount()) {
+      return [];
+    }
+
+    // Reviewer-only sample lounges when no live rooms exist
     return [
       {
         'id': 'lounge_coffee',
-        'title': '☕ Third-Wave Espresso & Vinyl Hangout',
-        'topic': 'Best pour-overs, favorite matcha bars & indie record shops',
+        'title': '☕ Third-Wave Espresso & Vinyl [Review Demo]',
+        'topic': 'Sample demo lounge for Google Play review testing',
         'vibe': '☕ Cozy Artisan',
-        'host_id': 'system_maya',
-        'host_name': 'Maya',
+        'host_id': 'reviewer_demo_host',
+        'host_name': 'Maya [Review Demo]',
         'max_listeners': 15,
-        'active_count': 6,
-      },
-      {
-        'id': 'lounge_sunset',
-        'title': '🌅 Golden Hour & Rooftop Trivia Pre-Party',
-        'topic':
-            'Icebreaker trivia duels before Saturday night Safe Haven meetups',
-        'vibe': '🌌 Night Owl',
-        'host_id': 'system_alex',
-        'host_name': 'Alex',
-        'max_listeners': 20,
-        'active_count': 11,
+        'active_count': 4,
       },
       {
         'id': 'lounge_trail',
-        'title': '🏔️ Sunrise Trail Run & Bouldering Crew',
-        'topic':
-            'Weekend trails in Buena Vista Park & indoor climbing partners',
+        'title': '🏔️ Sunrise Trail Run & Bouldering [Review Demo]',
+        'topic': 'Sample demo lounge for Google Play review testing',
         'vibe': '🏔️ Adventurer',
-        'host_id': 'system_jordan',
-        'host_name': 'Jordan',
+        'host_id': 'reviewer_demo_host_2',
+        'host_name': 'Jordan [Review Demo]',
         'max_listeners': 12,
-        'active_count': 4,
+        'active_count': 3,
       },
     ];
   }
@@ -971,12 +979,9 @@ class SupabaseService {
         }),
       );
       final response = await request.close();
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        return true;
-      }
-      return true; // Offline / test simulation fallback
+      return response.statusCode >= 200 && response.statusCode < 300;
     } catch (_) {
-      return true; // Fallback simulation
+      return false;
     }
   }
 
@@ -989,12 +994,9 @@ class SupabaseService {
       final request = await _httpClient.deleteUrl(uri);
       _headers.forEach((key, val) => request.headers.set(key, val));
       final response = await request.close();
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        return true;
-      }
-      return true; // Offline / test simulation fallback
+      return response.statusCode >= 200 && response.statusCode < 300;
     } catch (_) {
-      return true;
+      return false;
     }
   }
 }

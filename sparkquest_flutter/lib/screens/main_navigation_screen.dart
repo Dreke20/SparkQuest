@@ -133,9 +133,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     if (!mounted) return;
     HapticFeedback.heavyImpact();
     final roomId = signal['room_id']?.toString() ?? 'room_1';
-    final callerName = signal['caller_name']?.toString() ?? 'Maya';
+    final callerName = signal['caller_name']?.toString() ?? 'Spark Match';
     final callerAvatar =
-        signal['caller_avatar']?.toString() ?? 'assets/images/maya.png';
+        signal['caller_avatar']?.toString() ?? 'assets/images/logo.jpg';
     final isVoiceOnly =
         signal['is_voice_only'] == true || signal['call_type'] == 'voice';
 
@@ -155,7 +155,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 roomId: roomId,
                 matchName: callerName,
                 photoAsset: callerAvatar.startsWith('http')
-                    ? 'assets/images/maya.png'
+                    ? 'assets/images/logo.jpg'
                     : callerAvatar,
                 isVoiceOnly: isVoiceOnly,
                 isCaller: false,

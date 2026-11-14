@@ -6,6 +6,7 @@ import '../models/quest.dart';
 import '../theme/app_theme.dart';
 import '../services/quest_progression_service.dart';
 import '../services/storage_service.dart';
+import '../services/supabase_service.dart';
 import '../widgets/ad_banner_widget.dart';
 
 class QuestsScreen extends StatefulWidget {
@@ -30,6 +31,7 @@ class _QuestsScreenState extends State<QuestsScreen> {
     '🏔️ SF Summit Hikers',
     '🕹️ Co-Op Arcade Guild',
   };
+  List<Map<String, dynamic>> _leaderboardEntries = [];
 
   List<QuestItem> get _quests => QuestProgressionService.instance.quests;
 
@@ -44,6 +46,15 @@ class _QuestsScreenState extends State<QuestsScreen> {
     _confettiController = ConfettiController(
       duration: const Duration(seconds: 2),
     );
+    _loadLeaderboard();
+  }
+
+  Future<void> _loadLeaderboard() async {
+    final rows = await SupabaseService.instance.fetchLeaderboard(limit: 5);
+    if (!mounted) return;
+    setState(() {
+      _leaderboardEntries = rows;
+    });
   }
 
   @override
@@ -460,40 +471,71 @@ class _QuestsScreenState extends State<QuestsScreen> {
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: Colors.white10),
               ),
-              child: Column(
-                children: [
-                  _leaderboardRow(
-                    rank: 1,
-                    name: 'Chloe Sterling',
-                    xp: 1250,
-                    avatar: 'assets/images/riley.png',
-                    isMe: false,
-                  ),
-                  const Divider(color: Colors.white10, height: 16),
-                  _leaderboardRow(
-                    rank: 2,
-                    name: 'Kaelen Mercer',
-                    xp: 980,
-                    avatar: 'assets/images/jordan.png',
-                    isMe: false,
-                  ),
-                  const Divider(color: Colors.white10, height: 16),
-                  _leaderboardRow(
-                    rank: 3,
-                    name: 'Maya Lin',
-                    xp: 780,
-                    avatar: 'assets/images/maya.png',
-                    isMe: false,
-                  ),
-                  const Divider(color: Colors.white10, height: 16),
-                  _leaderboardRow(
-                    rank: 4,
-                    name: 'You (Alex Explorer)',
-                    xp: QuestProgressionService.instance.seasonXp,
-                    avatar: 'assets/images/alex.png',
-                    isMe: true,
-                  ),
-                ],
+              child: Builder(
+                builder: (context) {
+                  final myId = SupabaseService.instance.currentUserId ?? 'user_me';
+                  final myName = StorageService.instance.getUserName();
+                  final myXp = QuestProgressionService.instance.seasonXp;
+                  final entries = <Map<String, dynamic>>[
+                    ..._leaderboardEntries.where(
+                      (r) => (r['user_id']?.toString() ?? '') != myId,
+                    ),
+                    {
+                      'user_id': myId,
+                      'name': 'You ($myName)',
+                      'xp': myXp,
+                      'avatar_url': 'assets/images/logo.jpg',
+                      'is_me': true,
+                    },
+                  ];
+
+                  if (_leaderboardEntries.isEmpty &&
+                      StorageService.instance.isReviewerAccount()) {
+                    entries.insertAll(0, [
+                      {
+                        'name': 'Chloe [Review Demo]',
+                        'xp': 1250,
+                        'avatar_url': 'assets/images/riley.png',
+                        'is_me': false,
+                      },
+                      {
+                        'name': 'Jordan [Review Demo]',
+                        'xp': 980,
+                        'avatar_url': 'assets/images/jordan.png',
+                        'is_me': false,
+                      },
+                      {
+                        'name': 'Maya [Review Demo]',
+                        'xp': 780,
+                        'avatar_url': 'assets/images/maya.png',
+                        'is_me': false,
+                      },
+                    ]);
+                  }
+
+                  entries.sort(
+                    (a, b) => ((b['xp'] as num?)?.toInt() ?? 0).compareTo(
+                      (a['xp'] as num?)?.toInt() ?? 0,
+                    ),
+                  );
+
+                  return Column(
+                    children: [
+                      for (int i = 0; i < entries.length; i++) ...[
+                        if (i > 0) const Divider(color: Colors.white10, height: 16),
+                        _leaderboardRow(
+                          rank: i + 1,
+                          name: entries[i]['name']?.toString() ?? 'Explorer',
+                          xp: (entries[i]['xp'] as num?)?.toInt() ?? 0,
+                          avatar: entries[i]['avatar_url']?.toString().isNotEmpty == true
+                              ? entries[i]['avatar_url'].toString()
+                              : 'assets/images/logo.jpg',
+                          isMe: entries[i]['is_me'] == true,
+                        ),
+                      ],
+                    ],
+                  );
+                },
               ),
             ),
             const SizedBox(height: 24),
@@ -873,7 +915,9 @@ class _QuestsScreenState extends State<QuestsScreen> {
         const SizedBox(width: 8),
         CircleAvatar(
           radius: 16,
-          backgroundImage: AssetImage(avatar),
+          backgroundImage: avatar.startsWith('http')
+              ? NetworkImage(avatar) as ImageProvider
+              : AssetImage(avatar),
         ),
         const SizedBox(width: 10),
         Expanded(

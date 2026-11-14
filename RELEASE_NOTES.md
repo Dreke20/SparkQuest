@@ -8,7 +8,8 @@ This document maintains the version history, short release notes, and future roa
 
 | Version | Build | Release Date | Channel | Status | Key Highlights |
 | :--- | :--- | :--- | :--- | :---: | :--- |
-| **v2.1.0** | `+15` | Nov 2026 | Production / Closed Beta | 🟢 **Live** | Android Background Notification Sync (`NotificationSyncJobService`), Deployed Supabase Edge Functions (`turn-credentials`, `push-notify`), WebRTC ICE Restart & Multi-STUN/TURN Support, Real 2-Account Cloud Profile Auto-Upsert & Match Persistence |
+| **v2.1.0** | `+16` | Nov 2026 | Production / Closed Beta | 🟢 **Live** | Zero Fake/Mock Data Audit: Purged Supabase Seed Rows, Live XP Leaderboard, Real Email/Phone Auth (Removed Mock Google/OTP Fallbacks), Reviewer-Only Demo Guards & Honest Offline Errors |
+| **v2.1.0** | `+15` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Android Background Notification Sync (`NotificationSyncJobService`), Deployed Supabase Edge Functions (`turn-credentials`, `push-notify`), WebRTC ICE Restart & Multi-STUN/TURN Support, Real 2-Account Cloud Profile Auto-Upsert & Match Persistence |
 | **v2.0.0** | `+14` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Version bump for Google Play Console (`versionCode=14`) carrying Native Push Alerts, Live WebRTC Calls, Marketing Site & Crash Telemetry |
 | **v2.0.0** | `+13` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Native Android Push Notifications & Supabase Realtime WebSockets, Live P2P WebRTC Video/Voice Calls (`flutter_webrtc`), Marketing Landing Site (`docs/index.html`), Automated Crash Telemetry & Diagnostics Viewer |
 | **v2.0.0** | `+12` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Strict Reviewer Auth (Backdoor Eliminated), Comprehensive Demo Profile Isolation (Likes, Radar, Duos, Blind Match), Exact `reviewer@sparkquest.app` Verification, Signed Build 12 |
@@ -22,7 +23,16 @@ This document maintains the version history, short release notes, and future roa
 
 ---
 
-## 🚀 Live Release: v2.1.0+15 (Background Alerts, TURN/ICE Resilience & Live Cloud Matchmaking)
+## 🚀 Live Release: v2.1.0+16 (Zero Fake Data Audit & Production Hardening)
+
+### 🛡️ V2.1+16 Highlights
+- **Purged Live Seed Rows**: Cleared all residual fake seed rows in Supabase (`public.profiles`, `public.stories`, `public.map_checkins`).
+- **Real Data & Auth Everywhere**: Live XP Leaderboard sourced from `public.profiles`, removed mock Google/OTP auth fallbacks and pre-filled dummy phone numbers, replaced unguarded voice lounge / wingman / story / call fallbacks with real or neutral data, and returned honest `false` errors when offline.
+- **Reviewer Isolation**: Preserved `[Review Demo]` flows strictly behind `reviewer@sparkquest.app`.
+
+---
+
+## 📦 Previous Release: v2.1.0+15 (Background Alerts, TURN/ICE Resilience & Live Cloud Matchmaking)
 
 ### 📡 V2.1 Additions
 - **Background Notification Delivery**: Native Android `NotificationSyncJobService` (`JobScheduler`) syncs Sparks, messages, and missed calls while the app is backgrounded or closed, paired with deployed `push-notify` Edge Function.

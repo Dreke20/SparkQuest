@@ -15,7 +15,7 @@ class AuthDialog extends StatefulWidget {
 class _AuthDialogState extends State<AuthDialog> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late ConfettiController _confettiController;
-  final TextEditingController _phoneController = TextEditingController(text: '+1 (555) 839-2049');
+  final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _otpController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -29,7 +29,7 @@ class _AuthDialogState extends State<AuthDialog> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _confettiController = ConfettiController(duration: const Duration(seconds: 2));
   }
 
@@ -51,7 +51,18 @@ class _AuthDialogState extends State<AuthDialog> with SingleTickerProviderStateM
 
     HapticFeedback.lightImpact();
     setState(() => _isLoading = true);
-    await SupabaseService.instance.sendPhoneOtp(phone);
+    final sent = await SupabaseService.instance.sendPhoneOtp(phone);
+    if (!mounted) return;
+    if (!sent) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not send SMS code right now. Please sign in with Email & Password.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
 
     setState(() {
       _isLoading = false;
@@ -90,27 +101,13 @@ class _AuthDialogState extends State<AuthDialog> with SingleTickerProviderStateM
         ),
       );
       Navigator.pop(context);
-    }
-  }
-
-  void _signInWithGoogle() async {
-    HapticFeedback.mediumImpact();
-    setState(() => _isLoading = true);
-    final res = await SupabaseService.instance.signInWithGoogleToken('google_mock_id_token_2026');
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-
-    if (res != null) {
-      HapticFeedback.heavyImpact();
-      _confettiController.play();
-      widget.onAuthenticated();
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('🎉 Google Sign-In successful! Welcome back.'),
-          backgroundColor: Color(0xFF10B981),
+          content: Text('Invalid or expired verification code.'),
+          backgroundColor: Colors.redAccent,
         ),
       );
-      Navigator.pop(context);
     }
   }
 
@@ -230,9 +227,8 @@ class _AuthDialogState extends State<AuthDialog> with SingleTickerProviderStateM
                       unselectedLabelColor: Colors.white54,
                       indicatorSize: TabBarIndicatorSize.tab,
                       tabs: const [
-                        Tab(text: '📱 Phone SMS'),
                         Tab(text: '✉️ Email'),
-                        Tab(text: '🌐 Google'),
+                        Tab(text: '📱 Phone SMS'),
                       ],
                     ),
                   ),
@@ -243,7 +239,73 @@ class _AuthDialogState extends State<AuthDialog> with SingleTickerProviderStateM
                     child: TabBarView(
                       controller: _tabController,
                       children: [
-                        // Tab 1: Phone SMS
+                        // Tab 1: Email & Password Sign-In
+                        SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              TextField(
+                                controller: _emailController,
+                                keyboardType: TextInputType.emailAddress,
+                                style: const TextStyle(color: Colors.white),
+                                decoration: InputDecoration(
+                                  filled: true,
+                                  fillColor: Colors.white.withValues(alpha: 0.05),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                  prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF06B6D4)),
+                                  hintText: 'name@example.com',
+                                  hintStyle: const TextStyle(color: Colors.white30),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              TextField(
+                                controller: _passwordController,
+                                obscureText: true,
+                                style: const TextStyle(color: Colors.white),
+                                decoration: InputDecoration(
+                                  filled: true,
+                                  fillColor: Colors.white.withValues(alpha: 0.05),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                  prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF06B6D4)),
+                                  hintText: 'Password',
+                                  hintStyle: const TextStyle(color: Colors.white30),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF06B6D4),
+                                  foregroundColor: Colors.black,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                                onPressed: _isLoading ? null : _signInWithEmailAndPassword,
+                                child: _isLoading
+                                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                                    : Text(
+                                        _isSignUp ? 'Create Account 🚀' : 'Sign In 🚀',
+                                        style: const TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                              ),
+                              const SizedBox(height: 6),
+                              Center(
+                                child: TextButton(
+                                  onPressed: () => setState(() => _isSignUp = !_isSignUp),
+                                  child: Text(
+                                    _isSignUp
+                                        ? 'Already have an account? Sign In'
+                                        : 'Need an account? Sign Up',
+                                    style: const TextStyle(color: Colors.white54, fontSize: 11),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Tab 2: Phone SMS
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
@@ -314,106 +376,6 @@ class _AuthDialogState extends State<AuthDialog> with SingleTickerProviderStateM
                                 ),
                               ),
                             ],
-                          ],
-                        ),
-
-                        // Tab 2: Email & Password Sign-In
-                        SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              TextField(
-                                controller: _emailController,
-                                keyboardType: TextInputType.emailAddress,
-                                style: const TextStyle(color: Colors.white),
-                                decoration: InputDecoration(
-                                  filled: true,
-                                  fillColor: Colors.white.withValues(alpha: 0.05),
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                  prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF06B6D4)),
-                                  hintText: 'name@example.com',
-                                  hintStyle: const TextStyle(color: Colors.white30),
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              TextField(
-                                controller: _passwordController,
-                                obscureText: true,
-                                style: const TextStyle(color: Colors.white),
-                                decoration: InputDecoration(
-                                  filled: true,
-                                  fillColor: Colors.white.withValues(alpha: 0.05),
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                  prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF06B6D4)),
-                                  hintText: 'Password',
-                                  hintStyle: const TextStyle(color: Colors.white30),
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF06B6D4),
-                                  foregroundColor: Colors.black,
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                ),
-                                onPressed: _isLoading ? null : _signInWithEmailAndPassword,
-                                child: _isLoading
-                                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                                    : Text(
-                                        _isSignUp ? 'Create Account 🚀' : 'Sign In 🚀',
-                                        style: const TextStyle(fontWeight: FontWeight.bold),
-                                      ),
-                              ),
-                              const SizedBox(height: 6),
-                              Center(
-                                child: TextButton(
-                                  onPressed: () => setState(() => _isSignUp = !_isSignUp),
-                                  child: Text(
-                                    _isSignUp
-                                        ? 'Already have an account? Sign In'
-                                        : 'Need an account? Sign Up',
-                                    style: const TextStyle(color: Colors.white54, fontSize: 11),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // Tab 3: Google Sign-In
-                        Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            OutlinedButton.icon(
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Colors.white24),
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              icon: Container(
-                                width: 22,
-                                height: 22,
-                                decoration: const BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                ),
-                                alignment: Alignment.center,
-                                child: const Text('G', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w900, fontSize: 13)),
-                              ),
-                              label: const Text('Continue with Google', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                              onPressed: _isLoading ? null : _signInWithGoogle,
-                            ),
-                            const SizedBox(height: 14),
-                            const Center(
-                              child: Text(
-                                'Secure Single Sign-On powered by Supabase Auth',
-                                style: TextStyle(color: Colors.white38, fontSize: 11),
-                              ),
-                            ),
                           ],
                         ),
                       ],

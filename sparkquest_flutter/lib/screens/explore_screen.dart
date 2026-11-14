@@ -330,10 +330,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   Wrap(
                     spacing: 8,
                     children:
-                        [
-                          'Alex (Night Owl Strategist)',
-                          'Jordan (Maverick Bard)',
-                        ].map((w) {
+                        (isReviewer
+                                ? [
+                                    'Alex (Night Owl Strategist)',
+                                    'Jordan (Maverick Bard)',
+                                  ]
+                                : [
+                                    'Solo / Open Duo Queue',
+                                    'Night Owl Strategist',
+                                    'Trailblazer Scout',
+                                  ])
+                            .map((w) {
                           final active = selectedWingman == w;
                           return ChoiceChip(
                             label: Text(w),

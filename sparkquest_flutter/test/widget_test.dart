@@ -137,7 +137,7 @@ void main() {
     expect(cloudProfile.name, 'Kaelen Mercer');
     expect(cloudProfile.age, 28);
     expect(cloudProfile.isVerified, isTrue);
-    expect(cloudProfile.photoAsset, 'assets/images/alex.png');
+    expect(cloudProfile.photoAsset, 'assets/images/logo.jpg');
   });
 
   test('StorageService tracks daily fortune wheel free spin cooldown', () async {
@@ -177,19 +177,22 @@ void main() {
   });
 
   test('Phase 13 (v2.1.0): Drop-In Voice Lounges & User Profile State', () async {
-    final lounges = await SupabaseService.instance.fetchVoiceLounges();
-    expect(lounges.length, greaterThanOrEqualTo(3));
-    expect(lounges.first['title'], contains('Espresso'));
+    // Non-reviewer gets zero fake fallback lounges when offline
+    final nonReviewerLounges = await SupabaseService.instance.fetchVoiceLounges();
+    expect(nonReviewerLounges, isEmpty);
 
-    final joined = await SupabaseService.instance.joinVoiceLounge(
-      loungeId: 'lounge_coffee',
-      userId: 'user_test',
-      userName: 'Test Explorer',
-    );
-    expect(joined, isTrue);
+    // Reviewer gets labeled [Review Demo] lounges when offline
+    await SupabaseService.instance.signInAsReviewer();
+    final reviewerLounges = await SupabaseService.instance.fetchVoiceLounges();
+    expect(reviewerLounges.length, greaterThanOrEqualTo(2));
+    expect(reviewerLounges.first['title'], contains('[Review Demo]'));
+    await SupabaseService.instance.signOut();
 
-    final left = await SupabaseService.instance.leaveVoiceLounge('lounge_coffee', 'user_test');
-    expect(left, isTrue);
+    // Mock auth tokens and offline OTP fallbacks are disabled
+    final mockGoogleRes = await SupabaseService.instance.signInWithGoogleToken('google_mock_id_token_2026');
+    expect(mockGoogleRes, isNull);
+    final offlineOtpRes = await SupabaseService.instance.verifyPhoneOtp('+15550000000', '123456');
+    expect(offlineOtpRes, isNull);
 
     await StorageService.instance.saveUserName('Alex Navigator');
     expect(StorageService.instance.getUserName(), 'Alex Navigator');
@@ -464,7 +467,7 @@ void main() {
     expect(logs.length, 1);
     expect(logs.first['source'], 'unit_test');
     expect(logs.first['error'], contains('Simulated test exception'));
-    expect(logs.first['app_version'], '2.1.0+15');
+    expect(logs.first['app_version'], '2.1.0+16');
     expect(logs.first['synced'], isFalse);
 
     final fallbackWidget = CrashReportingService.buildErrorFallbackWidget(

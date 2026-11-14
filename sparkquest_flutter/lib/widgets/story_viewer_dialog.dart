@@ -31,16 +31,7 @@ class _StoryViewerDialogState extends State<StoryViewerDialog>
     if (widget.customCaption != null && widget.customCaption!.isNotEmpty) {
       return widget.customCaption!;
     }
-    switch (widget.matchName.toLowerCase()) {
-      case 'sophia':
-        return 'Golden hour hike above the clouds 🏔️✨ Who’s joining next Sunday?';
-      case 'jordan':
-        return 'Spinning rare vinyls at the studio tonight 🎵☕ Matcha on deck!';
-      case 'maya':
-        return 'Post-yoga smoothie bowl & ocean breeze 🧘‍♀️🌊';
-      default:
-        return 'Out exploring hidden gems in the city ✨🔥';
-    }
+    return 'Shared a live quest moment on SparkQuest ✨';
   }
 
   @override

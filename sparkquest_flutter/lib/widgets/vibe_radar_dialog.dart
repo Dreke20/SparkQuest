@@ -7,7 +7,7 @@ import '../theme/app_theme.dart';
 class VibeRadarDialog extends StatelessWidget {
   final String matchName;
 
-  const VibeRadarDialog({super.key, this.matchName = 'Sophia'});
+  const VibeRadarDialog({super.key, this.matchName = 'Match'});
 
   @override
   Widget build(BuildContext context) {

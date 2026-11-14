@@ -179,8 +179,11 @@ class RealtimeChatService extends ChangeNotifier {
     QuestProgressionService.instance.incrementQuest('engage2', xpGain: 20);
     notifyListeners();
 
-    // Trigger simulated match typing indicator and reply
-    _simulateMatchReply(matchName, text);
+    // Only simulate automated replies in Google Play Reviewer demo chats
+    if (StorageService.instance.isReviewerAccount() &&
+        matchName.contains('[Review Demo]')) {
+      _simulateMatchReply(matchName, text);
+    }
   }
 
   void _updateConversationPreview(

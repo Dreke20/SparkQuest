@@ -450,7 +450,7 @@ class _MapScreenState extends State<MapScreen>
                               onPressed: () {
                                 HapticFeedback.mediumImpact();
                                 RealtimeChatService.instance.sendMessage(
-                                  'Maya',
+                                  'Maya [Review Demo]',
                                   '👋 Waved at your Proximity Beacon (18m away)!',
                                 );
                                 ScaffoldMessenger.of(context).showSnackBar(
