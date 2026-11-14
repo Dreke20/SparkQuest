@@ -40,6 +40,32 @@ class MainActivity : FlutterActivity() {
                         showLocalNotification(id, title, body, channelId)
                         result.success(true)
                     }
+                    "syncBackgroundSession" -> {
+                        val baseUrl = call.argument<String>("baseUrl") ?: ""
+                        val anonKey = call.argument<String>("anonKey") ?: ""
+                        val accessToken = call.argument<String>("accessToken")
+                        val userId = call.argument<String>("userId") ?: ""
+                        val notifySparks = call.argument<Boolean>("notifySparks") ?: true
+                        val notifyMessages = call.argument<Boolean>("notifyMessages") ?: true
+                        val notifyCalls = call.argument<Boolean>("notifyCalls") ?: true
+                        if (baseUrl.isNotEmpty() && anonKey.isNotEmpty() && userId.isNotEmpty()) {
+                            NotificationSyncJobService.saveSessionAndSchedule(
+                                applicationContext,
+                                baseUrl,
+                                anonKey,
+                                accessToken,
+                                userId,
+                                notifySparks,
+                                notifyMessages,
+                                notifyCalls
+                            )
+                        }
+                        result.success(true)
+                    }
+                    "clearBackgroundSession" -> {
+                        NotificationSyncJobService.clearSessionAndCancel(applicationContext)
+                        result.success(true)
+                    }
                     else -> result.notImplemented()
                 }
             }

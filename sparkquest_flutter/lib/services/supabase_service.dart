@@ -19,6 +19,7 @@ class SupabaseService {
   String? currentUserId = 'user_me';
   String? accessToken;
   Map<String, dynamic>? currentUserProfile;
+  VoidCallback? onAuthSessionUpdated;
   final HttpClient _httpClient = HttpClient();
 
   bool get isSignedIn =>
@@ -161,6 +162,8 @@ class SupabaseService {
           }
           await StorageService.instance.saveUserName(email.split('@').first);
           await StorageService.instance.saveUserEmail(email);
+          await upsertMyProfile();
+          onAuthSessionUpdated?.call();
           return decoded;
         }
       }
@@ -187,6 +190,10 @@ class SupabaseService {
           }
           await StorageService.instance.saveUserName(email.split('@').first);
           await StorageService.instance.saveUserEmail(email);
+          if (accessToken != null) {
+            await upsertMyProfile();
+          }
+          onAuthSessionUpdated?.call();
           return decoded;
         }
       }
@@ -201,6 +208,7 @@ class SupabaseService {
     await StorageService.instance.saveUserName('Google Play Reviewer');
     await StorageService.instance.saveUserEmail('reviewer@sparkquest.app');
     await StorageService.instance.setReviewerMode(true);
+    onAuthSessionUpdated?.call();
     return {
       'access_token': accessToken,
       'user': {
@@ -219,6 +227,66 @@ class SupabaseService {
     currentUserProfile = null;
     await StorageService.instance.saveUserEmail(null);
     await StorageService.instance.setReviewerMode(false);
+    onAuthSessionUpdated?.call();
+  }
+
+  /// Upsert the signed-in user's discovery profile into `public.profiles`
+  Future<bool> upsertMyProfile({
+    String? name,
+    int? age,
+    String? bio,
+    String? city,
+  }) async {
+    final uid = currentUserId;
+    if (uid == null || uid.isEmpty || uid == 'user_me') return false;
+    try {
+      final uri = Uri.parse('$baseUrl/rest/v1/profiles?on_conflict=user_id');
+      final request = await _httpClient.postUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      request.headers.set('Prefer', 'resolution=merge-duplicates,return=representation');
+      request.write(jsonEncode({
+        'user_id': uid,
+        'name': name ?? StorageService.instance.getUserName(),
+        'age': age ?? 25,
+        'bio': bio ?? StorageService.instance.getUserBio(),
+        'city': city ?? StorageService.instance.getTeleportCity(),
+        'embers': StorageService.instance.getEmbers(),
+        'is_vip': StorageService.instance.isGoldVip(),
+        'selected_frame': StorageService.instance.getSelectedFrame(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      }));
+      final response = await request.close();
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Persist a mutual cloud match row to `public.matches` so both devices receive live updates
+  Future<bool> createCloudMatch({
+    required String partnerId,
+    required String partnerName,
+    String avatarUrl = '',
+    int compatibilityPct = 90,
+  }) async {
+    final uid = currentUserId ?? 'user_me';
+    if (uid == 'user_me' || partnerId.isEmpty) return false;
+    try {
+      final uri = Uri.parse('$baseUrl/rest/v1/matches');
+      final request = await _httpClient.postUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      request.write(jsonEncode({
+        'user_id_1': uid,
+        'user_id_2': partnerId,
+        'user_name': partnerName,
+        'avatar_url': avatarUrl,
+        'compatibility_pct': compatibilityPct,
+      }));
+      final response = await request.close();
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
   }
 
   // ==========================================
@@ -697,6 +765,36 @@ class SupabaseService {
     } catch (_) {
       return null;
     }
+  }
+
+  /// Default resilient STUN servers used if TURN Edge Function is unreachable
+  static const List<Map<String, dynamic>> defaultIceServers = [
+    {'urls': 'stun:stun.l.google.com:19302'},
+    {'urls': 'stun:stun1.l.google.com:19302'},
+    {'urls': 'stun:stun.cloudflare.com:3478'},
+  ];
+
+  /// Fetch dynamic WebRTC STUN/TURN ICE servers from Supabase Edge Function `turn-credentials`
+  Future<List<Map<String, dynamic>>> fetchIceServers() async {
+    try {
+      final uri = Uri.parse('$baseUrl/functions/v1/turn-credentials');
+      final request = await _httpClient
+          .getUrl(uri)
+          .timeout(const Duration(seconds: 3));
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      final response = await request.close().timeout(const Duration(seconds: 3));
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(body);
+        if (decoded is Map<String, dynamic> && decoded['iceServers'] is List) {
+          final parsed = (decoded['iceServers'] as List)
+              .whereType<Map<String, dynamic>>()
+              .toList();
+          if (parsed.isNotEmpty) return parsed;
+        }
+      }
+    } catch (_) {}
+    return List<Map<String, dynamic>>.from(defaultIceServers);
   }
 
   /// Append a WebRTC ICE candidate to `public.call_signals.ice_candidates`

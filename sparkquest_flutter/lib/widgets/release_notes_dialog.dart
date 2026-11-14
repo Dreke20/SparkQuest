@@ -74,7 +74,7 @@ class ReleaseNotesDialog extends StatelessWidget {
                     _buildVersionCard(
                       badge: 'CURRENT RELEASE',
                       badgeColor: AppTheme.emeraldGreen,
-                      version: 'v2.0.0+14',
+                      version: 'v2.1.0+15',
                       date: 'November 2026',
                       title: 'WebRTC Video, Push Alerts, Crash Diagnostics & Auth Hardening',
                       highlights: const [

@@ -412,16 +412,16 @@ void main() {
     });
     expect(bannerTitle, isNull);
 
-    // Match notification triggers when enabled
+    // Match notification triggers when enabled (matches live Supabase schema user_id_1/user_id_2/user_name)
     await StorageService.instance.setNotifySparksEnabled(true);
     await PushNotificationService.instance.processRealtimeChange({
       'table': 'matches',
       'type': 'INSERT',
       'record': {
-        'user_a': 'user_me',
-        'user_b': 'other_user_2',
-        'partner_name': 'Marcus',
-        'synergy_score': 93,
+        'user_id_1': 'user_me',
+        'user_id_2': 'other_user_2',
+        'user_name': 'Marcus',
+        'compatibility_pct': 93,
       },
     });
     expect(bannerTitle, 'New Mutual Spark!');
@@ -464,7 +464,7 @@ void main() {
     expect(logs.length, 1);
     expect(logs.first['source'], 'unit_test');
     expect(logs.first['error'], contains('Simulated test exception'));
-    expect(logs.first['app_version'], '2.0.0+14');
+    expect(logs.first['app_version'], '2.1.0+15');
     expect(logs.first['synced'], isFalse);
 
     final fallbackWidget = CrashReportingService.buildErrorFallbackWidget(
@@ -498,6 +498,18 @@ void main() {
 
     await rtc.endCall();
     expect(rtc.stage, WebRtcConnectionStage.ended);
+    rtc.dispose();
+  });
+
+  test('Phase 20 (v2.1): Multi-region ICE servers fallback & TURN status label', () async {
+    expect(SupabaseService.defaultIceServers.length, greaterThanOrEqualTo(3));
+    expect(
+      SupabaseService.defaultIceServers.any((s) => s['urls'].toString().contains('cloudflare')),
+      isTrue,
+    );
+    final rtc = WebRtcCallService();
+    expect(rtc.iceStateLabel, isNotEmpty);
+    expect(rtc.hasTurnRelay, isFalse);
     rtc.dispose();
   });
 }

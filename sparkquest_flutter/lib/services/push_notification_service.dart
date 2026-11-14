@@ -48,10 +48,38 @@ class PushNotificationService extends ChangeNotifier {
         WidgetsBinding.instance.runtimeType.toString().contains('Test');
     if (isTestBinding) return;
 
+    SupabaseService.instance.onAuthSessionUpdated = () {
+      unawaited(syncBackgroundSession());
+    };
+
     if (requestAndroidPermission) {
       await requestPermission();
     }
+    await syncBackgroundSession();
     unawaited(connectRealtime());
+  }
+
+  /// Syncs session credentials & alert toggles to Android `NotificationSyncJobService`
+  /// so tray notifications still deliver when the Flutter app is closed.
+  Future<void> syncBackgroundSession() async {
+    final uid = SupabaseService.instance.currentUserId ?? '';
+    try {
+      if (!SupabaseService.instance.isSignedIn || uid.isEmpty || uid == 'user_me') {
+        await _channel.invokeMethod<bool>('clearBackgroundSession');
+        return;
+      }
+      await _channel.invokeMethod<bool>('syncBackgroundSession', {
+        'baseUrl': SupabaseService.baseUrl,
+        'anonKey': SupabaseService.anonKey,
+        'accessToken': SupabaseService.instance.accessToken ?? SupabaseService.anonKey,
+        'userId': uid,
+        'notifySparks': StorageService.instance.isNotifySparksEnabled(),
+        'notifyMessages': StorageService.instance.isNotifyMessagesEnabled(),
+        'notifyCalls': StorageService.instance.isNotifyCallsEnabled(),
+      });
+    } on MissingPluginException {
+      // Non-Android or test harness
+    } catch (_) {}
   }
 
   /// Requests Android 13+ POST_NOTIFICATIONS runtime permission via MainActivity.
@@ -248,14 +276,21 @@ class PushNotificationService extends ChangeNotifier {
         channelId: channelMessages,
       );
     } else if (table == 'matches' && type == 'INSERT') {
-      final userA = record['user_a']?.toString() ?? '';
-      final userB = record['user_b']?.toString() ?? '';
+      final userA =
+          record['user_id_1']?.toString() ?? record['user_a']?.toString() ?? '';
+      final userB =
+          record['user_id_2']?.toString() ?? record['user_b']?.toString() ?? '';
       if (userA != myId && userB != myId && myId != 'user_me') return;
       if (!StorageService.instance.isNotifySparksEnabled()) return;
 
       final partnerName =
-          record['partner_name']?.toString() ?? 'A nearby Adventurer';
-      final synergy = record['synergy_score']?.toString() ?? '90';
+          record['user_name']?.toString() ??
+          record['partner_name']?.toString() ??
+          'A nearby Adventurer';
+      final synergy =
+          record['compatibility_pct']?.toString() ??
+          record['synergy_score']?.toString() ??
+          '90';
       const title = 'New Mutual Spark!';
       final body = '$partnerName ($synergy% Synergy) sparked with you.';
       onInAppBanner?.call(title, body);

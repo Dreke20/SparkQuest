@@ -120,8 +120,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
     final maxAge = StorageService.instance.getMaxAge();
     final verifiedOnly = StorageService.instance.getVerifiedOnly();
 
+    final myUserId = SupabaseService.instance.currentUserId ?? 'user_me';
     final remoteProfiles = remoteRows
-        .where((r) => r['user_id']?.toString() != 'user_me')
+        .where((r) {
+          final uid = r['user_id']?.toString() ?? '';
+          return uid != 'user_me' &&
+              uid != myUserId &&
+              r['is_ghost'] != true;
+        })
         .map(Profile.fromCloudMap)
         .where((p) {
           if (blocked.contains(p.id.toLowerCase())) return false;
@@ -168,6 +174,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
 
     if (isRight) {
+      if (!top.isDemoProfile) {
+        SupabaseService.instance.createCloudMatch(
+          partnerId: top.id,
+          partnerName: top.name,
+          avatarUrl: top.photoAsset,
+          compatibilityPct: top.compatPct,
+        );
+      }
       RealtimeChatService.instance.addMatchFromProfile(top);
       QuestProgressionService.instance.incrementQuest('engage1', xpGain: 15);
       _showMatchDialog(top);

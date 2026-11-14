@@ -36,26 +36,36 @@ class WebRtcCallService extends ChangeNotifier {
   bool _cameraOff = false;
   bool _frontCamera = true;
   bool _appliedRemoteSdp = false;
+  bool _hasTurnRelay = false;
+  bool _iceRestartAttempted = false;
   final Set<String> _appliedIceKeys = {};
   String _roomId = '';
   bool _isCaller = true;
   bool _isVoiceOnly = false;
   String? _lastStatusNote;
+  String _iceStateLabel = 'STUN';
 
   WebRtcConnectionStage get stage => _stage;
   bool get hasRemoteVideo => _remoteVideoReady && remoteRenderer.srcObject != null;
   bool get hasLocalVideo => _localVideoReady && localRenderer.srcObject != null;
   bool get isMuted => _muted;
   bool get isCameraOff => _cameraOff;
+  bool get hasTurnRelay => _hasTurnRelay;
+  String get iceStateLabel => _iceStateLabel;
   String? get statusNote => _lastStatusNote;
 
-  static const Map<String, dynamic> _rtcConfig = {
-    'iceServers': [
-      {'urls': 'stun:stun.l.google.com:19302'},
-      {'urls': 'stun:stun1.l.google.com:19302'},
-    ],
-    'sdpSemantics': 'unified-plan',
-  };
+  Future<Map<String, dynamic>> _buildRtcConfig() async {
+    final iceServers = await SupabaseService.instance.fetchIceServers();
+    _hasTurnRelay = iceServers.any((srv) {
+      final urls = srv['urls']?.toString() ?? '';
+      return urls.contains('turn:') || urls.contains('turns:');
+    });
+    _iceStateLabel = _hasTurnRelay ? 'STUN+TURN' : 'STUN P2P';
+    return {
+      'iceServers': iceServers,
+      'sdpSemantics': 'unified-plan',
+    };
+  }
 
   /// Starts a local media session + peer connection and negotiates SDP via Supabase.
   /// Gracefully degrades to [WebRtcConnectionStage.fallbackPreview] if hardware
@@ -96,7 +106,8 @@ class WebRtcCallService extends ChangeNotifier {
       _localVideoReady = !isVoiceOnly &&
           (_localStream?.getVideoTracks().isNotEmpty ?? false);
 
-      _peerConnection = await createPeerConnection(_rtcConfig);
+      final rtcConfig = await _buildRtcConfig();
+      _peerConnection = await createPeerConnection(rtcConfig);
 
       for (final track in _localStream!.getTracks()) {
         await _peerConnection!.addTrack(track, _localStream!);
@@ -118,8 +129,18 @@ class WebRtcCallService extends ChangeNotifier {
         if (state == RTCIceConnectionState.RTCIceConnectionStateConnected ||
             state == RTCIceConnectionState.RTCIceConnectionStateCompleted) {
           _stage = WebRtcConnectionStage.connected;
+          _iceStateLabel = _hasTurnRelay ? 'STUN+TURN' : 'Direct P2P';
           _lastStatusNote = 'P2P Connected';
+          _iceRestartAttempted = false;
           notifyListeners();
+        } else if (state == RTCIceConnectionState.RTCIceConnectionStateFailed ||
+            state == RTCIceConnectionState.RTCIceConnectionStateDisconnected) {
+          _iceStateLabel = 'Reconnecting...';
+          notifyListeners();
+          if (_isCaller && !_iceRestartAttempted) {
+            _iceRestartAttempted = true;
+            unawaited(_attemptIceRestart());
+          }
         }
       };
 
@@ -172,6 +193,23 @@ class WebRtcCallService extends ChangeNotifier {
       debugPrint('WebRtcCallService fallback: $e');
       notifyListeners();
     }
+  }
+
+  Future<void> _attemptIceRestart() async {
+    final pc = _peerConnection;
+    if (pc == null || _roomId.isEmpty) return;
+    try {
+      await pc.restartIce();
+      final offer = await pc.createOffer({'iceRestart': true});
+      await pc.setLocalDescription(offer);
+      if (offer.sdp != null) {
+        _appliedRemoteSdp = false;
+        await SupabaseService.instance.updateCallSignalOffer(
+          roomId: _roomId,
+          sdpOffer: jsonEncode({'sdp': offer.sdp, 'type': offer.type}),
+        );
+      }
+    } catch (_) {}
   }
 
   Future<void> _pollSignal() async {

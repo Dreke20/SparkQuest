@@ -255,9 +255,9 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                             const SizedBox(width: 8),
                             Text(
                               _webRtc.stage == WebRtcConnectionStage.connected
-                                  ? '${widget.matchName} • WebRTC P2P • $_formattedTime'
+                                  ? '${widget.matchName} • ${_webRtc.iceStateLabel} • $_formattedTime'
                                   : (RealtimeChatService.instance.callSignalState == 'ringing'
-                                      ? 'Ringing ${widget.matchName} (WebRTC)...'
+                                      ? 'Ringing ${widget.matchName} (${_webRtc.iceStateLabel})...'
                                       : '${widget.matchName} • $_formattedTime'),
                               style: const TextStyle(
                                 color: Colors.white,

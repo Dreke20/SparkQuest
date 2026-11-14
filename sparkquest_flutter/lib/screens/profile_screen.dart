@@ -1390,6 +1390,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 await PushNotificationService.instance.requestPermission();
               }
               await StorageService.instance.setNotifySparksEnabled(val);
+              await PushNotificationService.instance.syncBackgroundSession();
               setState(() => _notifySparks = val);
             },
           ),
@@ -1405,6 +1406,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 await PushNotificationService.instance.requestPermission();
               }
               await StorageService.instance.setNotifyMessagesEnabled(val);
+              await PushNotificationService.instance.syncBackgroundSession();
               setState(() => _notifyMessages = val);
             },
           ),
@@ -1420,6 +1422,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 await PushNotificationService.instance.requestPermission();
               }
               await StorageService.instance.setNotifyCallsEnabled(val);
+              await PushNotificationService.instance.syncBackgroundSession();
               setState(() => _notifyCalls = val);
             },
           ),
@@ -1810,7 +1813,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(width: 8),
                         const Text(
-                          'SparkQuest v2.0.0+14',
+                          'SparkQuest v2.1.0+15',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 13,
@@ -1842,7 +1845,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Build: 2026.11 • SparkQuest v2.0.0+14',
+                  'Build: 2026.11 • SparkQuest v2.1.0+15',
                   style: TextStyle(color: AppTheme.textDim, fontSize: 10.5),
                 ),
                 const SizedBox(height: 10),
