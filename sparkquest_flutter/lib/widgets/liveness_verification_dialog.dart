@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:confetti/confetti.dart';
+import 'package:image_picker/image_picker.dart';
 
 class LivenessVerificationDialog extends StatefulWidget {
   final VoidCallback onVerified;
@@ -202,6 +203,35 @@ class _LivenessVerificationDialogState
                       Color(0xFF06B6D4),
                     ),
                     borderRadius: BorderRadius.circular(4),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF06B6D4),
+                      side: const BorderSide(color: Color(0xFF06B6D4)),
+                    ),
+                    onPressed: () async {
+                      try {
+                        final selfie = await ImagePicker().pickImage(
+                          source: ImageSource.camera,
+                          preferredCameraDevice: CameraDevice.front,
+                          maxWidth: 800,
+                          imageQuality: 80,
+                        );
+                        if (selfie != null && mounted) {
+                          _stepTimer?.cancel();
+                          HapticFeedback.heavyImpact();
+                          _confettiController.play();
+                          setState(() => _isComplete = true);
+                          widget.onVerified();
+                        }
+                      } catch (_) {}
+                    },
+                    icon: const Icon(Icons.camera_front_outlined, size: 17),
+                    label: const Text(
+                      'Snap Instant Verification Selfie',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ] else ...[
                   const Text(

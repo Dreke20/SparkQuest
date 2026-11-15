@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../theme/app_theme.dart';
@@ -1508,10 +1509,404 @@ class _MapScreenState extends State<MapScreen>
                 ),
               ],
             ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.neonCyan,
+                      side: const BorderSide(color: AppTheme.neonCyan),
+                      minimumSize: const Size.fromHeight(42),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _openVenueBookingSheet(venueName);
+                    },
+                    icon: const Icon(Icons.event_available, size: 16),
+                    label: const Text(
+                      '🎟️ Reserve Table',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.electricViolet,
+                      side: const BorderSide(color: AppTheme.electricViolet),
+                      minimumSize: const Size.fromHeight(42),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _openArMomentModal(venueName);
+                    },
+                    icon: const Icon(Icons.camera_enhance_outlined, size: 16),
+                    label: const Text(
+                      '📸 AR Moment',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
     );
+  }
+
+  void _openVenueBookingSheet(String venueName) {
+    String selectedTime = 'Tonight • 7:00 PM';
+    int partySize = 2;
+    final partnerCtrl = TextEditingController();
+    final slots = [
+      'Tonight • 7:00 PM',
+      'Tomorrow • 6:30 PM',
+      'Saturday • 2:00 PM',
+      'Sunday • 11:00 AM',
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.bgSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            20,
+            20,
+            MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '🎟️ Reserve Meetup Table • $venueName',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Direct Safe Haven table booking with confirmation code & optional match invite.',
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: slots.map((slot) {
+                  final active = selectedTime == slot;
+                  return ChoiceChip(
+                    label: Text(slot, style: const TextStyle(fontSize: 11.5)),
+                    selected: active,
+                    selectedColor: AppTheme.neonCyan,
+                    labelStyle: TextStyle(
+                      color: active ? Colors.black : Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    onSelected: (_) => setSheetState(() => selectedTime = slot),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Text(
+                    'Party Size:',
+                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                  const SizedBox(width: 12),
+                  ...[2, 3, 4].map(
+                    (n) => Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text('$n'),
+                        selected: partySize == n,
+                        selectedColor: AppTheme.questGold,
+                        labelStyle: TextStyle(
+                          color: partySize == n ? Colors.black : Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        onSelected: (_) => setSheetState(() => partySize = n),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: partnerCtrl,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                decoration: InputDecoration(
+                  hintText: 'Match name to notify (optional)',
+                  hintStyle: const TextStyle(color: AppTheme.textDim),
+                  filled: true,
+                  fillColor: AppTheme.bgCard,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.neonCyan,
+                    foregroundColor: Colors.black,
+                    minimumSize: const Size.fromHeight(46),
+                  ),
+                  onPressed: () async {
+                    final partner = partnerCtrl.text.trim();
+                    final result = await SupabaseService.instance.createVenueBooking(
+                      venueName: venueName,
+                      venueAddress: StorageService.instance.getTeleportCity(),
+                      partnerName: partner,
+                      bookingTime: selectedTime,
+                      partySize: partySize,
+                    );
+                    if (partner.isNotEmpty) {
+                      RealtimeChatService.instance.sendMessage(
+                        partner,
+                        '🎟️ Reserved a Safe Haven table for $partySize at $venueName ($selectedTime) • Code: ${result['confirmation_code']}',
+                      );
+                    }
+                    QuestProgressionService.instance.incrementQuest('engage4', xpGain: 30);
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            '🎟️ Table Confirmed at $venueName ($selectedTime) • Code ${result['confirmation_code']}',
+                          ),
+                          backgroundColor: AppTheme.emeraldGreen,
+                        ),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.check_circle_outline),
+                  label: const Text(
+                    'Confirm Safe Haven Reservation',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openArMomentModal(String venueName) async {
+    String selectedSticker = '⚡ Spark Quest AR';
+    final captionCtrl = TextEditingController();
+    final stickers = [
+      '⚡ Spark Quest AR',
+      '☕ Espresso Date Stamp',
+      '🛡️ Safe Haven Checked-In',
+      '🌙 Night Owl Quest',
+    ];
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.bgSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            20,
+            20,
+            MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '📸 Capture AR Moment • $venueName',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Snap a live venue photo stamped with a SparkQuest AR Quest badge & post to nearby explorers.',
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: stickers.map((s) {
+                  final active = selectedSticker == s;
+                  return ChoiceChip(
+                    label: Text(s, style: const TextStyle(fontSize: 11.5)),
+                    selected: active,
+                    selectedColor: AppTheme.electricViolet,
+                    labelStyle: TextStyle(
+                      color: active ? Colors.white : Colors.white70,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    onSelected: (_) => setSheetState(() => selectedSticker = s),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: captionCtrl,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                decoration: InputDecoration(
+                  hintText: 'Add a quick AR Moment caption...',
+                  hintStyle: const TextStyle(color: AppTheme.textDim),
+                  filled: true,
+                  fillColor: AppTheme.bgCard,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.neonCyan,
+                        side: const BorderSide(color: AppTheme.neonCyan),
+                        minimumSize: const Size.fromHeight(46),
+                      ),
+                      onPressed: () async {
+                        Navigator.pop(ctx);
+                        await _captureAndUploadArMoment(
+                          venueName: venueName,
+                          sticker: selectedSticker,
+                          caption: captionCtrl.text.trim(),
+                          source: ImageSource.gallery,
+                        );
+                      },
+                      icon: const Icon(Icons.photo_library_outlined, size: 17),
+                      label: const Text('Gallery'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.electricViolet,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(46),
+                      ),
+                      onPressed: () async {
+                        Navigator.pop(ctx);
+                        await _captureAndUploadArMoment(
+                          venueName: venueName,
+                          sticker: selectedSticker,
+                          caption: captionCtrl.text.trim(),
+                          source: ImageSource.camera,
+                        );
+                      },
+                      icon: const Icon(Icons.camera_alt_outlined, size: 17),
+                      label: const Text('Open Camera'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _captureAndUploadArMoment({
+    required String venueName,
+    required String sticker,
+    required String caption,
+    required ImageSource source,
+  }) async {
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 1200,
+        imageQuality: 85,
+      );
+      if (picked == null) return;
+      final bytes = await picked.readAsBytes();
+      final ext = picked.name.contains('.') ? picked.name.split('.').last : 'jpg';
+      final url = await SupabaseService.instance.uploadMediaBytes(
+        bucket: 'stories',
+        fileName: 'ar_moment_${DateTime.now().millisecondsSinceEpoch}.$ext',
+        bytes: bytes,
+        contentType: ext == 'png' ? 'image/png' : 'image/jpeg',
+      );
+      if (url == null || url.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not upload AR Moment. Check your internet connection.'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+        return;
+      }
+      await SupabaseService.instance.postArMoment(
+        venueName: venueName,
+        stickerTag: sticker,
+        caption: caption,
+        imageUrl: url,
+      );
+      await SupabaseService.instance.postStory(
+        userName: StorageService.instance.getUserName(),
+        avatarUrl: StorageService.instance.getPrimaryUserPhoto() ?? url,
+        imageUrl: url,
+        caption: '$sticker • $venueName ${caption.isEmpty ? "" : "- $caption"}',
+      );
+      QuestProgressionService.instance.incrementQuest('engage4', xpGain: 35);
+      widget.onEmberFound();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('📸 AR Moment ($sticker) posted at $venueName! +35 XP & +25🔥'),
+            backgroundColor: AppTheme.emeraldGreen,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('AR camera error: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildFilterPill(String id, String label) {

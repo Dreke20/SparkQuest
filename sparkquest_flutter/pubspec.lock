@@ -25,6 +25,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.13.1"
+  bluez:
+    dependency: transitive
+    description:
+      name: bluez
+      sha256: "61a7204381925896a374301498f2f5399e59827c6498ae1e924aaa598751b545"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.8.3"
   boolean_selector:
     dependency: transitive
     description:
@@ -89,6 +97,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.8"
+  csslib:
+    dependency: transitive
+    description:
+      name: csslib
+      sha256: "09bad715f418841f976c77db72d5398dc1253c21fb9c0c7f0b0b985860b2d58e"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.2"
   cupertino_icons:
     dependency: "direct main"
     description:
@@ -121,6 +137,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.8.2"
+  dbus:
+    dependency: transitive
+    description:
+      name: dbus
+      sha256: a48d5da28e89bd02196e80d81ed8d7954923d00a0f4a68cc20b575038f023383
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.7.15"
   fake_async:
     dependency: transitive
     description:
@@ -198,6 +222,62 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.5.2"
+  flutter_blue_plus:
+    dependency: "direct main"
+    description:
+      name: flutter_blue_plus
+      sha256: "13e09b4a1bf017e73be75a085039edb9b245d113dba3b69f0e787fac8a346389"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.3.15"
+  flutter_blue_plus_android:
+    dependency: transitive
+    description:
+      name: flutter_blue_plus_android
+      sha256: "2ffce1f1f66ac0b1650cd3bf5227e864dd1b28f067fc0638e7318dc2b02cff6b"
+      url: "https://pub.dev"
+    source: hosted
+    version: "9.0.5"
+  flutter_blue_plus_darwin:
+    dependency: transitive
+    description:
+      name: flutter_blue_plus_darwin
+      sha256: "318cf00d98570616f6ca1a5f0664ae6acd21112a18e5cc3546891ce85a5b1ecb"
+      url: "https://pub.dev"
+    source: hosted
+    version: "9.0.5"
+  flutter_blue_plus_linux:
+    dependency: transitive
+    description:
+      name: flutter_blue_plus_linux
+      sha256: "75ae13ef2ed7c06247a1b255320616da7f220bc136b2b7382ad50379752102c3"
+      url: "https://pub.dev"
+    source: hosted
+    version: "9.0.5"
+  flutter_blue_plus_platform_interface:
+    dependency: transitive
+    description:
+      name: flutter_blue_plus_platform_interface
+      sha256: "444c30197a19e735b565d082a0b58662da3953dfb15f395853211650f3215f13"
+      url: "https://pub.dev"
+    source: hosted
+    version: "9.0.4"
+  flutter_blue_plus_web:
+    dependency: transitive
+    description:
+      name: flutter_blue_plus_web
+      sha256: "6a6dea391c0a1fe51e7ccf3fb9390d9b03760e58ae6ff31b6105b982599bc3f4"
+      url: "https://pub.dev"
+    source: hosted
+    version: "9.0.4"
+  flutter_blue_plus_winrt:
+    dependency: transitive
+    description:
+      name: flutter_blue_plus_winrt
+      sha256: "3c1b790ba95808b5e2b1f756367e1e8078266488635032976e187823e3b3d8cb"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.23"
   flutter_lints:
     dependency: "direct dev"
     description:
@@ -264,6 +344,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.2"
+  html:
+    dependency: transitive
+    description:
+      name: html
+      sha256: "43b67b8f43321ab066817dfac5619596c98bb1b61624e77203bb4351785f9699"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.15.7"
   http:
     dependency: transitive
     description:
@@ -537,7 +625,7 @@ packages:
     source: hosted
     version: "1.9.1"
   path_provider:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: path_provider
       sha256: a7f4874f987173da295a61c181b8ee71dab59b332a486b391babf26a1b884825
@@ -584,6 +672,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.3.0"
+  petitparser:
+    dependency: transitive
+    description:
+      name: petitparser
+      sha256: "91bd59303e9f769f108f8df05e371341b15d59e995e6806aefab827b58336675"
+      url: "https://pub.dev"
+    source: hosted
+    version: "7.0.2"
   platform:
     dependency: transitive
     description:
@@ -624,6 +720,46 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.1"
+  record:
+    dependency: "direct main"
+    description:
+      name: record
+      sha256: "3bbb68002de8bb2fc7178b6c955254fa882e2fe4c33fa98db4b98dd662d8a1d6"
+      url: "https://pub.dev"
+    source: hosted
+    version: "7.2.0"
+  record_android:
+    dependency: transitive
+    description:
+      name: record_android
+      sha256: "68c8cb40628a460b2a8bdf746697bd798a71cca7b03b8dac20e752d50425900f"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.3.0"
+  record_darwin:
+    dependency: transitive
+    description:
+      name: record_darwin
+      sha256: "6ff6477febaa928ae3a294014f1254c766aaf6bb8f288f02cbe7cda1b9e9be87"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.0"
+  record_linux:
+    dependency: transitive
+    description:
+      name: record_linux
+      sha256: a2c1680b908c899e8198ad46e553adbfba4d66fe41c1314705cf3afb888f8033
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.2.0"
+  record_platform_interface:
+    dependency: transitive
+    description:
+      name: record_platform_interface
+      sha256: "970b2a2c4ac4dc666adca8a41fefc3c4b0c62ef1dfc3c46ba5400def7155ac1a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.2.0"
   record_use:
     dependency: transitive
     description:
@@ -632,6 +768,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.6.0"
+  record_web:
+    dependency: transitive
+    description:
+      name: record_web
+      sha256: "15852c45e3ac621090d919373faa5400ddffaf28403525359041132526a02b1d"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.2.0"
+  record_windows:
+    dependency: transitive
+    description:
+      name: record_windows
+      sha256: c708162ff3195e4b8898242410b66233a5081699f519226c4afe985d1eb877e0
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.4.0"
   shared_preferences:
     dependency: "direct main"
     description:
@@ -789,6 +941,46 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.4.0"
+  video_player:
+    dependency: "direct main"
+    description:
+      name: video_player
+      sha256: "07ae1e03f2d4c8e2e9a75ee678f90acbc4506d4458a9c628512d119a1eee5754"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.14.1"
+  video_player_android:
+    dependency: transitive
+    description:
+      name: video_player_android
+      sha256: "73af648c6fbd0ced6b4863b3ae995bf86e9f976544891d92a3e38452647b91c5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.12.4"
+  video_player_avfoundation:
+    dependency: transitive
+    description:
+      name: video_player_avfoundation
+      sha256: "5af728d811c218fdc100b7e89bcda789fe34d36d53a968912011bc2d7df14b46"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.12.4"
+  video_player_platform_interface:
+    dependency: transitive
+    description:
+      name: video_player_platform_interface
+      sha256: "92c0fbabe20c788e71fd10d26cea998d0d253282e65d145aed0818731cf593ce"
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.9.0"
+  video_player_web:
+    dependency: transitive
+    description:
+      name: video_player_web
+      sha256: "9f3c00be2ef9b76a95d94ac5119fb843dca6f2c69e6c9968f6f2b6c9e7afbdeb"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.4.0"
   vm_service:
     dependency: transitive
     description:
@@ -861,6 +1053,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.0"
+  xml:
+    dependency: transitive
+    description:
+      name: xml
+      sha256: "67f0aff7be013d107995e9b75bf4e7f2c3ef2dfdb2c8e68024bba0a7fd5756a4"
+      url: "https://pub.dev"
+    source: hosted
+    version: "7.0.1"
   yaml:
     dependency: transitive
     description:

@@ -74,14 +74,14 @@ class ReleaseNotesDialog extends StatelessWidget {
                     _buildVersionCard(
                       badge: 'CURRENT RELEASE',
                       badgeColor: AppTheme.emeraldGreen,
-                      version: 'v2.1.0+17',
+                      version: 'v2.2.0+18',
                       date: 'November 2026',
-                      title: 'Real Profile Photo Uploads, Live Profiles & Auth Sync',
+                      title: 'Complete Android Roadmap: Raids, AR, BLE, Translation & WearOS SOS',
                       highlights: const [
-                        '📸 Real Gallery & Camera Profile Photo Uploader syncing directly to Supabase Storage (`avatars` & `stories` buckets).',
-                        '🪪 Zero Mock Avatars on Sign-Up/Login: Dynamic header photo, editable display name & age synced with cloud profiles.',
-                        '✅ Live XP Leaderboard, WebRTC TURN/ICE resilience & Native Push Notifications.',
-                        '🛡️ Strict Reviewer Account Isolation (`reviewer@sparkquest.app`) with zero demo leaks.',
+                        '⚔️ Weekend Co-Op Guild Raids & 📸 Safe Haven AR Moments synced to Supabase Storage & Cloud.',
+                        '🎙️ Live Drop-In Audio Lounges (WebRTC mic + Supabase member sync), Hardware BLE Scanning & Real Profile Video Loops.',
+                        '🌐 Global Teleport 2.0 Chat Translation (`translate-message` Edge Function) + 🎟️ In-App Venue Meetup Bookings.',
+                        '⌚ WearOS Companion SOS Watch Notification Action + Real Gallery/Camera Profile & Voice Recording.',
                       ],
                     ),
                     const SizedBox(height: 14),
@@ -148,14 +148,14 @@ class ReleaseNotesDialog extends StatelessWidget {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('✓ You are running the latest version (v2.0.0+6)!'),
+                        content: Text('✓ You are running the latest version (v2.2.0+18)!'),
                         backgroundColor: AppTheme.emeraldGreen,
                       ),
                     );
                   },
                   icon: const Icon(Icons.check_circle_outline, size: 18),
                   label: const Text(
-                    'Close • Up to Date (v2.0.0+6)',
+                    'Close • Up to Date (v2.2.0+18)',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                 ),

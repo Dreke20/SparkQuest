@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../theme/app_theme.dart';
 import '../services/supabase_service.dart';
 import '../services/storage_service.dart';
@@ -397,6 +398,8 @@ class _VoiceLoungeRoomModalState extends State<VoiceLoungeRoomModal>
   bool _handRaised = false;
   late AnimationController _pulseController;
   Timer? _speakerSimulationTimer;
+  Timer? _memberSyncTimer;
+  MediaStream? _localAudioStream;
   int _activeSpeakerIndex = 0;
 
   late final List<Map<String, dynamic>> _speakers;
@@ -405,6 +408,10 @@ class _VoiceLoungeRoomModalState extends State<VoiceLoungeRoomModal>
   void initState() {
     super.initState();
     final isReviewer = StorageService.instance.isReviewerAccount();
+    final myAvatar = StorageService.instance.getPrimaryUserPhoto() ?? 'assets/images/logo.jpg';
+    final myName = StorageService.instance.getUserName().isEmpty
+        ? 'You'
+        : StorageService.instance.getUserName();
     _speakers = isReviewer
         ? [
             {
@@ -432,17 +439,17 @@ class _VoiceLoungeRoomModalState extends State<VoiceLoungeRoomModal>
               'isSpeaking': false,
             },
             {
-              'name': 'You',
+              'name': myName,
               'role': 'Adventurer',
-              'avatar': 'assets/images/logo.jpg',
+              'avatar': myAvatar,
               'isSpeaking': false,
             },
           ]
         : [
             {
-              'name': 'You',
+              'name': myName,
               'role': 'Host 👑',
-              'avatar': 'assets/images/logo.jpg',
+              'avatar': myAvatar,
               'isSpeaking': false,
             },
           ];
@@ -466,22 +473,72 @@ class _VoiceLoungeRoomModalState extends State<VoiceLoungeRoomModal>
       });
     }
 
-    SupabaseService.instance.joinVoiceLounge(
-      loungeId: widget.lounge['id'] ?? 'lounge_default',
-      userId: 'user_me',
-      userName: StorageService.instance.getUserName().isEmpty
-          ? 'You'
-          : StorageService.instance.getUserName(),
+    _initLiveAudioAndSync(myName, myAvatar);
+  }
+
+  Future<void> _initLiveAudioAndSync(String myName, String myAvatar) async {
+    final loungeId = widget.lounge['id']?.toString() ?? 'lounge_default';
+    final uid = SupabaseService.instance.currentUserId ?? 'user_me';
+    try {
+      _localAudioStream = await navigator.mediaDevices.getUserMedia({
+        'audio': true,
+        'video': false,
+      });
+      for (final t in _localAudioStream?.getAudioTracks() ?? const <MediaStreamTrack>[]) {
+        t.enabled = !_isMuted;
+      }
+    } catch (_) {
+      // Headless/emulator/test fallback cleanly
+    }
+
+    await SupabaseService.instance.joinVoiceLounge(
+      loungeId: loungeId,
+      userId: uid,
+      userName: myName,
+      userAvatar: myAvatar,
     );
+    await _syncLiveLoungeMembers(loungeId, uid);
+    _memberSyncTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => _syncLiveLoungeMembers(loungeId, uid),
+    );
+  }
+
+  Future<void> _syncLiveLoungeMembers(String loungeId, String selfUid) async {
+    final rows = await SupabaseService.instance.fetchVoiceLoungeMembers(loungeId);
+    if (!mounted || rows.isEmpty || StorageService.instance.isReviewerAccount()) return;
+    setState(() {
+      _speakers.removeWhere((s) => s['isSelf'] != true && s['user_id'] != selfUid);
+      if (_speakers.isNotEmpty) {
+        _speakers.first['isSelf'] = true;
+      }
+      for (final row in rows) {
+        final rUid = row['user_id']?.toString() ?? '';
+        if (rUid == selfUid) continue;
+        final avatar = row['user_avatar']?.toString() ?? '';
+        _speakers.add({
+          'user_id': rUid,
+          'name': row['user_name']?.toString() ?? 'Explorer',
+          'role': 'Live Audio',
+          'avatar': avatar.isNotEmpty ? avatar : 'assets/images/logo.jpg',
+          'isSpeaking': row['is_speaking'] == true && row['is_muted'] != true,
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
     _speakerSimulationTimer?.cancel();
+    _memberSyncTimer?.cancel();
+    for (final t in _localAudioStream?.getTracks() ?? const <MediaStreamTrack>[]) {
+      t.stop();
+    }
+    _localAudioStream?.dispose();
     SupabaseService.instance.leaveVoiceLounge(
-      widget.lounge['id'] ?? 'lounge_default',
-      'user_me',
+      widget.lounge['id']?.toString() ?? 'lounge_default',
+      SupabaseService.instance.currentUserId ?? 'user_me',
     );
     super.dispose();
   }
@@ -606,7 +663,9 @@ class _VoiceLoungeRoomModalState extends State<VoiceLoungeRoomModal>
                           ),
                           child: CircleAvatar(
                             radius: 34,
-                            backgroundImage: AssetImage(s['avatar']),
+                            backgroundImage: (s['avatar']?.toString().startsWith('http') ?? false)
+                                ? NetworkImage(s['avatar'].toString()) as ImageProvider
+                                : AssetImage(s['avatar']?.toString() ?? 'assets/images/logo.jpg'),
                           ),
                         );
                       },
@@ -691,8 +750,22 @@ class _VoiceLoungeRoomModalState extends State<VoiceLoungeRoomModal>
                     HapticFeedback.heavyImpact();
                     setState(() {
                       _isMuted = !_isMuted;
-                      _speakers.last['isSpeaking'] = !_isMuted;
+                      if (_speakers.isNotEmpty) {
+                        final selfIdx = StorageService.instance.isReviewerAccount()
+                            ? _speakers.length - 1
+                            : 0;
+                        _speakers[selfIdx]['isSpeaking'] = !_isMuted;
+                      }
                     });
+                    for (final t in _localAudioStream?.getAudioTracks() ?? const <MediaStreamTrack>[]) {
+                      t.enabled = !_isMuted;
+                    }
+                    SupabaseService.instance.updateVoiceLoungeMemberState(
+                      loungeId: widget.lounge['id']?.toString() ?? 'lounge_default',
+                      userId: SupabaseService.instance.currentUserId ?? 'user_me',
+                      isMuted: _isMuted,
+                      isSpeaking: !_isMuted,
+                    );
                   },
                   icon: Icon(_isMuted ? Icons.mic_off : Icons.mic, size: 20),
                   label: Text(

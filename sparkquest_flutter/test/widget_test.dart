@@ -467,7 +467,7 @@ void main() {
     expect(logs.length, 1);
     expect(logs.first['source'], 'unit_test');
     expect(logs.first['error'], contains('Simulated test exception'));
-    expect(logs.first['app_version'], '2.1.0+17');
+    expect(logs.first['app_version'], '2.2.0+18');
     expect(logs.first['synced'], isFalse);
 
     final fallbackWidget = CrashReportingService.buildErrorFallbackWidget(
@@ -546,5 +546,32 @@ void main() {
     // Reviewer keeps demo assets
     await StorageService.instance.saveUserEmail('reviewer@sparkquest.app');
     expect(StorageService.instance.getPrimaryUserPhoto(), 'assets/images/alex.png');
+  });
+
+  test('Phase 22 (v2.2 Android Roadmap): Guild Raids, Bookings, Translation & WearOS prefs', () async {
+    SharedPreferences.setMockInitialValues({});
+    await StorageService.instance.init();
+
+    await StorageService.instance.saveJoinedGuildRaids(['raid_espresso_crawl']);
+    expect(StorageService.instance.getJoinedGuildRaids(), ['raid_espresso_crawl']);
+
+    await StorageService.instance.saveVenueBooking({
+      'venue_name': 'Sightglass Coffee SoMa',
+      'confirmation_code': 'SQ-12345',
+    });
+    expect(StorageService.instance.getVenueBookings().first['confirmation_code'], 'SQ-12345');
+
+    await StorageService.instance.savePreferredTranslationLanguage('ja');
+    expect(StorageService.instance.getPreferredTranslationLanguage(), 'ja');
+
+    await StorageService.instance.saveIntroVideoUrl('https://example.com/loop.mp4');
+    expect(StorageService.instance.getIntroVideoUrl(), 'https://example.com/loop.mp4');
+
+    expect(StorageService.instance.isWearOsShieldSyncEnabled(), isTrue);
+    await StorageService.instance.setWearOsShieldSyncEnabled(false);
+    expect(StorageService.instance.isWearOsShieldSyncEnabled(), isFalse);
+
+    await SupabaseService.instance.signOut();
+    expect(StorageService.instance.getIntroVideoUrl(), isNull);
   });
 }

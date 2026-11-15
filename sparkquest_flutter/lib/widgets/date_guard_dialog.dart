@@ -3,6 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../services/push_notification_service.dart';
+import '../services/storage_service.dart';
+import '../services/supabase_service.dart';
+
 class DateGuardDialog extends StatefulWidget {
   final String initialVenue;
   const DateGuardDialog({super.key, this.initialVenue = 'Neon Roasters'});
@@ -17,9 +21,8 @@ class _DateGuardDialogState extends State<DateGuardDialog> {
   int _secondsRemaining = 3600;
   Timer? _timer;
   late String _venue;
-  final TextEditingController _contactController = TextEditingController(
-    text: '+1 (555) 839-2049',
-  );
+  bool _wearOsSync = true;
+  final TextEditingController _contactController = TextEditingController();
 
   final List<String> _venues = [
     'Neon Roasters (Safe Haven)',
@@ -32,6 +35,7 @@ class _DateGuardDialogState extends State<DateGuardDialog> {
   void initState() {
     super.initState();
     _venue = widget.initialVenue;
+    _wearOsSync = StorageService.instance.isWearOsShieldSyncEnabled();
   }
 
   @override
@@ -47,6 +51,9 @@ class _DateGuardDialogState extends State<DateGuardDialog> {
       _isActive = true;
       _secondsRemaining = _selectedMinutes * 60;
     });
+    if (_wearOsSync) {
+      PushNotificationService.instance.armWearOsShield(_venue);
+    }
 
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -108,6 +115,10 @@ class _DateGuardDialogState extends State<DateGuardDialog> {
 
   void _triggerEmergencySOS() {
     HapticFeedback.heavyImpact();
+    SupabaseService.instance.triggerSosAlert(
+      source: _wearOsSync ? 'wear_os_and_mobile_date_shield' : 'mobile_date_shield',
+    );
+    final targetContact = _contactController.text.trim();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         backgroundColor: Colors.redAccent.shade700,
@@ -117,7 +128,9 @@ class _DateGuardDialogState extends State<DateGuardDialog> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                '🚨 SOS Alert & GPS dispatched to ${_contactController.text}!',
+                targetContact.isEmpty
+                    ? '🚨 SOS Alert synced to SparkQuest Safety Cloud!'
+                    : '🚨 SOS Alert & GPS dispatched to $targetContact!',
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
@@ -285,10 +298,11 @@ class _DateGuardDialogState extends State<DateGuardDialog> {
                           HapticFeedback.lightImpact();
                           setState(() => _isActive = false);
                           _timer?.cancel();
+                          PushNotificationService.instance.disarmWearOsShield();
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text(
-                                "I'm safe! Date Guard disarmed. 👍",
+                                "I'm safe! Date Guard & WearOS Shield disarmed. 👍",
                               ),
                             ),
                           );
@@ -418,8 +432,11 @@ class _DateGuardDialogState extends State<DateGuardDialog> {
                 const SizedBox(height: 6),
                 TextField(
                   controller: _contactController,
+                  keyboardType: TextInputType.phone,
                   style: const TextStyle(color: Colors.white, fontSize: 13),
                   decoration: InputDecoration(
+                    hintText: 'Trusted friend phone number',
+                    hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 14,
                       vertical: 10,
@@ -436,7 +453,25 @@ class _DateGuardDialogState extends State<DateGuardDialog> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 12),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: _wearOsSync,
+                  activeThumbColor: const Color(0xFF06B6D4),
+                  onChanged: (val) async {
+                    setState(() => _wearOsSync = val);
+                    await StorageService.instance.setWearOsShieldSyncEnabled(val);
+                  },
+                  title: const Text(
+                    '⌚ WearOS Companion SOS Sync',
+                    style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: const Text(
+                    'Mirrors 1-tap SOS trigger notification onto paired Android WearOS watches.',
+                    style: TextStyle(color: Colors.white54, fontSize: 11),
+                  ),
+                ),
+                const SizedBox(height: 12),
 
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(

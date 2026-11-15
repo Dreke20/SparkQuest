@@ -755,17 +755,110 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final TextEditingController _msgController = TextEditingController();
   late List<ChatMessage> _messages;
   final Map<int, String> _messageReactions = {};
+  final Map<int, String> _translatedMessages = {};
   String? _replyingToText;
   bool _weMetConfirmed = false;
+  String _translationLang = 'es';
 
   @override
   void initState() {
     super.initState();
+    _translationLang = StorageService.instance.getPreferredTranslationLanguage();
     _messages = RealtimeChatService.instance.getMessages(
       widget.conversation.name,
       widget.conversation.messages,
     );
     RealtimeChatService.instance.addListener(_onChatUpdated);
+  }
+
+  Future<void> _openTranslationLanguagePicker() async {
+    const langs = {
+      'en': '🇺🇸 English (EN)',
+      'es': '🇪🇸 Spanish (ES)',
+      'fr': '🇫🇷 French (FR)',
+      'de': '🇩🇪 German (DE)',
+      'ja': '🇯🇵 Japanese (JA)',
+      'pt': '🇧🇷 Portuguese (PT)',
+      'ko': '🇰🇷 Korean (KO)',
+    };
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.bgSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '🌐 Teleport 2.0 Live Chat Translation',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Pick target language for incoming/outgoing message translation.',
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: langs.entries.map((e) {
+                  final active = _translationLang == e.key;
+                  return ChoiceChip(
+                    label: Text(e.value, style: const TextStyle(fontSize: 12)),
+                    selected: active,
+                    selectedColor: AppTheme.neonCyan,
+                    labelStyle: TextStyle(
+                      color: active ? Colors.black : Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    onSelected: (_) async {
+                      await StorageService.instance
+                          .savePreferredTranslationLanguage(e.key);
+                      setState(() {
+                        _translationLang = e.key;
+                        _translatedMessages.clear();
+                      });
+                      if (ctx.mounted) Navigator.pop(ctx);
+                    },
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _translateBubble(int index, String originalText) async {
+    HapticFeedback.selectionClick();
+    final source = _translationLang == 'en' ? 'es' : 'en';
+    final translated = await SupabaseService.instance.translateMessage(
+      text: originalText,
+      sourceLang: source,
+      targetLang: _translationLang,
+    );
+    if (!mounted) return;
+    if (translated != null && translated.isNotEmpty) {
+      setState(() => _translatedMessages[index] = translated);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not reach translation service right now.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
   @override
@@ -1120,7 +1213,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           children: [
             CircleAvatar(
               radius: 16,
-              backgroundImage: AssetImage(widget.conversation.photoAsset),
+              backgroundImage: widget.conversation.photoAsset.startsWith('http')
+                  ? NetworkImage(widget.conversation.photoAsset) as ImageProvider
+                  : AssetImage(widget.conversation.photoAsset),
             ),
             const SizedBox(width: 8),
             Column(
@@ -1208,6 +1303,17 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             ),
             tooltip: 'Plan Date Quest',
             onPressed: _openDateItinerary,
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(2),
+            icon: const Icon(
+              Icons.translate,
+              color: AppTheme.neonCyan,
+              size: 19,
+            ),
+            tooltip: 'Teleport 2.0 Translate',
+            onPressed: _openTranslationLanguagePicker,
           ),
           IconButton(
             visualDensity: VisualDensity.compact,
@@ -1455,10 +1561,43 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                   fontSize: 14,
                                 ),
                               ),
+                              if (_translatedMessages[i] != null) ...[
+                                const SizedBox(height: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black26,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    '🌐 [${_translationLang.toUpperCase()}] ${_translatedMessages[i]}',
+                                    style: const TextStyle(
+                                      color: AppTheme.neonCyan,
+                                      fontSize: 12.5,
+                                    ),
+                                  ),
+                                ),
+                              ],
                               const SizedBox(height: 4),
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  GestureDetector(
+                                    onTap: () => _translateBubble(i, m.text),
+                                    child: Text(
+                                      _translatedMessages[i] == null
+                                          ? '🌐 Translate  '
+                                          : '🌐 Translated  ',
+                                      style: const TextStyle(
+                                        color: AppTheme.neonCyan,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
                                   Text(
                                     m.time,
                                     style: const TextStyle(

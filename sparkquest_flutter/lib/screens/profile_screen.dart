@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:record/record.dart';
+import 'package:video_player/video_player.dart';
 
 import '../theme/app_theme.dart';
 import '../widgets/spark_pass_dialog.dart';
@@ -59,6 +62,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _smartPhotosEnabled = true;
   List<Map<String, String>> _userPrompts = [];
   int? _uploadingPhotoIndex;
+  bool _isUploadingVideo = false;
+  String? _introVideoUrl;
+  VideoPlayerController? _videoController;
+  final AudioRecorder _audioRecorder = AudioRecorder();
   final ImagePicker _imagePicker = ImagePicker();
 
   List<String?> _photos = List<String?>.filled(6, null);
@@ -102,6 +109,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _notifyCalls = StorageService.instance.isNotifyCallsEnabled();
     _isGoldVip = StorageService.instance.isGoldVip();
     _photos = StorageService.instance.getUserPhotos();
+    _introVideoUrl = StorageService.instance.getIntroVideoUrl();
+    _hasVoicePrompt =
+        (StorageService.instance.getVoicePromptUrl()?.isNotEmpty ?? false);
+    _initVideoLoopPreview();
+  }
+
+  Future<void> _initVideoLoopPreview() async {
+    final url = _introVideoUrl;
+    await _videoController?.dispose();
+    _videoController = null;
+    if (url == null || url.isEmpty) return;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) return;
+    try {
+      final ctrl = VideoPlayerController.networkUrl(Uri.parse(url));
+      await ctrl.initialize();
+      await ctrl.setLooping(true);
+      await ctrl.setVolume(0);
+      await ctrl.play();
+      if (mounted) {
+        setState(() => _videoController = ctrl);
+      } else {
+        await ctrl.dispose();
+      }
+    } catch (_) {
+      // Ignore video preview failures cleanly on emulators/headless tests
+    }
   }
 
   void _openDiagnosticsSheet() {
@@ -335,6 +368,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     IAPService.instance.removeListener(_onIapChanged);
     SupabaseService.instance.authSessionRevision.removeListener(_onAuthChanged);
     _voiceTimer?.cancel();
+    _audioRecorder.dispose();
+    _videoController?.dispose();
     super.dispose();
   }
 
@@ -368,32 +403,82 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _toggleVoiceRecording() async {
     if (_isRecordingVoice) {
       _voiceTimer?.cancel();
+      String? recordedPath;
+      try {
+        recordedPath = await _audioRecorder.stop();
+      } catch (_) {}
       setState(() {
         _isRecordingVoice = false;
-        _hasVoicePrompt = true;
       });
-      final voiceUrl = await SupabaseService.instance.uploadVoiceNoteBytes(
-        durationSec: _voiceSeconds > 0 ? _voiceSeconds : 9,
-      );
-      if (voiceUrl != null) {
-        await SupabaseService.instance.updateProfileField(
-          'voice_prompt_url',
-          voiceUrl,
-        );
+      String? voiceUrl;
+      if (recordedPath != null && recordedPath.isNotEmpty) {
+        final file = File(recordedPath);
+        if (await file.exists()) {
+          final bytes = await file.readAsBytes();
+          voiceUrl = await SupabaseService.instance.uploadMediaBytes(
+            bucket: 'voice-notes',
+            fileName: 'voice_spark_${DateTime.now().millisecondsSinceEpoch}.m4a',
+            bytes: bytes,
+            contentType: 'audio/mp4',
+          );
+        }
       }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              voiceUrl != null
-                  ? '🎙️ Voice Spark uploaded to Supabase Storage ("voice-notes")!'
-                  : '🎙️ Voice Spark saved! "My secret, useless talent"',
+      if (voiceUrl != null && voiceUrl.isNotEmpty) {
+        await StorageService.instance.saveVoicePromptUrl(voiceUrl);
+        await SupabaseService.instance.upsertMyProfile();
+        setState(() => _hasVoicePrompt = true);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                '🎙️ Voice Spark uploaded to Supabase Storage ("voice-notes")!',
+              ),
+              backgroundColor: AppTheme.electricViolet,
             ),
-            backgroundColor: AppTheme.electricViolet,
+          );
+        }
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Microphone capture failed or offline. Grant mic permission and try again.',
+            ),
+            backgroundColor: Colors.redAccent,
           ),
         );
       }
     } else {
+      try {
+        final hasPerm = await _audioRecorder.hasPermission();
+        if (!hasPerm) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Microphone permission is required to record a Voice Spark.'),
+                backgroundColor: Colors.redAccent,
+              ),
+            );
+          }
+          return;
+        }
+        final dir = await getTemporaryDirectory();
+        final outPath =
+            '${dir.path}/voice_spark_${DateTime.now().millisecondsSinceEpoch}.m4a';
+        await _audioRecorder.start(
+          const RecordConfig(encoder: AudioEncoder.aacLc),
+          path: outPath,
+        );
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not access microphone on this device.'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+        return;
+      }
       setState(() {
         _isRecordingVoice = true;
         _voiceSeconds = 0;
@@ -985,6 +1070,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 8),
           _buildPhotoGrid(),
+          const SizedBox(height: 14),
+          _buildVideoLoopCard(),
 
           const SizedBox(height: 24),
 
@@ -1810,7 +1897,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(width: 8),
                         const Text(
-                          'SparkQuest v2.1.0+17',
+                          'SparkQuest v2.2.0+18',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 13,
@@ -1842,7 +1929,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Build: 2026.11 • SparkQuest v2.1.0+17',
+                  'Build: 2026.11 • SparkQuest v2.2.0+18',
                   style: TextStyle(color: AppTheme.textDim, fontSize: 10.5),
                 ),
                 const SizedBox(height: 10),
@@ -2792,6 +2879,170 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       }
     }
+  }
+
+  Future<void> _pickAndUploadVideoLoop() async {
+    try {
+      final picked = await _imagePicker.pickVideo(
+        source: ImageSource.gallery,
+        maxDuration: const Duration(seconds: 6),
+      );
+      if (picked == null) return;
+      if (mounted) setState(() => _isUploadingVideo = true);
+      final bytes = await picked.readAsBytes();
+      final url = await SupabaseService.instance.uploadMediaBytes(
+        bucket: 'avatars',
+        fileName: 'intro_loop_${DateTime.now().millisecondsSinceEpoch}.mp4',
+        bytes: bytes,
+        contentType: 'video/mp4',
+      );
+      if (!mounted) return;
+      if (url != null && url.isNotEmpty) {
+        _introVideoUrl = url;
+        await StorageService.instance.saveIntroVideoUrl(url);
+        await SupabaseService.instance.upsertMyProfile();
+        await _initVideoLoopPreview();
+        if (mounted) {
+          setState(() => _isUploadingVideo = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('🎬 3s Profile Video Loop uploaded & synced!'),
+              backgroundColor: AppTheme.emeraldGreen,
+            ),
+          );
+        }
+      } else {
+        setState(() => _isUploadingVideo = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not upload video loop. Check connection and try again.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isUploadingVideo = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Video upload failed: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildVideoLoopCard() {
+    final hasVideo = _introVideoUrl != null && _introVideoUrl!.isNotEmpty;
+    final ctrl = _videoController;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.bgCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: hasVideo
+              ? AppTheme.neonCyan.withValues(alpha: 0.45)
+              : Colors.white10,
+        ),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: SizedBox(
+              width: 56,
+              height: 56,
+              child: ctrl != null && ctrl.value.isInitialized
+                  ? FittedBox(
+                      fit: BoxFit.cover,
+                      child: SizedBox(
+                        width: ctrl.value.size.width,
+                        height: ctrl.value.size.height,
+                        child: VideoPlayer(ctrl),
+                      ),
+                    )
+                  : Container(
+                      color: AppTheme.bgSurface,
+                      child: const Icon(
+                        Icons.movie_creation_outlined,
+                        color: AppTheme.neonCyan,
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '🎬 3-Second Profile Video Loop',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  hasVideo
+                      ? 'Looping video active & synced to Supabase Storage'
+                      : 'Add a short silent clip (up to 6s) for higher match rates',
+                  style: const TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          if (_isUploadingVideo)
+            const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.2,
+                color: AppTheme.neonCyan,
+              ),
+            )
+          else
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (hasVideo)
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 19),
+                    tooltip: 'Remove Video Loop',
+                    onPressed: () async {
+                      await StorageService.instance.saveIntroVideoUrl(null);
+                      await _videoController?.dispose();
+                      setState(() {
+                        _introVideoUrl = null;
+                        _videoController = null;
+                      });
+                      await SupabaseService.instance.upsertMyProfile();
+                    },
+                  ),
+                OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.neonCyan,
+                    side: const BorderSide(color: AppTheme.neonCyan),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  ),
+                  onPressed: _pickAndUploadVideoLoop,
+                  child: Text(
+                    hasVideo ? 'Replace' : 'Upload Clip',
+                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
   }
 
   Widget _buildPhotoGrid() {

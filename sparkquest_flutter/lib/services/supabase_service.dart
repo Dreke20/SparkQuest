@@ -275,14 +275,36 @@ class SupabaseService {
           if (remoteBio.isNotEmpty) {
             await StorageService.instance.saveUserBio(remoteBio);
           }
-          final remoteAvatar = (row['avatar_url'] ?? '').toString().trim();
-          if (remoteAvatar.startsWith('http://') ||
-              remoteAvatar.startsWith('https://')) {
-            final photos = StorageService.instance.getUserPhotos();
-            if (photos[0] != remoteAvatar) {
-              photos[0] = remoteAvatar;
-              await StorageService.instance.saveUserPhotos(photos);
+          final photos = List<String?>.filled(6, null);
+          final remotePhotos = row['photos'];
+          if (remotePhotos is List) {
+            for (int i = 0; i < 6 && i < remotePhotos.length; i++) {
+              final url = remotePhotos[i]?.toString().trim() ?? '';
+              if (url.startsWith('http://') || url.startsWith('https://')) {
+                photos[i] = url;
+              }
             }
+          }
+          final remoteAvatar = (row['avatar_url'] ?? '').toString().trim();
+          if ((remoteAvatar.startsWith('http://') ||
+                  remoteAvatar.startsWith('https://')) &&
+              (photos[0] == null || photos[0]!.isEmpty)) {
+            photos[0] = remoteAvatar;
+          }
+          if (photos.any((p) => p != null)) {
+            await StorageService.instance.saveUserPhotos(photos);
+          }
+          final remoteVideo = (row['intro_video_url'] ?? '').toString().trim();
+          if (remoteVideo.startsWith('http://') || remoteVideo.startsWith('https://')) {
+            await StorageService.instance.saveIntroVideoUrl(remoteVideo);
+          }
+          final remoteVoice = (row['voice_prompt_url'] ?? '').toString().trim();
+          if (remoteVoice.startsWith('http://') || remoteVoice.startsWith('https://')) {
+            await StorageService.instance.saveVoicePromptUrl(remoteVoice);
+          }
+          final remoteLang = (row['preferred_language'] ?? '').toString().trim();
+          if (remoteLang.isNotEmpty) {
+            await StorageService.instance.savePreferredTranslationLanguage(remoteLang);
           }
           return row;
         }
@@ -303,11 +325,12 @@ class SupabaseService {
     if (uid == null || uid.isEmpty || uid == 'user_me') return false;
     try {
       final uri = Uri.parse('$baseUrl/rest/v1/profiles?on_conflict=user_id');
-      final request = await _httpClient.postUrl(uri);
-      _headers.forEach((key, val) => request.headers.set(key, val));
-      request.headers.set('Prefer', 'resolution=merge-duplicates,return=representation');
       final primaryPhoto = avatarUrl ?? StorageService.instance.getPrimaryUserPhoto();
-      final payload = <String, dynamic>{
+      final cloudPhotos = StorageService.instance
+          .getUserPhotos()
+          .map((p) => (p != null && (p.startsWith('http://') || p.startsWith('https://'))) ? p : '')
+          .toList();
+      final corePayload = <String, dynamic>{
         'user_id': uid,
         'name': name ?? StorageService.instance.getUserName(),
         'age': age ?? StorageService.instance.getUserAge(),
@@ -321,14 +344,42 @@ class SupabaseService {
       if (primaryPhoto != null &&
           (primaryPhoto.startsWith('http://') ||
               primaryPhoto.startsWith('https://'))) {
-        payload['avatar_url'] = primaryPhoto;
+        corePayload['avatar_url'] = primaryPhoto;
       } else if (avatarUrl == '') {
-        payload['avatar_url'] = '';
+        corePayload['avatar_url'] = '';
       }
-      request.write(jsonEncode(payload));
+      final voiceUrl = StorageService.instance.getVoicePromptUrl();
+      if (voiceUrl != null && voiceUrl.startsWith('http')) {
+        corePayload['voice_prompt_url'] = voiceUrl;
+      }
+
+      final extendedPayload = <String, dynamic>{
+        ...corePayload,
+        'photos': cloudPhotos,
+        'intro_video_url': StorageService.instance.getIntroVideoUrl() ?? '',
+        'preferred_language': StorageService.instance.getPreferredTranslationLanguage(),
+      };
+
+      final request = await _httpClient.postUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      request.headers.set('Prefer', 'resolution=merge-duplicates,return=representation');
+      request.write(jsonEncode(extendedPayload));
       final response = await request.close();
       await response.drain<void>();
-      return response.statusCode >= 200 && response.statusCode < 300;
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return true;
+      }
+      // Fallback to core columns if new migration columns have not been pushed yet
+      if (response.statusCode == 400) {
+        final retryReq = await _httpClient.postUrl(uri);
+        _headers.forEach((key, val) => retryReq.headers.set(key, val));
+        retryReq.headers.set('Prefer', 'resolution=merge-duplicates,return=representation');
+        retryReq.write(jsonEncode(corePayload));
+        final retryResp = await retryReq.close();
+        await retryResp.drain<void>();
+        return retryResp.statusCode >= 200 && retryResp.statusCode < 300;
+      }
+      return false;
     } catch (_) {
       return false;
     }
@@ -1068,6 +1119,289 @@ class SupabaseService {
       final request = await _httpClient.deleteUrl(uri);
       _headers.forEach((key, val) => request.headers.set(key, val));
       final response = await request.close();
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Fetch active participants inside a Drop-In Voice Lounge
+  Future<List<Map<String, dynamic>>> fetchVoiceLoungeMembers(String loungeId) async {
+    try {
+      final uri = Uri.parse(
+        '$baseUrl/rest/v1/voice_lounge_members?lounge_id=eq.${Uri.encodeComponent(loungeId)}&select=*&order=joined_at.asc',
+      );
+      final request = await _httpClient.getUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(body);
+        if (decoded is List) {
+          return List<Map<String, dynamic>>.from(decoded);
+        }
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  /// Update speaking/mute state in a Drop-In Voice Lounge
+  Future<bool> updateVoiceLoungeMemberState({
+    required String loungeId,
+    required String userId,
+    required bool isMuted,
+    required bool isSpeaking,
+  }) async {
+    try {
+      final uri = Uri.parse(
+        '$baseUrl/rest/v1/voice_lounge_members?lounge_id=eq.${Uri.encodeComponent(loungeId)}&user_id=eq.${Uri.encodeComponent(userId)}',
+      );
+      final request = await _httpClient.patchUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      request.write(jsonEncode({'is_muted': isMuted, 'is_speaking': isSpeaking}));
+      final response = await request.close();
+      await response.drain<void>();
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ==========================================
+  // V2.1 & V2.2 ROADMAP APIS (RAIDS, BLE, BOOKINGS, AR, TRANSLATE, SOS)
+  // ==========================================
+
+  /// Fetch Co-Op Guild Raids
+  Future<List<Map<String, dynamic>>> fetchGuildRaids() async {
+    try {
+      final uri = Uri.parse('$baseUrl/rest/v1/guild_raids?select=*&order=starts_at.asc');
+      final request = await _httpClient.getUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(body);
+        if (decoded is List) {
+          return List<Map<String, dynamic>>.from(decoded);
+        }
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  /// Join & contribute progress to a Co-Op Guild Raid
+  Future<bool> joinGuildRaid({
+    required String raidId,
+    required int nextProgress,
+  }) async {
+    final uid = currentUserId ?? 'user_me';
+    try {
+      final memberUri = Uri.parse(
+        '$baseUrl/rest/v1/guild_raid_members?on_conflict=raid_id,user_id',
+      );
+      final mReq = await _httpClient.postUrl(memberUri);
+      _headers.forEach((key, val) => mReq.headers.set(key, val));
+      mReq.headers.set('Prefer', 'resolution=merge-duplicates,return=minimal');
+      mReq.write(jsonEncode({
+        'raid_id': raidId,
+        'user_id': uid,
+        'user_name': StorageService.instance.getUserName(),
+        'contribution': 1,
+      }));
+      final mResp = await mReq.close();
+      await mResp.drain<void>();
+
+      final raidUri = Uri.parse('$baseUrl/rest/v1/guild_raids?id=eq.${Uri.encodeComponent(raidId)}');
+      final rReq = await _httpClient.patchUrl(raidUri);
+      _headers.forEach((key, val) => rReq.headers.set(key, val));
+      rReq.write(jsonEncode({'current_progress': nextProgress}));
+      final rResp = await rReq.close();
+      await rResp.drain<void>();
+      return mResp.statusCode >= 200 && mResp.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Publish or deactivate ephemeral BLE Proximity Wave 2.0 beacon
+  Future<bool> upsertBleBeacon({
+    required String ephemeralId,
+    required String vibe,
+    required int rangeMeters,
+    double lat = 37.7749,
+    double lng = -122.4194,
+    bool isActive = true,
+  }) async {
+    final uid = currentUserId ?? 'user_me';
+    try {
+      final uri = Uri.parse('$baseUrl/rest/v1/ble_beacons?on_conflict=user_id');
+      final request = await _httpClient.postUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      request.headers.set('Prefer', 'resolution=merge-duplicates,return=minimal');
+      request.write(jsonEncode({
+        'user_id': uid,
+        'ephemeral_id': ephemeralId,
+        'display_name': StorageService.instance.getUserName(),
+        'rpg_class': StorageService.instance.getUserArchetype(),
+        'vibe': vibe,
+        'avatar_url': StorageService.instance.getPrimaryUserPhoto() ?? '',
+        'lat': lat,
+        'lng': lng,
+        'range_meters': rangeMeters,
+        'is_active': isActive,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      }));
+      final response = await request.close();
+      await response.drain<void>();
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Fetch active nearby BLE beacons from cloud registry (excludes current user)
+  Future<List<Map<String, dynamic>>> fetchNearbyBleBeacons() async {
+    final uid = currentUserId ?? 'user_me';
+    try {
+      final uri = Uri.parse(
+        '$baseUrl/rest/v1/ble_beacons?is_active=eq.true&select=*&order=updated_at.desc&limit=20',
+      );
+      final request = await _httpClient.getUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(body);
+        if (decoded is List) {
+          return decoded
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .where((e) => e['user_id']?.toString() != uid)
+              .toList();
+        }
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  /// Create an In-App Venue Meetup Booking
+  Future<Map<String, dynamic>> createVenueBooking({
+    required String venueName,
+    required String venueAddress,
+    required String partnerName,
+    required String bookingTime,
+    required int partySize,
+  }) async {
+    final uid = currentUserId ?? 'user_me';
+    final code = 'SQ-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+    final payload = {
+      'user_id': uid,
+      'venue_name': venueName,
+      'venue_address': venueAddress,
+      'partner_name': partnerName,
+      'booking_time': bookingTime,
+      'party_size': partySize,
+      'status': 'confirmed',
+      'confirmation_code': code,
+    };
+    await StorageService.instance.saveVenueBooking({
+      ...payload,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+    try {
+      final uri = Uri.parse('$baseUrl/rest/v1/venue_bookings');
+      final request = await _httpClient.postUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      request.write(jsonEncode(payload));
+      final response = await request.close();
+      await response.drain<void>();
+      return {
+        ...payload,
+        'synced': response.statusCode >= 200 && response.statusCode < 300,
+      };
+    } catch (_) {
+      return {...payload, 'synced': false};
+    }
+  }
+
+  /// Publish a captured In-App AR Moment to cloud gallery
+  Future<bool> postArMoment({
+    required String venueName,
+    required String stickerTag,
+    required String caption,
+    required String imageUrl,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/rest/v1/ar_moments');
+      final request = await _httpClient.postUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      request.write(jsonEncode({
+        'user_id': currentUserId ?? 'user_me',
+        'user_name': StorageService.instance.getUserName(),
+        'venue_name': venueName,
+        'sticker_tag': stickerTag,
+        'caption': caption,
+        'image_url': imageUrl,
+      }));
+      final response = await request.close();
+      await response.drain<void>();
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Translate chat messages via `translate-message` Edge Function (Global Teleport 2.0)
+  Future<String?> translateMessage({
+    required String text,
+    required String sourceLang,
+    required String targetLang,
+  }) async {
+    if (text.trim().isEmpty || sourceLang == targetLang) return text;
+    try {
+      final uri = Uri.parse('$baseUrl/functions/v1/translate-message');
+      final request = await _httpClient.postUrl(uri);
+      request.headers.set('apikey', anonKey);
+      request.headers.set('Authorization', 'Bearer ${accessToken ?? anonKey}');
+      request.headers.set('Content-Type', 'application/json');
+      request.write(jsonEncode({
+        'text': text,
+        'sourceLang': sourceLang,
+        'targetLang': targetLang,
+      }));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(body);
+        if (decoded is Map && decoded['translatedText'] != null) {
+          return decoded['translatedText'].toString();
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Trigger Date Shield / WearOS Companion SOS Alert
+  Future<bool> triggerSosAlert({
+    required String source,
+    int heartRateBpm = 0,
+    double lat = 37.7749,
+    double lng = -122.4194,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/rest/v1/sos_alerts');
+      final request = await _httpClient.postUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      request.write(jsonEncode({
+        'user_id': currentUserId ?? 'user_me',
+        'source': source,
+        'heart_rate_bpm': heartRateBpm,
+        'lat': lat,
+        'lng': lng,
+        'status': 'active',
+      }));
+      final response = await request.close();
+      await response.drain<void>();
       return response.statusCode >= 200 && response.statusCode < 300;
     } catch (_) {
       return false;

@@ -330,8 +330,11 @@ class StorageService {
     await _prefs?.setStringList('user_profile_photos', encoded);
   }
 
-  Future<void> clearUserPhotos() async =>
-      await _prefs?.remove('user_profile_photos');
+  Future<void> clearUserPhotos() async {
+    await _prefs?.remove('user_profile_photos');
+    await _prefs?.remove('user_intro_video_url');
+    await _prefs?.remove('user_voice_prompt_url');
+  }
 
   String? getPrimaryUserPhoto() {
     for (final p in getUserPhotos()) {
@@ -339,6 +342,65 @@ class StorageService {
     }
     return null;
   }
+
+  String? getIntroVideoUrl() => _prefs?.getString('user_intro_video_url');
+  Future<void> saveIntroVideoUrl(String? url) async {
+    if (url == null || url.isEmpty) {
+      await _prefs?.remove('user_intro_video_url');
+    } else {
+      await _prefs?.setString('user_intro_video_url', url);
+    }
+  }
+
+  String? getVoicePromptUrl() => _prefs?.getString('user_voice_prompt_url');
+  Future<void> saveVoicePromptUrl(String? url) async {
+    if (url == null || url.isEmpty) {
+      await _prefs?.remove('user_voice_prompt_url');
+    } else {
+      await _prefs?.setString('user_voice_prompt_url', url);
+    }
+  }
+
+  // --- Global Teleport 2.0 Chat Translation ---
+  String getPreferredTranslationLanguage() =>
+      _prefs?.getString('preferred_translation_lang') ?? 'en';
+  Future<void> savePreferredTranslationLanguage(String code) async =>
+      await _prefs?.setString('preferred_translation_lang', code);
+
+  bool isAutoTranslateEnabled() =>
+      _prefs?.getBool('auto_translate_enabled') ?? false;
+  Future<void> setAutoTranslateEnabled(bool enabled) async =>
+      await _prefs?.setBool('auto_translate_enabled', enabled);
+
+  // --- Co-Op Guild Raids & Venue Bookings ---
+  List<String> getJoinedGuildRaids() =>
+      _prefs?.getStringList('joined_guild_raids') ?? <String>[];
+  Future<void> saveJoinedGuildRaids(List<String> ids) async =>
+      await _prefs?.setStringList('joined_guild_raids', ids);
+
+  List<Map<String, dynamic>> getVenueBookings() {
+    final raw = _prefs?.getString('user_venue_bookings');
+    if (raw == null || raw.isEmpty) return [];
+    try {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      return decoded.whereType<Map<String, dynamic>>().toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> saveVenueBooking(Map<String, dynamic> booking) async {
+    final list = getVenueBookings();
+    list.insert(0, booking);
+    final capped = list.length > 20 ? list.sublist(0, 20) : list;
+    await _prefs?.setString('user_venue_bookings', jsonEncode(capped));
+  }
+
+  // --- WearOS Watch Companion SOS Sync ---
+  bool isWearOsShieldSyncEnabled() =>
+      _prefs?.getBool('wear_os_shield_sync') ?? true;
+  Future<void> setWearOsShieldSyncEnabled(bool enabled) async =>
+      await _prefs?.setBool('wear_os_shield_sync', enabled);
 
   // --- Phase 8–12 Persisted State (Subclass, Guilds, Streak Shield, Match Perks) ---
   bool isStreakShieldArmed() =>

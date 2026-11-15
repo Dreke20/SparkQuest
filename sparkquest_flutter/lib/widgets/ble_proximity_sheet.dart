@@ -1,11 +1,14 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 import '../services/quest_progression_service.dart';
 import '../services/realtime_chat_service.dart';
 import '../services/storage_service.dart';
+import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 
 class BleProximitySheet extends StatefulWidget {
@@ -23,6 +26,9 @@ class _BleProximitySheetState extends State<BleProximitySheet>
   bool _isBroadcasting = true;
   String _currentVibe = 'Looking for Coffee ☕';
   int _rangeMeters = 50;
+  List<_BleExplorer> _liveBeacons = const <_BleExplorer>[];
+  int _hardwareBleCount = 0;
+  StreamSubscription<List<ScanResult>>? _bleScanSub;
 
   final List<String> _vibes = [
     'Looking for Coffee ☕',
@@ -35,7 +41,7 @@ class _BleProximitySheetState extends State<BleProximitySheet>
 
   List<_BleExplorer> get _explorers {
     if (!StorageService.instance.isReviewerAccount()) {
-      return const <_BleExplorer>[];
+      return _liveBeacons;
     }
     return [
       _BleExplorer(
@@ -104,11 +110,69 @@ class _BleProximitySheetState extends State<BleProximitySheet>
     _isBroadcasting = StorageService.instance.isBleBeaconBroadcasting();
     _currentVibe = StorageService.instance.getBleBeaconVibe();
     _rangeMeters = StorageService.instance.getBleBeaconRangeMeters();
+    _syncBleAndCloudBeacons();
+  }
+
+  Future<void> _syncBleAndCloudBeacons() async {
+    final uid = SupabaseService.instance.currentUserId ?? 'user_me';
+    final ephemeralId = 'sq_${uid.hashCode.abs() % 99999}_${DateTime.now().hour}';
+    await SupabaseService.instance.upsertBleBeacon(
+      ephemeralId: ephemeralId,
+      vibe: _currentVibe,
+      rangeMeters: _rangeMeters,
+      isActive: _isBroadcasting,
+    );
+
+    if (_isBroadcasting) {
+      try {
+        if (await FlutterBluePlus.isSupported) {
+          final adapterState = await FlutterBluePlus.adapterState.first.timeout(
+            const Duration(seconds: 2),
+          );
+          if (adapterState == BluetoothAdapterState.on) {
+            _bleScanSub?.cancel();
+            _bleScanSub = FlutterBluePlus.scanResults.listen((results) {
+              if (mounted) {
+                setState(() => _hardwareBleCount = results.length);
+              }
+            });
+            await FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
+          }
+        }
+      } catch (_) {
+        // Non-BLE or missing permissions handled cleanly via cloud beacons
+      }
+    }
+
+    final rows = await SupabaseService.instance.fetchNearbyBleBeacons();
+    if (!mounted) return;
+    final parsed = <_BleExplorer>[];
+    for (int i = 0; i < rows.length; i++) {
+      final row = rows[i];
+      final avatar = (row['avatar_url'] ?? '').toString().trim();
+      parsed.add(
+        _BleExplorer(
+          id: row['user_id']?.toString() ?? 'ble_$i',
+          name: row['display_name']?.toString() ?? 'Nearby Explorer',
+          rpgClass: row['rpg_class']?.toString() ?? 'Explorer',
+          level: 1,
+          avatar: avatar.startsWith('http') ? avatar : 'assets/images/logo.jpg',
+          distanceMeters: ((i + 1) * 12).clamp(5, _rangeMeters),
+          rssi: -45 - (i * 8),
+          vibe: row['vibe']?.toString() ?? 'Exploring Nearby',
+          synergy: 88,
+          bonusText: 'BLE ${_hardwareBleCount > 0 ? "Hardware + " : ""}Cloud Ephemeral Beacon',
+          relativeAngle: (i * 1.4 + 0.6) % (2 * pi),
+        ),
+      );
+    }
+    setState(() => _liveBeacons = parsed);
   }
 
   @override
   void dispose() {
     _sweepController.dispose();
+    _bleScanSub?.cancel();
     super.dispose();
   }
 
@@ -116,12 +180,14 @@ class _BleProximitySheetState extends State<BleProximitySheet>
     HapticFeedback.selectionClick();
     setState(() => _isBroadcasting = value);
     await StorageService.instance.setBleBeaconBroadcasting(value);
+    _syncBleAndCloudBeacons();
   }
 
   void _selectVibe(String vibe) async {
     HapticFeedback.selectionClick();
     setState(() => _currentVibe = vibe);
     await StorageService.instance.saveBleBeaconVibe(vibe);
+    _syncBleAndCloudBeacons();
   }
 
   void _sendWave(_BleExplorer explorer) {
@@ -637,12 +703,25 @@ class _BleProximitySheetState extends State<BleProximitySheet>
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.asset(
-                      explorer.avatar,
-                      width: 48,
-                      height: 48,
-                      fit: BoxFit.cover,
-                    ),
+                    child: explorer.avatar.startsWith('http')
+                        ? Image.network(
+                            explorer.avatar,
+                            width: 48,
+                            height: 48,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => Image.asset(
+                              'assets/images/logo.jpg',
+                              width: 48,
+                              height: 48,
+                              fit: BoxFit.cover,
+                            ),
+                          )
+                        : Image.asset(
+                            explorer.avatar,
+                            width: 48,
+                            height: 48,
+                            fit: BoxFit.cover,
+                          ),
                   ),
                   Positioned(
                     bottom: 0,

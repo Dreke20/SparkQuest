@@ -19,19 +19,41 @@ class MainActivity : FlutterActivity() {
         private const val CHANNEL_SPARKS = "sparkquest_sparks"
         private const val CHANNEL_MESSAGES = "sparkquest_messages"
         private const val CHANNEL_CALLS = "sparkquest_calls"
+        private const val CHANNEL_SAFETY = "sparkquest_safety"
+        private const val WEAR_SHIELD_NOTIF_ID = 4199
+        private const val EXTRA_WEAR_SOS = "wear_sos_triggered"
     }
 
+    private var notificationChannel: MethodChannel? = null
+    private var pendingWearSos: Boolean = false
     private var pendingPermissionResult: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         ensureNotificationChannels()
+        pendingWearSos = intent?.getBooleanExtra(EXTRA_WEAR_SOS, false) == true
 
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL_NAME)
-            .setMethodCallHandler { call, result ->
+        val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL_NAME)
+        notificationChannel = channel
+        channel.setMethodCallHandler { call, result ->
                 when (call.method) {
                     "requestPermission" -> handleRequestPermission(result)
                     "hasPermission" -> result.success(hasNotificationPermission())
+                    "armWearOsShield" -> {
+                        val venue = call.argument<String>("venue") ?: "Active Date"
+                        armWearOsShieldNotification(venue)
+                        result.success(true)
+                    }
+                    "disarmWearOsShield" -> {
+                        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                        manager.cancel(WEAR_SHIELD_NOTIF_ID)
+                        result.success(true)
+                    }
+                    "consumePendingWearSos" -> {
+                        val wasPending = pendingWearSos
+                        pendingWearSos = false
+                        result.success(wasPending)
+                    }
                     "showNotification" -> {
                         val id = call.argument<Int>("id") ?: (System.currentTimeMillis() % 100000).toInt()
                         val title = call.argument<String>("title") ?: "SparkQuest"
@@ -130,9 +152,69 @@ class MainActivity : FlutterActivity() {
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Incoming encrypted WebRTC video and voice date calls"
+            },
+            NotificationChannel(
+                CHANNEL_SAFETY,
+                "Date Shield & WearOS SOS",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "WearOS Watch companion panic trigger and Date Shield check-ins"
             }
         )
         channels.forEach { manager.createNotificationChannel(it) }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getBooleanExtra(EXTRA_WEAR_SOS, false)) {
+            pendingWearSos = false
+            notificationChannel?.invokeMethod("onWearSosTriggered", mapOf("source" to "wear_os_action"))
+        }
+    }
+
+    private fun armWearOsShieldNotification(venue: String) {
+        if (!hasNotificationPermission()) return
+        ensureNotificationChannels()
+
+        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        } else {
+            PendingIntent.FLAG_UPDATE_CURRENT
+        }
+
+        val sosIntent = Intent(this, MainActivity::class.java).apply {
+            this.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(EXTRA_WEAR_SOS, true)
+        }
+        val sosPending = PendingIntent.getActivity(this, 4201, sosIntent, flags)
+
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            android.app.Notification.Builder(this, CHANNEL_SAFETY)
+        } else {
+            @Suppress("DEPRECATION")
+            android.app.Notification.Builder(this)
+        }
+
+        val sosAction = android.app.Notification.Action.Builder(
+            android.graphics.drawable.Icon.createWithResource(this, applicationInfo.icon),
+            "SOS Panic",
+            sosPending
+        ).build()
+
+        val wearableExtender = android.app.Notification.WearableExtender()
+            .addAction(sosAction)
+
+        builder
+            .setSmallIcon(applicationInfo.icon)
+            .setContentTitle("Date Shield & WearOS Armed")
+            .setContentText("Checking in at $venue • Swipe on watch for 1-Tap SOS")
+            .setOngoing(true)
+            .addAction(sosAction)
+            .extend(wearableExtender)
+
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.notify(WEAR_SHIELD_NOTIF_ID, builder.build())
     }
 
     private fun showLocalNotification(id: Int, title: String, body: String, requestedChannel: String) {

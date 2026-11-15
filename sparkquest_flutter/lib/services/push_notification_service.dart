@@ -35,6 +35,7 @@ class PushNotificationService extends ChangeNotifier {
   void Function(String title, String body)? onInAppBanner;
   void Function(Map<String, dynamic> callSignal)? onIncomingCall;
   void Function(Map<String, dynamic> callSignal)? onCallSignalUpdate;
+  VoidCallback? onWearSosTriggered;
 
   bool get isRealtimeConnected => _realtimeConnected;
   bool get isInitialized => _initialized;
@@ -48,6 +49,17 @@ class PushNotificationService extends ChangeNotifier {
         WidgetsBinding.instance.runtimeType.toString().contains('Test');
     if (isTestBinding) return;
 
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'onWearSosTriggered') {
+        await SupabaseService.instance.triggerSosAlert(source: 'wear_os_action');
+        onWearSosTriggered?.call();
+        onInAppBanner?.call(
+          '🆘 WearOS SOS Triggered',
+          'Emergency Date Shield SOS alert synced to Supabase.',
+        );
+      }
+    });
+
     SupabaseService.instance.onAuthSessionUpdated = () {
       unawaited(syncBackgroundSession());
     };
@@ -55,8 +67,31 @@ class PushNotificationService extends ChangeNotifier {
     if (requestAndroidPermission) {
       await requestPermission();
     }
+    final pendingSos = await _channel.invokeMethod<bool>('consumePendingWearSos');
+    if (pendingSos == true) {
+      await SupabaseService.instance.triggerSosAlert(source: 'wear_os_action');
+      onWearSosTriggered?.call();
+    }
     await syncBackgroundSession();
     unawaited(connectRealtime());
+  }
+
+  /// Arms persistent Android notification with WearOS 1-Tap SOS watch action
+  Future<void> armWearOsShield(String venue) async {
+    try {
+      await _channel.invokeMethod<bool>('armWearOsShield', {'venue': venue});
+    } on MissingPluginException {
+      // Non-Android / unit tests
+    } catch (_) {}
+  }
+
+  /// Disarms persistent WearOS Date Shield notification
+  Future<void> disarmWearOsShield() async {
+    try {
+      await _channel.invokeMethod<bool>('disarmWearOsShield');
+    } on MissingPluginException {
+      // Non-Android / unit tests
+    } catch (_) {}
   }
 
   /// Syncs session credentials & alert toggles to Android `NotificationSyncJobService`

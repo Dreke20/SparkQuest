@@ -109,7 +109,7 @@ class CrashReportingService {
         'build_mode': kReleaseMode
             ? 'release'
             : (kProfileMode ? 'profile' : 'debug'),
-        'app_version': '2.1.0+17',
+        'app_version': '2.2.0+18',
         'synced': false,
         if (context != null && context.isNotEmpty) 'context': context,
       };

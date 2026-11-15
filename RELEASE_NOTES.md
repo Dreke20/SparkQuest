@@ -8,7 +8,8 @@ This document maintains the version history, short release notes, and future roa
 
 | Version | Build | Release Date | Channel | Status | Key Highlights |
 | :--- | :--- | :--- | :--- | :---: | :--- |
-| **v2.1.0** | `+17` | Nov 2026 | Production / Closed Beta | 🟢 **Live** | Real Gallery/Camera Profile & Story Photo Upload (`image_picker` -> Supabase Storage), Removed Mock `alex.png` / `'Alex, 27'` Defaults on Sign-Up/Login, Editable Profile Name & Age Sync |
+| **v2.2.0** | `+18` | Nov 2026 | Production / Closed Beta | 🟢 **Live** | Android Roadmap Complete: Weekend Co-Op Guild Raids, In-App AR Moments, Hardware BLE + Ephemeral Cloud Beacons, Live WebRTC Audio Lounge Rooms, 3s Profile Video Loops, Real Mic Voice Sparks, Venue Meetup Bookings, Global Teleport 2.0 Live Chat Translation & WearOS Watch SOS Bridge |
+| **v2.1.0** | `+17` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Real Gallery/Camera Profile & Story Photo Upload (`image_picker` -> Supabase Storage), Removed Mock `alex.png` / `'Alex, 27'` Defaults on Sign-Up/Login, Editable Profile Name & Age Sync |
 | **v2.1.0** | `+16` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Zero Fake/Mock Data Audit: Purged Supabase Seed Rows, Live XP Leaderboard, Real Email/Phone Auth (Removed Mock Google/OTP Fallbacks), Reviewer-Only Demo Guards & Honest Offline Errors |
 | **v2.1.0** | `+15` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Android Background Notification Sync (`NotificationSyncJobService`), Deployed Supabase Edge Functions (`turn-credentials`, `push-notify`), WebRTC ICE Restart & Multi-STUN/TURN Support, Real 2-Account Cloud Profile Auto-Upsert & Match Persistence |
 | **v2.0.0** | `+14` | Nov 2026 | Production / Closed Beta | ⚪ Archive | Version bump for Google Play Console (`versionCode=14`) carrying Native Push Alerts, Live WebRTC Calls, Marketing Site & Crash Telemetry |
