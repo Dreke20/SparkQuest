@@ -50,19 +50,20 @@ class CoopQuestsEngine {
 
   // Render Co-Op Quest bar inside Chat Detail
   renderCoopBar(match) {
-    const state = this.getMatchQuestState(match.id);
+    const safeMatchId = String(match.id ?? '').replace(/[^a-zA-Z0-9_-]/g, '');
+    const state = this.getMatchQuestState(safeMatchId);
     return `
-      <div class="coop-quest-banner" id="coop-banner-${match.id}">
+      <div class="coop-quest-banner" id="coop-banner-${safeMatchId}">
         <div class="coop-header">
           <div class="coop-title-row">
             <span class="coop-badge"><i class="fas fa-handshake-angle"></i> Co-Op Quest</span>
             <span class="coop-subtitle">Earn shared embers together!</span>
           </div>
-          <button class="coop-toggle-btn" onclick="window.CoopQuests.toggleDrawer('${match.id}')">
-            <i class="fas fa-chevron-down" id="coop-chevron-${match.id}"></i>
+          <button class="coop-toggle-btn" onclick="window.CoopQuests.toggleDrawer('${safeMatchId}')">
+            <i class="fas fa-chevron-down" id="coop-chevron-${safeMatchId}"></i>
           </button>
         </div>
-        <div class="coop-milestones-row" id="coop-drawer-${match.id}">
+        <div class="coop-milestones-row" id="coop-drawer-${safeMatchId}">
           ${this.milestones.map(m => {
             const current = state[m.id]?.current || 0;
             const claimed = state[m.id]?.claimed || false;
@@ -75,7 +76,7 @@ class CoopQuestsEngine {
                   <div class="milestone-progress">${current}/${m.target}</div>
                 </div>
                 ${completed && !claimed ? `
-                  <button class="milestone-claim-btn" onclick="window.CoopQuests.claimMilestone('${match.id}', '${m.id}', ${m.reward})">
+                  <button class="milestone-claim-btn" onclick="window.CoopQuests.claimMilestone('${safeMatchId}', '${m.id}', ${m.reward})">
                     +${m.reward}🔥
                   </button>
                 ` : claimed ? `

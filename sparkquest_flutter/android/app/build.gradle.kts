@@ -73,8 +73,12 @@ android {
                     "KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD environment variables."
                 )
             }
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }

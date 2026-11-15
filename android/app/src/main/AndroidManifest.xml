@@ -28,11 +28,10 @@
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
         </provider>
 
-        <!-- Google AdMob Application ID (Required to prevent native crash on launch) -->
-        <!-- Replace ca-app-pub-3940256099942544~3347511713 with your production AdMob App ID -->
+        <!-- Google AdMob Application ID (Production) -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713" />
+            android:value="ca-app-pub-3920607003046699~4123861578" />
     </application>
 
     <!-- Permissions -->

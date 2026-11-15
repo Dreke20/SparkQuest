@@ -379,19 +379,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _LivenessVerificationModal(
-        onVerified: () async {
-          setState(() => _isVerified = true);
-          await SupabaseService.instance.updateProfileField(
-            'is_verified',
-            true,
+        onVerified: (selfieUrl) async {
+          final verified = await SupabaseService.instance.completeLivenessSelfie(
+            selfieUrl,
           );
-          if (mounted) {
+          if (!mounted) return;
+          if (verified) {
+            setState(() => _isVerified = true);
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text(
                   '🎉 Face Verified & Synced to your Profile!',
                 ),
                 backgroundColor: AppTheme.emeraldGreen,
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Sign in and upload a live selfie to complete verification.',
+                ),
+                backgroundColor: AppTheme.sparkCoral,
               ),
             );
           }
@@ -1897,7 +1906,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(width: 8),
                         const Text(
-                          'SparkQuest v2.2.0+18',
+                          'SparkQuest v2.2.1+19',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 13,
@@ -1929,7 +1938,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Build: 2026.11 • SparkQuest v2.2.0+18',
+                  'Build: 2026.11 • SparkQuest v2.2.1+19',
                   style: TextStyle(color: AppTheme.textDim, fontSize: 10.5),
                 ),
                 const SizedBox(height: 10),
@@ -3220,7 +3229,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 }
 
 class _LivenessVerificationModal extends StatefulWidget {
-  final VoidCallback onVerified;
+  final Future<void> Function(String selfieUrl) onVerified;
 
   const _LivenessVerificationModal({required this.onVerified});
 
@@ -3233,6 +3242,7 @@ class _LivenessVerificationModalState
     extends State<_LivenessVerificationModal> {
   int _step = 0;
   bool _flash = false;
+  bool _submitting = false;
 
   final List<Map<String, String>> _challenges = [
     {
@@ -3246,27 +3256,49 @@ class _LivenessVerificationModalState
       'icon': '👈',
     },
     {
-      'title': 'Smile for the Camera',
-      'instruction': 'Give a natural smile to confirm 3D depth.',
-      'icon': '😊',
+      'title': 'Capture Live Selfie',
+      'instruction': 'Take a front camera selfie to verify your identity.',
+      'icon': '📸',
     },
   ];
 
-  void _nextStep() {
+  Future<void> _nextStep() async {
+    if (_submitting) return;
     if (_step < _challenges.length - 1) {
       setState(() => _step++);
-    } else {
-      // Trigger flash and complete
-      setState(() => _flash = true);
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (mounted) setState(() => _flash = false);
-        Future.delayed(const Duration(milliseconds: 200), () {
-          if (mounted) {
-            Navigator.pop(context);
-            widget.onVerified();
-          }
+      return;
+    }
+
+    setState(() {
+      _submitting = true;
+      _flash = true;
+    });
+    try {
+      final picker = ImagePicker();
+      final selfie = await picker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.front,
+        imageQuality: 75,
+        maxWidth: 1080,
+      );
+      if (selfie == null) {
+        if (mounted) setState(() { _flash = false; _submitting = false; });
+        return;
+      }
+      final uploadedUrl = await SupabaseService.instance.uploadMediaFile(
+        bucket: 'avatars',
+        filePath: selfie.path,
+      );
+      if (!mounted) return;
+      Navigator.pop(context);
+      await widget.onVerified(uploadedUrl);
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _flash = false;
+          _submitting = false;
         });
-      });
+      }
     }
   }
 

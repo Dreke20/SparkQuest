@@ -121,7 +121,22 @@ class IAPService extends ChangeNotifier {
         debugPrint('Purchase error: ${purchaseDetails.error}');
       } else if (purchaseDetails.status == PurchaseStatus.purchased ||
           purchaseDetails.status == PurchaseStatus.restored) {
-        await _deliverProduct(purchaseDetails.productID);
+        final token = purchaseDetails.verificationData.serverVerificationData;
+        final verification = await SupabaseService.instance.verifyAndGrantPurchase(
+          productId: purchaseDetails.productID,
+          purchaseToken: token,
+        );
+        if (verification != null && verification['verified'] == true) {
+          await _deliverVerifiedProduct(
+            purchaseDetails.productID,
+            serverEmbers: (verification['embers'] as num?)?.toInt(),
+            serverIsVip: verification['is_vip'] as bool?,
+          );
+        } else {
+          debugPrint(
+            'Purchase verification rejected or pending server check for ${purchaseDetails.productID}',
+          );
+        }
       }
 
       if (purchaseDetails.pendingCompletePurchase) {
@@ -131,21 +146,20 @@ class IAPService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _deliverProduct(String productId) async {
-    if (productId == 'sparkquest_gold_monthly') {
+  Future<void> _deliverVerifiedProduct(
+    String productId, {
+    int? serverEmbers,
+    bool? serverIsVip,
+  }) async {
+    if (serverIsVip == true || productId == 'sparkquest_gold_monthly') {
       isGoldVip = true;
       await StorageService.instance.setGoldVip(true);
-      try {
-        await SupabaseService.instance.updateProfileField('is_vip', true);
-      } catch (_) {}
-    } else if (productId == 'sparkquest_spotlight_boost') {
-      await StorageService.instance.addInventoryItem('spotlight', 1);
-    } else if (productId == 'sparkquest_embers_100') {
-      await StorageService.instance.addEmbers(150);
-    } else if (productId == 'sparkquest_embers_500') {
-      await StorageService.instance.addEmbers(600);
-    } else if (productId == 'sparkquest_embers_1500') {
-      await StorageService.instance.addEmbers(1500);
+    }
+    if (serverEmbers != null) {
+      await StorageService.instance.saveEmbers(serverEmbers);
+    }
+    if (productId == 'sparkquest_spotlight_boost' ||
+        productId == 'sparkquest_embers_1500') {
       await StorageService.instance.addInventoryItem('spotlight', 1);
     }
   }

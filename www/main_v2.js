@@ -28,6 +28,24 @@ import confetti from 'canvas-confetti';
 // Expose services to window for global access
 window.DB_Service = DB_Service;
 window.AuthService = AuthService;
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function sanitizeMediaUrl(url) {
+  const s = String(url ?? '').trim();
+  if (!s) return '';
+  if (s.startsWith('https://') || s.startsWith('http://') || s.startsWith('img/') || s.startsWith('assets/') || s.startsWith('data:image/')) {
+    return s;
+  }
+  return '';
+}
 window.MapService = MapService;
 window.WebRTCService = WebRTCService;
 window.AdMobService = AdMobService;
@@ -711,26 +729,36 @@ function buildSwipeDeck() {
     var verifiedBadge = p.verified ? '<span class="card-verified">✓</span>' : '';
     var tagsHtml = '';
     for (var t = 0; t < p.tags.length; t++) {
-      tagsHtml += '<span class="card-tag">' + p.tags[t] + '</span>';
+      tagsHtml += '<span class="card-tag">' + escapeHtml(p.tags[t]) + '</span>';
     }
     var mediaHtml = '';
-    if (p.video) {
-        mediaHtml = '<video class="card-video" src="' + p.video + '" autoplay loop muted playsinline style="position: absolute; width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-lg); pointer-events: none;"></video>';
+    var safeName = escapeHtml(p.name);
+    var safeVideo = sanitizeMediaUrl(p.video);
+    var safePhoto = sanitizeMediaUrl(p.photo);
+    var storyKey = String(p.name || '').toLowerCase();
+    if (safeVideo) {
+        mediaHtml = '<video class="card-video" src="' + escapeHtml(safeVideo) + '" autoplay loop muted playsinline style="position: absolute; width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-lg); pointer-events: none;"></video>';
     } else {
-        mediaHtml = '<img class="card-photo" src="' + p.photo + '" alt="' + p.name + '" onclick="event.stopPropagation(); openStory(\'' + p.name.toLowerCase() + '\')" style="pointer-events: auto; cursor: pointer;" />';
+        mediaHtml = '<img class="card-photo" src="' + escapeHtml(safePhoto) + '" alt="' + safeName + '" data-story-trigger="1" style="pointer-events: auto; cursor: pointer;" />';
     }
 
     card.innerHTML = neonRing + mediaHtml +
       '<div class="card-gradient"></div>' +
-      '<div class="card-compatibility ' + p.compat + '">' + p.compatPct + '% Match</div>' +
+      '<div class="card-compatibility ' + escapeHtml(p.compat) + '">' + escapeHtml(p.compatPct) + '% Match</div>' +
       '<div class="card-info">' +
-      '<div class="card-name" onclick="event.stopPropagation(); openStory(\'' + p.name.toLowerCase() + '\')" style="pointer-events: auto; cursor: pointer;">' + p.name + ', <span class="age">' + p.age + '</span> ' + verifiedBadge + '</div>' +
-      '<div class="card-detail">' + p.detail + '</div>' +
+      '<div class="card-name" data-story-trigger="1" style="pointer-events: auto; cursor: pointer;">' + safeName + ', <span class="age">' + escapeHtml(p.age) + '</span> ' + verifiedBadge + '</div>' +
+      '<div class="card-detail">' + escapeHtml(p.detail) + '</div>' +
       '<div class="card-tags">' + tagsHtml + '</div>' +
       voiceHtml +
       '</div>' +
       '<div class="swipe-label like">LIKE</div>' +
       '<div class="swipe-label nope">NOPE</div>';
+    card.querySelectorAll('[data-story-trigger]').forEach(function (el) {
+      el.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        openStory(storyKey);
+      });
+    });
     setupSwipeGestures(card);
     deck.appendChild(card);
   }
@@ -1225,7 +1253,11 @@ function openChatDetail(user) {
   var data = chatData[user];
   if (!data) return;
   var avatarEl = document.getElementById('chat-detail-avatar');
-  avatarEl.innerHTML = '<img src="' + data.photo + '" alt="' + data.name + '" />';
+  avatarEl.innerHTML = '';
+  var avatarImg = document.createElement('img');
+  avatarImg.src = sanitizeMediaUrl(data.photo);
+  avatarImg.alt = String(data.name || '');
+  avatarEl.appendChild(avatarImg);
   document.getElementById('chat-detail-name').textContent = data.name;
   var messages = document.getElementById('chat-messages');
   
@@ -1244,7 +1276,7 @@ function openChatDetail(user) {
   var mutualTags = userProfile && userProfile.tags && userProfile.tags.length > 0 
     ? userProfile.tags.slice(0, 2).join(' & ') 
     : 'Coffee, Music & Spontaneous Vibes';
-  var whyMatchedHtml = '<div id="why-matched-pill" class="why-matched-pill">⚡ Spark Insight: High shared affinity for ' + mutualTags + '!</div>';
+  var whyMatchedHtml = '<div id="why-matched-pill" class="why-matched-pill">⚡ Spark Insight: High shared affinity for ' + escapeHtml(mutualTags) + '!</div>';
 
   function updateChatFlowIndicator(msgCount) {
     var flowEl = document.getElementById('chat-flow-status');
@@ -1272,19 +1304,57 @@ function openChatDetail(user) {
 
   function renderMsg(m) {
     var bubble = document.createElement('div');
-    bubble.className = 'chat-bubble ' + m.type;
+    bubble.className = 'chat-bubble ' + (m.type === 'received' ? 'received' : 'sent');
 
     if (m.video) {
       bubble.className += ' chat-bubble-video';
-      bubble.innerHTML = `
-        <div class="play-overlay" onclick="this.style.display='none'; this.nextElementSibling.play()"><div class="play-icon">▶</div></div>
-        <video src="${m.videoSrc}" poster="${data.photo}" style="width:100%"></video>
-        <span class="bubble-time">${m.time}</span>
-      `;
+      var playOverlay = document.createElement('div');
+      playOverlay.className = 'play-overlay';
+      var playIcon = document.createElement('div');
+      playIcon.className = 'play-icon';
+      playIcon.textContent = '▶';
+      playOverlay.appendChild(playIcon);
+
+      var vid = document.createElement('video');
+      vid.src = sanitizeMediaUrl(m.videoSrc);
+      vid.poster = sanitizeMediaUrl(data.photo);
+      vid.style.width = '100%';
+      playOverlay.addEventListener('click', function () {
+        playOverlay.style.display = 'none';
+        vid.play();
+      });
+
+      var vt = document.createElement('span');
+      vt.className = 'bubble-time';
+      vt.textContent = m.time || '';
+      bubble.appendChild(playOverlay);
+      bubble.appendChild(vid);
+      bubble.appendChild(vt);
     } else if (m.media) {
-      bubble.innerHTML = '<div class="chat-bubble-media" onclick="openLightbox(\'' + m.media + '\')"><img src="' + m.media + '" alt="Shared" /></div><span class="bubble-time">' + m.time + '</span>';
+      var safeMedia = sanitizeMediaUrl(m.media);
+      var mediaWrap = document.createElement('div');
+      mediaWrap.className = 'chat-bubble-media';
+      mediaWrap.addEventListener('click', function () {
+        if (safeMedia) openLightbox(safeMedia);
+      });
+      var img = document.createElement('img');
+      img.src = safeMedia;
+      img.alt = 'Shared';
+      mediaWrap.appendChild(img);
+
+      var mt = document.createElement('span');
+      mt.className = 'bubble-time';
+      mt.textContent = m.time || '';
+      bubble.appendChild(mediaWrap);
+      bubble.appendChild(mt);
     } else {
-      bubble.innerHTML = '<p>' + m.text + '</p><span class="bubble-time">' + m.time + '</span>';
+      var p = document.createElement('p');
+      p.textContent = m.text || '';
+      var tt = document.createElement('span');
+      tt.className = 'bubble-time';
+      tt.textContent = m.time || '';
+      bubble.appendChild(p);
+      bubble.appendChild(tt);
     }
     messages.appendChild(bubble);
   }
@@ -1366,7 +1436,13 @@ function sendMessage() {
       bubble.className = 'chat-bubble sent';
       var now = new Date();
       var timeStr = (now.getHours() % 12 || 12) + ':' + String(now.getMinutes()).padStart(2, '0');
-      bubble.innerHTML = '<p>' + text + '</p><span class="bubble-time">' + timeStr + '</span>';
+      var sentP = document.createElement('p');
+      sentP.textContent = text;
+      var sentTime = document.createElement('span');
+      sentTime.className = 'bubble-time';
+      sentTime.textContent = timeStr;
+      bubble.appendChild(sentP);
+      bubble.appendChild(sentTime);
       messages.appendChild(bubble);
       messages.scrollTop = messages.scrollHeight;
 
@@ -1395,7 +1471,17 @@ function sendMessage() {
               messages.removeChild(loading);
               var rb = document.createElement('div');
               rb.className = 'chat-bubble received';
-              rb.innerHTML = '<h4 style="color:#00E5FF; margin:0 0 5px 0;">🐉 AI Quest Master</h4><p>' + reply + '</p><span class="bubble-time">Just now</span>';
+              var titleEl = document.createElement('h4');
+              titleEl.style.cssText = 'color:#00E5FF; margin:0 0 5px 0;';
+              titleEl.textContent = '🐉 AI Quest Master';
+              var replyEl = document.createElement('p');
+              replyEl.textContent = reply || '';
+              var timeEl = document.createElement('span');
+              timeEl.className = 'bubble-time';
+              timeEl.textContent = 'Just now';
+              rb.appendChild(titleEl);
+              rb.appendChild(replyEl);
+              rb.appendChild(timeEl);
               rb.style.border = "1px solid #00E5FF";
               messages.appendChild(rb);
               messages.scrollTop = messages.scrollHeight;
@@ -1445,12 +1531,23 @@ function attachMedia() {
       const now = new Date();
       const timeStr = (now.getHours() % 12 || 12) + ':' + String(now.getMinutes()).padStart(2, '0');
 
-      bubble.innerHTML = `
-        <div class="chat-bubble-media ai-scanning" onclick="window.openLightbox('${dataUrl}')" style="cursor:pointer;">
-          <img src="${dataUrl}" alt="Photo" style="max-height:220px; width:auto; border-radius:12px; object-fit:cover;" />
-        </div>
-        <span class="bubble-time">${timeStr}</span>
-      `;
+      const safeDataUrl = sanitizeMediaUrl(dataUrl);
+      const mediaBox = document.createElement('div');
+      mediaBox.className = 'chat-bubble-media ai-scanning';
+      mediaBox.style.cursor = 'pointer';
+      mediaBox.addEventListener('click', function () {
+        if (safeDataUrl) openLightbox(safeDataUrl);
+      });
+      const imgEl = document.createElement('img');
+      imgEl.src = safeDataUrl;
+      imgEl.alt = 'Photo';
+      imgEl.style.cssText = 'max-height:220px; width:auto; border-radius:12px; object-fit:cover;';
+      mediaBox.appendChild(imgEl);
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'bubble-time';
+      timeSpan.textContent = timeStr;
+      bubble.appendChild(mediaBox);
+      bubble.appendChild(timeSpan);
       messages.appendChild(bubble);
       messages.scrollTop = messages.scrollHeight;
 
@@ -1589,7 +1686,9 @@ function hideAiStarters() { document.getElementById('ai-starters').style.display
 
 // Lightbox
 function openLightbox(src) {
-  document.getElementById('lightbox-img').src = src;
+  var safeSrc = sanitizeMediaUrl(src);
+  if (!safeSrc) return;
+  document.getElementById('lightbox-img').src = safeSrc;
   document.getElementById('media-lightbox').style.display = 'flex';
 }
 function closeLightbox() { document.getElementById('media-lightbox').style.display = 'none'; }
@@ -1601,7 +1700,12 @@ function openStory(userId) {
   currentStory = data;
   currentSlideIndex = 0;
   document.getElementById('story-viewer').style.display = 'flex';
-  document.getElementById('story-user-avatar').innerHTML = '<img src="' + data.photo + '" alt="' + data.name + '" />';
+  var storyAvatar = document.getElementById('story-user-avatar');
+  storyAvatar.innerHTML = '';
+  var sImg = document.createElement('img');
+  sImg.src = sanitizeMediaUrl(data.photo);
+  sImg.alt = String(data.name || '');
+  storyAvatar.appendChild(sImg);
   document.getElementById('story-user-name').textContent = data.name;
   var bars = document.getElementById('story-progress-bars');
   bars.innerHTML = '';
@@ -1625,9 +1729,18 @@ function showSlide(idx) {
   content.style.background = slide.bg || '#000';
 
   if (slide.type === 'video') {
-    content.innerHTML = '<video src="' + slide.videoSrc + '" autoplay loop playsinline style="width:100%; height:100%; object-fit:cover;"></video>';
+    var vidEl = document.createElement('video');
+    vidEl.src = sanitizeMediaUrl(slide.videoSrc);
+    vidEl.autoplay = true;
+    vidEl.loop = true;
+    vidEl.playsInline = true;
+    vidEl.style.cssText = 'width:100%; height:100%; object-fit:cover;';
+    content.appendChild(vidEl);
   } else {
-    content.innerHTML = '<div class="story-text-overlay">' + slide.text + '</div>';
+    var txtEl = document.createElement('div');
+    txtEl.className = 'story-text-overlay';
+    txtEl.textContent = slide.text || '';
+    content.appendChild(txtEl);
   }
 
   var fills = document.querySelectorAll('#story-progress-bars .story-progress-fill');
@@ -1935,7 +2048,6 @@ window.activatePanicButton = activatePanicButton;
 window.cancelPanic = cancelPanic;
 window.toggleIntimateMode = toggleIntimateMode;
 window.verifyAge = verifyAge;
-window.simulateIdUpload = simulateIdUpload;
 
 function openReportModal(user) {
   document.getElementById('report-modal').dataset.user = user;
@@ -2049,18 +2161,22 @@ function toggleIntimateMode() {
 }
 
 function verifyAge() {
+  var ageInput = document.getElementById('age-verify-input');
   var check = document.getElementById('age-confirm-check');
-  if (!check.checked) { showToast('Please confirm your age', 'info'); return; }
+  var parsedAge = Number(ageInput ? ageInput.value : 0);
+  if (!Number.isFinite(parsedAge) || parsedAge < 18 || parsedAge > 120) {
+    showToast('Please enter a valid age (18 or older).', 'spend');
+    return;
+  }
+  if (!check || !check.checked) {
+    showToast('Please confirm you are 18 or older.', 'spend');
+    return;
+  }
   ageVerified = true;
   closeModal('age-gate-modal');
   isIntimateMode = true;
   document.getElementById('intimate-toggle').checked = true;
-  showToast('Age verified! Intimate Mode enabled 🔥', 'info');
-}
-
-function simulateIdUpload() {
-  document.getElementById('id-upload-text').textContent = '✓ ID uploaded — reviewing...';
-  setTimeout(function () { document.getElementById('id-upload-text').textContent = '✓ ID verified!'; }, 1500);
+  showToast('Age confirmed (' + Math.floor(parsedAge) + '+). Intimate Mode enabled 🔥', 'info');
 }
 
 // Rewarded Ad
@@ -2112,8 +2228,20 @@ function showToast(text, type, amount) {
   var toast = document.createElement('div');
   toast.className = 'toast ' + type;
   var icons = { earn: '✦', spend: '✦', info: 'ℹ️' };
-  var amountHtml = amount ? '<span class="toast-amount">' + amount + '</span>' : '';
-  toast.innerHTML = '<span class="toast-icon">' + (icons[type] || 'ℹ️') + '</span><span class="toast-text">' + text + '</span>' + amountHtml;
+  var iconSpan = document.createElement('span');
+  iconSpan.className = 'toast-icon';
+  iconSpan.textContent = icons[type] || 'ℹ️';
+  var textSpan = document.createElement('span');
+  textSpan.className = 'toast-text';
+  textSpan.textContent = String(text ?? '');
+  toast.appendChild(iconSpan);
+  toast.appendChild(textSpan);
+  if (amount) {
+    var amtSpan = document.createElement('span');
+    amtSpan.className = 'toast-amount';
+    amtSpan.textContent = String(amount);
+    toast.appendChild(amtSpan);
+  }
   container.appendChild(toast);
   setTimeout(function () { toast.remove(); }, 3500);
 }
@@ -2324,9 +2452,9 @@ function renderActivityFeed() {
     item.className = 'invite-activity-item';
     item.innerHTML =
       '<span class="invite-activity-icon">👤</span>' +
-      '<span class="invite-activity-text"><strong>' + entry.name + '</strong> joined SparkQuest</span>' +
-      '<span class="invite-activity-amount">+' + entry.reward + ' ✦</span>' +
-      '<span class="invite-activity-time">' + entry.time + '</span>';
+      '<span class="invite-activity-text"><strong>' + escapeHtml(entry.name) + '</strong> joined SparkQuest</span>' +
+      '<span class="invite-activity-amount">+' + escapeHtml(entry.reward) + ' ✦</span>' +
+      '<span class="invite-activity-time">' + escapeHtml(entry.time) + '</span>';
     list.appendChild(item);
   }
 }
@@ -2370,14 +2498,6 @@ window.saveApiKey = saveApiKey;
 
 function openSettingsModal() {
   document.getElementById('settings-modal').style.display = 'flex';
-  var savedKey = localStorage.getItem('spark_gemini_api_key');
-
-  // Also check in-memory key if available
-  if (!savedKey && window.SparkAI && window.SparkAI.apiKey) {
-    savedKey = window.SparkAI.apiKey;
-  }
-
-  if (savedKey) document.getElementById('settings-api-key').value = savedKey;
 }
 function openCalendarModal() { document.getElementById('calendar-modal').style.display = 'flex'; }
 
@@ -2412,16 +2532,16 @@ function renderCalendar() {
       card.className = 'date-card';
       card.innerHTML = `
         <div class="date-date">
-          <span class="date-day">${d.day}</span>
-          <span class="date-month">${d.month}</span>
+          <span class="date-day">${escapeHtml(d.day)}</span>
+          <span class="date-month">${escapeHtml(d.month)}</span>
         </div>
         <div class="date-info">
-          <span class="date-title">${d.title}</span>
-          <span class="date-time">${d.time} · ${d.type === 'video' ? 'In-App Video' : 'In Person'}</span>
+          <span class="date-title">${escapeHtml(d.title)}</span>
+          <span class="date-time">${escapeHtml(d.time)} · ${d.type === 'video' ? 'In-App Video' : 'In Person'}</span>
         </div>
         <div class="date-actions">
-          <button class="btn-xs primary" onclick="joinDate(${d.id})">Join</button>
-          <button class="btn-xs secondary" onclick="rescheduleDate(${d.id})">Reschedule</button>
+          <button class="btn-xs primary" onclick="joinDate(${Number(d.id) || 0})">Join</button>
+          <button class="btn-xs secondary" onclick="rescheduleDate(${Number(d.id) || 0})">Reschedule</button>
         </div>
       `;
       list.insertBefore(card, empty);
@@ -2430,18 +2550,8 @@ function renderCalendar() {
 }
 
 function saveApiKey() {
-  var apiKey = document.getElementById('settings-api-key').value.trim();
-  if (apiKey) {
-    if (window.SparkAI) {
-      window.SparkAI.init(apiKey);
-      localStorage.setItem('spark_gemini_api_key', apiKey);
-      showToast('API Key saved! AI features enabled 🤖', 'info');
-    }
-  } else {
-    localStorage.removeItem('spark_gemini_api_key');
-    if (window.SparkAI) window.SparkAI.init(null);
-    showToast('API Key removed.', 'info');
-  }
+  localStorage.removeItem('spark_ai_api_key');
+  localStorage.removeItem('spark_gemini_api_key');
   closeModal('settings-modal');
 }
 
@@ -2563,7 +2673,17 @@ window.startAiQuest = function() {
          if (!messages) return;
          var rb = document.createElement('div');
          rb.className = 'chat-bubble received';
-         rb.innerHTML = '<h4 style="color:#00E5FF; margin:0 0 5px 0;">🐉 AI Quest Master</h4><p>' + reply + '</p><span class="bubble-time">Just now</span>';
+         var qTitle = document.createElement('h4');
+         qTitle.style.cssText = 'color:#00E5FF; margin:0 0 5px 0;';
+         qTitle.textContent = '🐉 AI Quest Master';
+         var qBody = document.createElement('p');
+         qBody.textContent = reply || '';
+         var qTime = document.createElement('span');
+         qTime.className = 'bubble-time';
+         qTime.textContent = 'Just now';
+         rb.appendChild(qTitle);
+         rb.appendChild(qBody);
+         rb.appendChild(qTime);
          rb.style.border = "1px solid #00E5FF";
          messages.appendChild(rb);
          messages.scrollTop = messages.scrollHeight;
@@ -2880,9 +3000,8 @@ function initNetworkMonitor() {
     if (window.VIPCosmetics) window.VIPCosmetics.init();
 
     console.log('[DEBUG] Step 3: AI Init');
-    const userApiKey = localStorage.getItem('spark_ai_api_key') || localStorage.getItem('spark_gemini_api_key');
-    if (userApiKey && window.SparkAI) {
-      window.SparkAI.init(userApiKey);
+    if (window.SparkAI) {
+      window.SparkAI.init();
     }
 
     console.log('[DEBUG] Step 4: Auth Service Init');
@@ -2918,14 +3037,7 @@ function initNetworkMonitor() {
     }
 
 
-    // Listen for settings changes
-    const settingsInput = document.getElementById('settings-api-key');
-    if (settingsInput) {
-      if (window.SparkAI && window.SparkAI.apiKey) {
-        settingsInput.value = window.SparkAI.apiKey;
-      }
-      settingsInput.addEventListener('change', saveApiKey);
-    }
+    // Auth and push setup complete
 
 
   } catch (err) {

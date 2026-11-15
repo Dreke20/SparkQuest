@@ -25,21 +25,33 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Fetch Event — NETWORK FIRST, fall back to cache
+// Fetch Event — NETWORK FIRST for safe same-origin static GET assets only
 self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
+
+  const reqUrl = new URL(event.request.url);
+  if (
+    reqUrl.origin !== self.location.origin ||
+    reqUrl.pathname.startsWith('/rest/') ||
+    reqUrl.pathname.startsWith('/auth/') ||
+    reqUrl.pathname.startsWith('/storage/') ||
+    reqUrl.pathname.startsWith('/functions/')
+  ) {
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Update cache with fresh response
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, clone);
-        });
+        if (response && response.ok && response.type === 'basic') {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, clone);
+          });
+        }
         return response;
       })
-      .catch(() => {
-        return caches.match(event.request);
-      })
+      .catch(() => caches.match(event.request))
   );
 });
 

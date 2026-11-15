@@ -55,19 +55,21 @@ class VoiceSparksEngine {
   // Renders the Voice Spark pill directly inside a profile card
   renderVoiceSparkPill(profile) {
     const voiceInfo = this.getProfilePrompt(profile.id);
-    const safePrompt = voiceInfo.prompt.replace(/"/g, '&quot;');
+    const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const safeId = String(profile.id ?? '').replace(/[^a-zA-Z0-9_-]/g, '');
+    const safePrompt = esc(voiceInfo.prompt);
     const isPlaying = this.currentPlayingId === profile.id;
 
     return `
-      <div class="voice-spark-pill" id="voice-spark-${profile.id}" onclick="event.stopPropagation(); window.VoiceSparks.togglePlayback('${profile.id}')">
-        <button class="voice-play-btn" id="voice-btn-${profile.id}" aria-label="Play Voice Spark">
+      <div class="voice-spark-pill" id="voice-spark-${safeId}" onclick="event.stopPropagation(); window.VoiceSparks.togglePlayback('${safeId}')">
+        <button class="voice-play-btn" id="voice-btn-${safeId}" aria-label="Play Voice Spark">
           <i class="fas ${isPlaying ? 'fa-pause' : 'fa-play'}"></i>
         </button>
         <div class="voice-spark-details">
           <span class="voice-prompt-title">${safePrompt}</span>
           <div class="voice-waveform-container">
-            <canvas class="voice-waveform-canvas" id="waveform-${profile.id}" width="160" height="24"></canvas>
-            <span class="voice-duration" id="duration-${profile.id}">${isPlaying ? 'Playing...' : voiceInfo.duration + 's'}</span>
+            <canvas class="voice-waveform-canvas" id="waveform-${safeId}" width="160" height="24"></canvas>
+            <span class="voice-duration" id="duration-${safeId}">${isPlaying ? 'Playing...' : Number(voiceInfo.duration || 10) + 's'}</span>
           </div>
         </div>
       </div>

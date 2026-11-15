@@ -1770,17 +1770,15 @@
     <div class="modal-card age-gate-modal">
       <div class="age-gate-icon">🔞</div>
       <h2>Age Verification Required</h2>
-      <p>Intimate Mode requires age verification. Please confirm you are 18 or older.</p>
+      <p>SparkQuest Intimate Mode is strictly for adults 18+. Enter your verified age to continue.</p>
+      <div class="setting-item" style="margin-bottom:10px;">
+        <label for="age-verify-input">Your Age (18+)</label>
+        <input type="number" id="age-verify-input" min="18" max="120" placeholder="Enter age (18+)" class="settings-input" />
+      </div>
       <div class="age-gate-check">
-        <label><input type="checkbox" id="age-confirm-check" /> I confirm I am 18 years of age or older</label>
+        <label><input type="checkbox" id="age-confirm-check" /> I confirm I am at least 18 years old</label>
       </div>
-      <div class="age-gate-id">
-        <div class="id-upload-zone" onclick="simulateIdUpload()">
-          <span>🪪</span>
-          <span id="id-upload-text">Tap to upload government ID</span>
-        </div>
-      </div>
-      <button class="btn-primary" onclick="verifyAge()">Verify & Enable</button>
+      <button class="btn-primary" onclick="verifyAge()">Confirm Age &amp; Continue</button>
     </div>
   </div>
 
@@ -1908,13 +1906,12 @@
     <div class="modal-card settings-modal">
       <div class="settings-header">
         <h2>Settings</h2>
-        <button class="modal-close-btn" onclick="saveApiKey(); closeModal('settings-modal')">Done</button>
+        <button class="modal-close-btn" onclick="closeModal('settings-modal')">Done</button>
       </div>
 
       <div class="setting-item">
-        <label>Spark AI Wingman (Optional Key Override)</label>
-        <input type="password" id="settings-api-key" placeholder="Enter Groq / AI Key (Optional)" class="settings-input" />
-        <p class="settings-hint">Leave blank to use default cloud wingman.</p>
+        <label>Spark AI Wingman</label>
+        <p class="settings-hint">Powered securely via SparkQuest Cloud Edge Functions.</p>
       </div>
       <div class="setting-item">
         <label>Discovery Radius</label>

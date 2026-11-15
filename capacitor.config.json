@@ -8,7 +8,7 @@
       "presentationOptions": ["badge", "sound", "alert"]
     },
     "AdMob": {
-      "initializeForTesting": true
+      "initializeForTesting": false
     },
     "SplashScreen": {
       "launchShowDuration": 2500,

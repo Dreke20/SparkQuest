@@ -188,8 +188,22 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       _embers = (_embers + effectiveDelta).clamp(0, 999999);
     });
     StorageService.instance.saveEmbers(_embers);
-    if (SupabaseService.instance.isSignedIn) {
-      SupabaseService.instance.updateProfileField('embers', _embers);
+    if (SupabaseService.instance.isSignedIn && effectiveDelta != 0) {
+      Future<void>(() async {
+        final serverBalance = effectiveDelta > 0
+            ? await SupabaseService.instance.earnGameplayEmbers(
+                source: isRawPurchase ? 'rewarded_ad' : 'quest_claim',
+                amount: effectiveDelta.clamp(1, 25),
+              )
+            : await SupabaseService.instance.spendUserEmbers(
+                cost: -effectiveDelta,
+                item: 'in_app_spend',
+              );
+        if (serverBalance != null && mounted) {
+          setState(() => _embers = serverBalance);
+          StorageService.instance.saveEmbers(serverBalance);
+        }
+      });
     }
   }
 

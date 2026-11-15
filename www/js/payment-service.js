@@ -111,23 +111,32 @@ const PaymentService = {
         console.log(`[PaymentService] Initiating purchase for: ${product.name} (${product.sku})`);
 
         if (Capacitor.isNativePlatform()) {
-            // Native In-App Billing Flow (Google Play Billing)
             try {
-                // If native billing plugin (e.g. Capacitor In-App Purchases) is available:
-                if (window.Capacitor?.Plugins?.InAppPurchases) {
-                    const result = await window.Capacitor.Plugins.InAppPurchases.purchase({
-                        productId: product.sku
-                    });
-                    if (result && result.receipt) {
-                        await this.grantProduct(product);
-                        return { status: 'success', receipt: result.receipt };
+                if (!window.Capacitor?.Plugins?.InAppPurchases) {
+                    if (typeof window.showToast === 'function') {
+                        window.showToast('Google Play Billing unavailable in this build. Use the Flutter Android release.', 'spend');
                     }
-                } else {
-                    console.log('[PaymentService] Native Google Play Billing plugin ready for deployment.');
-                    // Gracefully simulate successful sandbox test purchase in staging builds
-                    await this.grantProduct(product);
-                    return { status: 'success' };
+                    return { error: 'In-app billing plugin unavailable' };
                 }
+
+                const result = await window.Capacitor.Plugins.InAppPurchases.purchase({
+                    productId: product.sku
+                });
+                const purchaseToken = result?.purchaseToken || result?.receipt;
+                if (!purchaseToken) {
+                    return { error: 'Missing purchase receipt token' };
+                }
+
+                const verified = await this.verifyServerPurchase(product.sku, purchaseToken);
+                if (!verified?.verified) {
+                    if (typeof window.showToast === 'function') {
+                        window.showToast('Purchase verification failed. No charge applied.', 'spend');
+                    }
+                    return { error: verified?.error || 'Receipt verification failed' };
+                }
+
+                await this.syncVerifiedEntitlements(verified, product);
+                return { status: 'success', receipt: purchaseToken, verified: true };
             } catch (err) {
                 console.error('[PaymentService] Native purchase failed:', err);
                 if (typeof window.showToast === 'function') {
@@ -136,63 +145,45 @@ const PaymentService = {
                 return { error: err.message };
             }
         } else {
-            // Web / Sandbox Test Purchase Flow
-            return new Promise((resolve) => {
-                if (typeof window.showToast === 'function') {
-                    window.showToast(`Processing ${product.name}...`, 'info');
-                }
-
-                setTimeout(async () => {
-                    await this.grantProduct(product);
-                    resolve({ status: 'success' });
-                }, 1000);
-            });
+            if (typeof window.showToast === 'function') {
+                window.showToast('In-app purchases require Google Play Billing on Android.', 'info');
+            }
+            return { error: 'Store billing unavailable on web preview' };
         }
     },
 
-    // Grant purchased perks to user profile in Supabase
-    async grantProduct(product) {
-        const uid = window.currentUserUid;
+    async verifyServerPurchase(productId, purchaseToken) {
+        try {
+            const client = window.supabaseClient || window.DB_Service?.getClient?.();
+            if (!client) return { verified: false, error: 'Authentication required' };
+            const { data: { session } } = await client.auth.getSession();
+            if (!session?.access_token) return { verified: false, error: 'Sign-in required' };
 
-        if (product.category === 'embers') {
-            if (uid && window.DB_Service) {
-                await window.DB_Service.updateEmbers(uid, product.amount);
-            } else {
-                window.embers = (window.embers || 0) + product.amount;
-                if (typeof window.updateEmberDisplay === 'function') window.updateEmberDisplay();
-            }
-            if (typeof window.showToast === 'function') {
-                window.showToast(`Purchased ${product.name}! 🔥`, 'earn', `+${product.amount}`);
-            }
-        } else if (product.category === 'boost') {
-            if (uid && window.DB_Service) {
-                await window.DB_Service.updateInventory(uid, 'boost', product.amount);
-            } else {
-                window.inventory.boost = (window.inventory.boost || 0) + product.amount;
-            }
-            if (typeof window.showToast === 'function') {
-                window.showToast(`Unlocked ${product.amount} Profile Boosts! ⚡`, 'earn');
-            }
-        } else if (product.category === 'superlike') {
-            if (uid && window.DB_Service) {
-                await window.DB_Service.updateInventory(uid, 'superlike', product.amount);
-            } else {
-                window.inventory.superlike = (window.inventory.superlike || 0) + product.amount;
-            }
-            if (typeof window.showToast === 'function') {
-                window.showToast(`Unlocked ${product.amount} Super-Likes! ⭐`, 'earn');
-            }
-        } else if (product.category === 'subscription') {
-            if (uid && window.DB_Service) {
-                await window.DB_Service.setPremiumStatus(uid, true, product.tier);
-            } else {
-                window.isPremium = true;
-            }
-            if (typeof window.showToast === 'function') {
-                window.showToast(`Welcome to Spark ${product.name}! 👑`, 'earn');
-            }
+            const { data, error } = await client.functions.invoke('verify-purchase', {
+                body: {
+                    product_id: productId,
+                    purchase_token: purchaseToken,
+                    platform: 'android'
+                }
+            });
+            if (error) return { verified: false, error: error.message };
+            return data || { verified: false };
+        } catch (err) {
+            return { verified: false, error: err?.message || 'Verification failed' };
         }
+    },
 
+    async syncVerifiedEntitlements(verifiedData, product) {
+        if (typeof verifiedData?.embers === 'number') {
+            window.embers = verifiedData.embers;
+            if (typeof window.updateEmberDisplay === 'function') window.updateEmberDisplay();
+        }
+        if (verifiedData?.is_vip) {
+            window.isPremium = true;
+        }
+        if (typeof window.showToast === 'function' && product) {
+            window.showToast(`Verified & unlocked ${product.name}!`, 'earn');
+        }
         if (typeof window.SoundService?.playReward === 'function') {
             window.SoundService.playReward();
         }

@@ -74,6 +74,20 @@ class ReleaseNotesDialog extends StatelessWidget {
                     _buildVersionCard(
                       badge: 'CURRENT RELEASE',
                       badgeColor: AppTheme.emeraldGreen,
+                      version: 'v2.2.1+19',
+                      date: 'November 2026',
+                      title: 'Security Hardening, Server Receipt Verification & Private Media',
+                      highlights: const [
+                        '🔒 Locked profile entitlements (embers, VIP, verified, XP) behind server-only triggers & RPCs; verified Play Billing purchases via Edge Function.',
+                        '🛡️ Restricted discovery queries to non-PII views (no emails/balances/exact GPS) and enforced private signed URLs for Voice Sparks & Stories.',
+                        '📸 Upgraded 3D Liveness verification to capture & upload a real front-camera selfie, and fixed full Google Play account + storage deletion.',
+                        '⚙️ Enabled Android R8 release minification & resource shrinking (`isMinifyEnabled = true`) with strict ProGuard rules.',
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    _buildVersionCard(
+                      badge: 'ARCHIVED',
+                      badgeColor: AppTheme.neonCyan,
                       version: 'v2.2.0+18',
                       date: 'November 2026',
                       title: 'Complete Android Roadmap: Raids, AR, BLE, Translation & WearOS SOS',

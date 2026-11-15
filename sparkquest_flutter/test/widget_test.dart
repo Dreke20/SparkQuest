@@ -468,7 +468,7 @@ void main() {
     expect(logs.length, 1);
     expect(logs.first['source'], 'unit_test');
     expect(logs.first['error'], contains('Simulated test exception'));
-    expect(logs.first['app_version'], '2.2.0+18');
+    expect(logs.first['app_version'], '2.2.1+19');
     expect(logs.first['synced'], isFalse);
 
     final fallbackWidget = CrashReportingService.buildErrorFallbackWidget(
@@ -592,5 +592,30 @@ void main() {
     );
     await tester.pump();
     expect(find.text('Continue with Google'), findsOneWidget);
+  });
+
+  test('Phase 24 (Security Hardening): Protected entitlements & unauthenticated upload guards', () async {
+    SharedPreferences.setMockInitialValues({});
+    await StorageService.instance.init();
+    await SupabaseService.instance.signOut();
+
+    // Protected server-managed fields must never be writable via updateProfileField
+    for (final field in ['embers', 'is_vip', 'is_verified', 'xp', 'level']) {
+      expect(SupabaseService.isProtectedEntitlementField(field), isTrue);
+      expect(await SupabaseService.instance.updateProfileField(field, 999999), isFalse);
+    }
+
+    // Unauthenticated users must not upload anonymous storage objects
+    final uploaded = await SupabaseService.instance.uploadMediaBytes(
+      bucket: 'avatars',
+      fileName: 'test.jpg',
+      bytes: [1, 2, 3],
+    );
+    expect(uploaded, isNull);
+
+    // Unauthenticated gameplay RPCs & guild raids must fail closed
+    expect(await SupabaseService.instance.earnGameplayEmbers(source: 'quest_claim', amount: 5), isNull);
+    expect(await SupabaseService.instance.spendUserEmbers(cost: 10), isNull);
+    expect(await SupabaseService.instance.joinGuildRaid(raidId: 'raid_1', nextProgress: 5), isFalse);
   });
 }

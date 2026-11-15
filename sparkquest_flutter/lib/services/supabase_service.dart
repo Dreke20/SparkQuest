@@ -437,11 +437,9 @@ class SupabaseService {
       final corePayload = <String, dynamic>{
         'user_id': uid,
         'name': name ?? StorageService.instance.getUserName(),
-        'age': age ?? StorageService.instance.getUserAge(),
+        'age': (age ?? StorageService.instance.getUserAge()).clamp(18, 120),
         'bio': bio ?? StorageService.instance.getUserBio(),
         'city': city ?? StorageService.instance.getTeleportCity(),
-        'embers': StorageService.instance.getEmbers(),
-        'is_vip': StorageService.instance.isGoldVip(),
         'selected_frame': StorageService.instance.getSelectedFrame(),
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       };
@@ -520,24 +518,135 @@ class SupabaseService {
   // PROFILE & DATA MUTATIONS
   // ==========================================
 
-  /// Update a profile attribute (e.g. is_vip, is_verified, embers)
+  static const Set<String> _protectedEntitlementFields = {
+    'embers',
+    'is_vip',
+    'is_verified',
+    'xp',
+    'level',
+  };
+
+  static bool isProtectedEntitlementField(String field) =>
+      _protectedEntitlementFields.contains(field);
+
+  /// Update a mutable profile attribute (rejects server-managed entitlement fields).
   Future<bool> updateProfileField(String field, dynamic value) async {
+    if (isProtectedEntitlementField(field)) return false;
+    final uid = currentUserId;
+    if (uid == null || uid.isEmpty || uid == 'user_me' || accessToken == null) {
+      return false;
+    }
     try {
-      final uri = Uri.parse('$baseUrl/rest/v1/profiles?user_id=eq.$currentUserId');
+      final uri = Uri.parse('$baseUrl/rest/v1/profiles?user_id=eq.$uid');
       final request = await _httpClient.patchUrl(uri);
       _headers.forEach((key, val) => request.headers.set(key, val));
       request.write(jsonEncode({field: value}));
       final response = await request.close();
+      await response.drain<void>();
       return response.statusCode >= 200 && response.statusCode < 300;
     } catch (_) {
       return false;
     }
   }
 
-  /// Fetch remote profiles
+  /// Award bounded gameplay Embers via server-side `earn_gameplay_embers` RPC.
+  Future<int?> earnGameplayEmbers({
+    required String source,
+    int amount = 5,
+  }) async {
+    final uid = currentUserId;
+    if (uid == null || uid == 'user_me' || accessToken == null) return null;
+    try {
+      final uri = Uri.parse('$baseUrl/rest/v1/rpc/earn_gameplay_embers');
+      final request = await _httpClient.postUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      request.write(jsonEncode({'p_source': source, 'p_amount': amount}));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decoded = jsonDecode(body);
+        if (decoded is Map && decoded['embers'] != null) {
+          return (decoded['embers'] as num).toInt();
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Spend user Embers atomically via server-side `spend_user_embers` RPC.
+  Future<int?> spendUserEmbers({required int cost, String item = ''}) async {
+    final uid = currentUserId;
+    if (uid == null || uid == 'user_me' || accessToken == null || cost <= 0) {
+      return null;
+    }
+    try {
+      final uri = Uri.parse('$baseUrl/rest/v1/rpc/spend_user_embers');
+      final request = await _httpClient.postUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      request.write(jsonEncode({'p_cost': cost, 'p_item': item}));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decoded = jsonDecode(body);
+        if (decoded is Map && decoded['embers'] != null) {
+          return (decoded['embers'] as num).toInt();
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Complete liveness selfie verification via server-side `complete_liveness_selfie` RPC.
+  Future<bool> completeLivenessSelfie(String selfieUrl) async {
+    final uid = currentUserId;
+    if (uid == null || uid == 'user_me' || accessToken == null) return false;
+    try {
+      final uri = Uri.parse('$baseUrl/rest/v1/rpc/complete_liveness_selfie');
+      final request = await _httpClient.postUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      request.write(jsonEncode({'p_selfie_url': selfieUrl}));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decoded = jsonDecode(body);
+        return decoded is Map && decoded['success'] == true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  /// Verify a store receipt server-side via the `verify-purchase` Edge Function.
+  Future<Map<String, dynamic>?> verifyAndGrantPurchase({
+    required String productId,
+    required String purchaseToken,
+    String platform = 'android',
+  }) async {
+    if (accessToken == null || accessToken!.isEmpty) return null;
+    try {
+      final uri = Uri.parse('$baseUrl/functions/v1/verify-purchase');
+      final request = await _httpClient.postUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      request.write(jsonEncode({
+        'product_id': productId,
+        'purchase_token': purchaseToken,
+        'platform': platform,
+      }));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decoded = jsonDecode(body);
+        if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Fetch safe discovery profiles from `public.discovery_profiles` view (no PII).
   Future<List<Map<String, dynamic>>> fetchProfiles() async {
     try {
-      final uri = Uri.parse('$baseUrl/rest/v1/profiles?select=*&order=created_at.desc');
+      final uri = Uri.parse(
+        '$baseUrl/rest/v1/discovery_profiles?select=*&order=updated_at.desc',
+      );
       final request = await _httpClient.getUrl(uri);
       _headers.forEach((key, val) => request.headers.set(key, val));
       final response = await request.close();
@@ -703,20 +812,33 @@ class SupabaseService {
     };
   }
 
-  /// Google Play / App Store Compliant Account Deletion via `delete_user_account` RPC
+  /// Google Play / App Store Compliant Account Deletion via Edge Function + RPC fallback
   Future<bool> deleteUserAccount() async {
+    var deleted = false;
     try {
-      final uri = Uri.parse('$baseUrl/rest/v1/rpc/delete_user_account');
-      final request = await _httpClient.postUrl(uri);
-      _headers.forEach((key, val) => request.headers.set(key, val));
-      request.write(jsonEncode({}));
-      final response = await request.close();
-      await signOut();
-      return response.statusCode >= 200 && response.statusCode < 300;
+      if (accessToken != null && accessToken!.isNotEmpty) {
+        final fnUri = Uri.parse('$baseUrl/functions/v1/delete-account');
+        final fnReq = await _httpClient.postUrl(fnUri);
+        _headers.forEach((key, val) => fnReq.headers.set(key, val));
+        fnReq.write(jsonEncode({}));
+        final fnResp = await fnReq.close();
+        await fnResp.drain<void>();
+        deleted = fnResp.statusCode >= 200 && fnResp.statusCode < 300;
+      }
+      if (!deleted) {
+        final uri = Uri.parse('$baseUrl/rest/v1/rpc/delete_user_account');
+        final request = await _httpClient.postUrl(uri);
+        _headers.forEach((key, val) => request.headers.set(key, val));
+        request.write(jsonEncode({}));
+        final response = await request.close();
+        await response.drain<void>();
+        deleted = response.statusCode >= 200 && response.statusCode < 300;
+      }
     } catch (_) {
-      await signOut();
-      return false;
+      deleted = false;
     }
+    await signOut();
+    return deleted;
   }
 
   /// Phase 3: Record Map Venue / Event Check-in (`map_checkins` table)
@@ -747,28 +869,70 @@ class SupabaseService {
   // ==========================================
 
   /// Upload raw bytes to a Supabase Storage bucket ('avatars', 'stories', 'voice-notes')
-  /// Returns the public CDN URL if successful, or null on failure.
+  /// Returns the public (avatars) or signed (stories/voice-notes) URL, or null on failure.
   Future<String?> uploadMediaBytes({
     required String bucket,
     required String fileName,
     required List<int> bytes,
     String contentType = 'image/jpeg',
   }) async {
+    final uid = currentUserId;
+    final token = accessToken;
+    if (uid == null || uid.isEmpty || uid == 'user_me' || token == null || token.isEmpty) {
+      return null;
+    }
     try {
-      final uid = currentUserId ?? 'user_me';
       final safeName = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
       final objectPath = '$uid/${DateTime.now().millisecondsSinceEpoch}_$safeName';
       final uri = Uri.parse('$baseUrl/storage/v1/object/$bucket/$objectPath');
       final request = await _httpClient.postUrl(uri);
       request.headers.set('apikey', anonKey);
-      request.headers.set('Authorization', 'Bearer ${accessToken ?? anonKey}');
+      request.headers.set('Authorization', 'Bearer $token');
       request.headers.set('Content-Type', contentType);
       request.headers.set('x-upsert', 'true');
       request.add(bytes);
       final response = await request.close();
       await response.drain<void>();
       if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (bucket == 'stories' || bucket == 'voice-notes') {
+          final signed = await createSignedStorageUrl(
+            bucket: bucket,
+            objectPath: objectPath,
+            expiresInSeconds: bucket == 'stories' ? 604800 : 2592000,
+          );
+          if (signed != null) return signed;
+        }
         return '$baseUrl/storage/v1/object/public/$bucket/$objectPath';
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Create a signed download URL for private buckets ('stories', 'voice-notes').
+  Future<String?> createSignedStorageUrl({
+    required String bucket,
+    required String objectPath,
+    int expiresInSeconds = 604800,
+  }) async {
+    final token = accessToken;
+    if (token == null || token.isEmpty) return null;
+    try {
+      final uri = Uri.parse('$baseUrl/storage/v1/object/sign/$bucket/$objectPath');
+      final request = await _httpClient.postUrl(uri);
+      request.headers.set('apikey', anonKey);
+      request.headers.set('Authorization', 'Bearer $token');
+      request.headers.set('Content-Type', 'application/json');
+      request.write(jsonEncode({'expiresIn': expiresInSeconds}));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decoded = jsonDecode(body);
+        final signedPath = decoded is Map ? (decoded['signedURL'] ?? '').toString() : '';
+        if (signedPath.isNotEmpty) {
+          return signedPath.startsWith('http')
+              ? signedPath
+              : '$baseUrl/storage/v1$signedPath';
+        }
       }
     } catch (_) {}
     return null;
@@ -1137,7 +1301,7 @@ class SupabaseService {
   Future<List<Map<String, dynamic>>> fetchLeaderboard({int limit = 5}) async {
     try {
       final uri = Uri.parse(
-        '$baseUrl/rest/v1/profiles?select=user_id,name,xp,avatar_url&order=xp.desc&limit=$limit',
+        '$baseUrl/rest/v1/discovery_profiles?select=user_id,name,xp,avatar_url&order=xp.desc&limit=$limit',
       );
       final request = await _httpClient.getUrl(uri);
       _headers.forEach((key, val) => request.headers.set(key, val));
@@ -1311,35 +1475,26 @@ class SupabaseService {
     return [];
   }
 
-  /// Join & contribute progress to a Co-Op Guild Raid
+  /// Join & contribute progress to a Co-Op Guild Raid atomically via server RPC
   Future<bool> joinGuildRaid({
     required String raidId,
     required int nextProgress,
   }) async {
-    final uid = currentUserId ?? 'user_me';
+    if (currentUserId == null || currentUserId == 'user_me' || accessToken == null) {
+      return false;
+    }
     try {
-      final memberUri = Uri.parse(
-        '$baseUrl/rest/v1/guild_raid_members?on_conflict=raid_id,user_id',
-      );
-      final mReq = await _httpClient.postUrl(memberUri);
-      _headers.forEach((key, val) => mReq.headers.set(key, val));
-      mReq.headers.set('Prefer', 'resolution=merge-duplicates,return=minimal');
-      mReq.write(jsonEncode({
-        'raid_id': raidId,
-        'user_id': uid,
-        'user_name': StorageService.instance.getUserName(),
-        'contribution': 1,
-      }));
-      final mResp = await mReq.close();
-      await mResp.drain<void>();
-
-      final raidUri = Uri.parse('$baseUrl/rest/v1/guild_raids?id=eq.${Uri.encodeComponent(raidId)}');
-      final rReq = await _httpClient.patchUrl(raidUri);
-      _headers.forEach((key, val) => rReq.headers.set(key, val));
-      rReq.write(jsonEncode({'current_progress': nextProgress}));
-      final rResp = await rReq.close();
-      await rResp.drain<void>();
-      return mResp.statusCode >= 200 && mResp.statusCode < 300;
+      final uri = Uri.parse('$baseUrl/rest/v1/rpc/join_guild_raid');
+      final req = await _httpClient.postUrl(uri);
+      _headers.forEach((key, val) => req.headers.set(key, val));
+      req.write(jsonEncode({'p_raid_id': raidId}));
+      final resp = await req.close();
+      final body = await resp.transform(utf8.decoder).join();
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        final decoded = jsonDecode(body);
+        return decoded is Map && decoded['success'] == true;
+      }
+      return false;
     } catch (_) {
       return false;
     }

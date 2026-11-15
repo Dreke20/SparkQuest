@@ -13,28 +13,19 @@ const DB_Service = {
                 .single();
 
             if (!userSnap) {
+                const parsedAge = Number(extraData.age);
+                if (!Number.isFinite(parsedAge) || parsedAge < 18) {
+                    throw new Error('Users must provide a valid age (18 or older).');
+                }
                 const defaultProfile = {
                     id: user.id,
-                    email: user.email || "anonymous",
+                    email: user.email || '',
                     display_name: extraData.name || (user.email ? user.email.split('@')[0] : 'Explorer'),
-                    age: extraData.age || 25,
+                    age: Math.floor(parsedAge),
                     bio: extraData.bio || 'On a quest for genuine sparks ✨',
-                    photo_url: extraData.photo || 'img/alex.png',
+                    photo_url: extraData.photo || '',
                     tags: extraData.tags || ['Gaming', 'Coffee', 'Adventure'],
-                    created_at: new Date().toISOString(),
-                    embers: 325,
-                    is_premium: false,
-                    premium_tier: 'free',
-                    is_verified: false,
-                    inventory: { boost: 2, superlike: 5 },
-                    quest_progress: {
-                        engage1: { current: 7, target: 10, claimed: false },
-                        engage2: { current: 1, target: 3, claimed: false },
-                        engage3: { current: 1, target: 1, claimed: true },
-                        engage4: { current: 0, target: 1, claimed: false },
-                        engage5: { current: 0, target: 1, claimed: false },
-                        engage6: { current: 0, target: 1, claimed: false }
-                    }
+                    created_at: new Date().toISOString()
                 };
 
                 const { data, error } = await supabase
@@ -187,52 +178,41 @@ const DB_Service = {
         }
     },
 
-    // Updates
-    async updateVerification(uid) {
-        if (!supabase || !uid) return false;
-        const { error } = await supabase
-            .from('users')
-            .update({ is_verified: true, updated_at: new Date().toISOString() })
-            .eq('id', uid);
-        return !error;
+    // Updates (privileged entitlement fields are server-controlled only)
+    async updateVerification(uid, selfieUrl) {
+        if (!supabase || !uid || !selfieUrl) return false;
+        const { data, error } = await supabase.rpc('complete_liveness_selfie', { p_selfie_url: selfieUrl });
+        return !error && Boolean(data?.success);
     },
 
-    async updateEmbers(uid, amount) {
-        if (!supabase || !uid) return;
+    async updateEmbers(uid, amount, source = 'quest_claim') {
+        if (!supabase || !uid) return null;
         try {
-            const { error } = await supabase.rpc('increment_embers', { user_id: uid, amt: amount });
-            if (error) {
-                // Fallback to direct update
-                const user = await this.getUserData(uid);
-                if (user) {
-                    const newEmbers = Math.max(0, (user.embers || 0) + amount);
-                    await supabase.from('users').update({ embers: newEmbers }).eq('id', uid);
-                }
+            if (amount > 0) {
+                const { data, error } = await supabase.rpc('earn_gameplay_embers', {
+                    p_source: source,
+                    p_amount: Math.min(25, Math.max(1, Math.floor(amount)))
+                });
+                return error ? null : data;
+            } else if (amount < 0) {
+                const { data, error } = await supabase.rpc('spend_user_embers', {
+                    p_cost: Math.abs(Math.floor(amount)),
+                    p_item: source
+                });
+                return error ? null : data;
             }
         } catch (e) {
             console.error('[DB_Service] Error updating embers:', e);
         }
+        return null;
     },
 
-    async updateInventory(uid, item, amount) {
-        if (!supabase || !uid) return;
-        const user = await this.getUserData(uid);
-        if (user && user.inventory) {
-            user.inventory[item] = Math.max(0, (user.inventory[item] || 0) + amount);
-            await supabase.from('users').update({ inventory: user.inventory }).eq('id', uid);
-        }
+    async updateInventory() {
+        return false;
     },
 
-    async setPremiumStatus(uid, isPremium, tier = 'gold') {
-        if (!supabase || !uid) return;
-        await supabase
-            .from('users')
-            .update({
-                is_premium: isPremium,
-                premium_tier: tier,
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', uid);
+    async setPremiumStatus() {
+        return false;
     },
 
     async updateQuest(uid, questId, progressData) {
@@ -343,6 +323,12 @@ const DB_Service = {
     async deleteAccount(uid) {
         if (!supabase || !uid) return false;
         try {
+            const { data: fnData, error: fnErr } = await supabase.functions.invoke('delete-account', { body: {} });
+            if (!fnErr && fnData?.deleted) {
+                await supabase.auth.signOut();
+                localStorage.clear();
+                return true;
+            }
             const { data, error } = await supabase.rpc('delete_user_account');
             if (!error && data) {
                 await supabase.auth.signOut();
@@ -350,18 +336,9 @@ const DB_Service = {
                 return true;
             }
         } catch (e) {
-            console.warn('[DB_Service] delete_user_account RPC error, trying direct deletion:', e);
-        }
-
-        try {
-            await supabase.from('users').delete().eq('id', uid);
-            await supabase.auth.signOut();
-            localStorage.clear();
-            return true;
-        } catch (e) {
             console.error('[DB_Service] Account deletion failed:', e);
-            return false;
         }
+        return false;
     },
 
     // Map & Media

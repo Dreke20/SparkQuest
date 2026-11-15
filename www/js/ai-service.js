@@ -1,62 +1,47 @@
 // Spark AI Service
-// Secure dual-mode architecture: Proxies through backend Supabase Edge Function in production
-// or supports developer-configured keys / rich local creative fallbacks.
+// Proxies AI wingman and image moderation exclusively through authenticated Supabase Edge Functions.
 
 const SparkAI = {
-    apiKey: localStorage.getItem('spark_ai_api_key') || null,
-    backendUrl: window.SPARK_CONFIG?.AI_BACKEND_URL || null,
-    groqApiUrl: "https://api.groq.com/openai/v1/chat/completions",
-    model: "llama3-8b-8192",
+    backendUrl: window.SPARK_CONFIG?.AI_BACKEND_URL || 'https://kqvjntbiagzywstijtsz.supabase.co/functions/v1/ai-wingman',
+    moderationUrl: window.SPARK_CONFIG?.MODERATION_BACKEND_URL || 'https://kqvjntbiagzywstijtsz.supabase.co/functions/v1/moderate-content',
 
-    init(key) {
-        if (!key) return false;
-        this.apiKey = key;
-        localStorage.setItem('spark_ai_api_key', key);
+    init() {
+        localStorage.removeItem('spark_ai_api_key');
+        localStorage.removeItem('spark_gemini_api_key');
         return true;
     },
 
+    async _authHeaders() {
+        const headers = { 'Content-Type': 'application/json' };
+        try {
+            const client = window.supabaseClient || window.DB_Service?.getClient?.();
+            if (client) {
+                const { data: { session } } = await client.auth.getSession();
+                if (session?.access_token) {
+                    headers['Authorization'] = `Bearer ${session.access_token}`;
+                }
+            }
+        } catch (_) {}
+        return headers;
+    },
+
     async callAI(messages) {
-        // 1. Try Backend Proxy / Supabase Edge Function first (Secure Production Path)
-        if (this.backendUrl) {
-            try {
-                const response = await fetch(this.backendUrl, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ messages })
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.content) return data.content;
-                }
-            } catch (err) {
-                console.warn("[SparkAI] Backend AI proxy unavailable, falling back:", err);
+        if (!this.backendUrl) return null;
+        try {
+            const headers = await this._authHeaders();
+            if (!headers['Authorization']) return null;
+            const response = await fetch(this.backendUrl, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ messages })
+            });
+            if (response.ok) {
+                const data = await response.json();
+                if (data.content) return data.content;
             }
+        } catch (err) {
+            console.warn('[SparkAI] Edge proxy unavailable:', err);
         }
-
-        // 2. Direct API call if a developer key was configured in Settings
-        if (this.apiKey) {
-            try {
-                const response = await fetch(this.groqApiUrl, {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${this.apiKey}`,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        model: this.model,
-                        messages: messages,
-                        temperature: 0.7,
-                    })
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    return data.choices?.[0]?.message?.content || null;
-                }
-            } catch (e) {
-                console.error("[SparkAI] Direct AI API Error:", e);
-            }
-        }
-
         return null;
     },
 
@@ -145,12 +130,29 @@ Write the next short, exciting narrative step (under 50 words) that pushes the s
         return narrativeSteps[Math.floor(Math.random() * narrativeSteps.length)];
     },
 
-    async analyzeImage(base64Image) {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                resolve({ safe: true, tags: ["adventurous", "verified", "stylish"], score: 0.94 });
-            }, 600);
-        });
+    async analyzeImage(imageUrlOrData) {
+        try {
+            const headers = await this._authHeaders();
+            if (!headers['Authorization']) {
+                return { safe: false, reason: 'Authentication required for image moderation' };
+            }
+            const response = await fetch(this.moderationUrl, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ imageUrl: imageUrlOrData })
+            });
+            if (!response.ok) {
+                return { safe: false, reason: 'Moderation check unavailable' };
+            }
+            const data = await response.json();
+            return {
+                safe: Boolean(data?.safe),
+                reason: data?.reason || null,
+                flagged: Array.isArray(data?.flaggedCategories) ? data.flaggedCategories : []
+            };
+        } catch (err) {
+            return { safe: false, reason: 'Moderation check failed' };
+        }
     }
 };
 

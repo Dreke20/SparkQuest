@@ -1,6 +1,8 @@
 # SparkQuest — Production Readiness & Store Submission Guide
 
-This document outlines the architecture, security hardening, and deployment procedures required to publish **SparkQuest** (`com.sparkquest.app`) to the Google Play Store and web environments.
+> **Shipping Target**: The production Google Play Android release is the native Flutter app in [`sparkquest_flutter/`](file:///c:/Users/dreke/OneDrive/Desktop/SparkQuest/SparkQuest-master/sparkquest_flutter/) (`com.sparkquest.sparkquest`, currently `v2.2.1+19`). The root [`www/`](file:///c:/Users/dreke/OneDrive/Desktop/SparkQuest/SparkQuest-master/www/) + [`android/`](file:///c:/Users/dreke/OneDrive/Desktop/SparkQuest/SparkQuest-master/android/) Capacitor directory is kept strictly as a legacy web prototype archive and is NOT shipped to Google Play.
+
+This document outlines the architecture, security hardening, and deployment procedures required to publish **SparkQuest** (`com.sparkquest.sparkquest`) to the Google Play Store.
 
 ---
 
@@ -12,10 +14,14 @@ This document outlines the architecture, security hardening, and deployment proc
    - Implemented a secure dual-mode architecture: in production, calls can proxy through a backend endpoint (e.g. Supabase Edge Function), with optional developer keys and rich local creative fallbacks so the app never hangs offline.
 2. **Crash Prevention (AdMob App ID)**:
    - Added Google AdMob App ID `<meta-data>` in [AndroidManifest.xml](file:///c:/Users/dreke/OneDrive/Desktop/SparkQuest/SparkQuest-master/android/app/src/main/AndroidManifest.xml) to prevent fatal native launch crashes.
-3. **Android Permissions**:
-   - Declared location (`ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`), media (`CAMERA`, `RECORD_AUDIO`, `MODIFY_AUDIO_SETTINGS`), notification (`POST_NOTIFICATIONS`), vibration, and billing permissions in `AndroidManifest.xml`.
-4. **Capacitor Configuration**:
-   - Upgraded [capacitor.config.json](file:///c:/Users/dreke/OneDrive/Desktop/SparkQuest/SparkQuest-master/capacitor.config.json) with plugin declarations and security flags (`allowMixedContent: false`, `webContentsDebuggingEnabled: false`).
+3. **Android Permissions & Play Declarations**:
+   - **Camera (`CAMERA`)**: Used for live in-app profile photo capture, 24h Story capture, interactive WebRTC video calls, and 3D Anti-Catfish live selfie verification (`_LivenessVerificationModal`).
+   - **Microphone (`RECORD_AUDIO`, `MODIFY_AUDIO_SETTINGS`)**: Used for 15-second Voice Spark recordings, live WebRTC voice/video calls, and drop-in Audio Lounge rooms.
+   - **Precise & Approximate Location (`ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`)**: Used for local discovery distance calculation, live radar check-ins, and Safe Haven proximity alerts (server views apply 500m coordinate blur when displaying profiles to other users).
+   - **Bluetooth Low Energy (`BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `BLUETOOTH_ADVERTISE`)**: Optional proximity discovery for in-venue BLE beacons.
+   - **Notifications & Billing (`POST_NOTIFICATIONS`, `com.android.vending.BILLING`, `USE_BIOMETRIC`)**: Match push notifications, Google Play Billing IAPs (verified server-side via `verify-purchase` Edge Function), and local Date Shield biometric app lock.
+4. **R8 Release Minification & ProGuard**:
+   - `isMinifyEnabled = true` and `isShrinkResources = true` are enabled in [`sparkquest_flutter/android/app/build.gradle.kts`](file:///c:/Users/dreke/OneDrive/Desktop/SparkQuest/SparkQuest-master/sparkquest_flutter/android/app/build.gradle.kts) alongside [`proguard-rules.pro`](file:///c:/Users/dreke/OneDrive/Desktop/SparkQuest/SparkQuest-master/sparkquest_flutter/android/app/proguard-rules.pro). Note that push notifications require `sparkquest_flutter/android/app/google-services.json` at release build time (managed outside git or via CI secrets).
 
 ---
 

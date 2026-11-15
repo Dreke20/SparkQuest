@@ -62,6 +62,7 @@ class SparkyAIEngine {
   // Renders the Wingman prompt chips above chat input
   renderWingmanBar(match) {
     const suggestions = this.getWingmanSuggestions(match);
+    const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     return `
       <div class="sparky-wingman-tray" id="sparky-wingman-tray">
         <div class="sparky-tray-header">
@@ -70,8 +71,8 @@ class SparkyAIEngine {
         </div>
         <div class="sparky-suggestions-list">
           ${suggestions.map(s => `
-            <button class="sparky-suggestion-pill" onclick="window.SparkyAI.applySuggestion(${JSON.stringify(s)})">
-              ${s}
+            <button class="sparky-suggestion-pill" data-suggestion="${esc(s)}" onclick="window.SparkyAI.applySuggestion(this.dataset.suggestion)">
+              ${esc(s)}
             </button>
           `).join('')}
         </div>

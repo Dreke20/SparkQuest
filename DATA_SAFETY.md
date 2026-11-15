@@ -1,6 +1,6 @@
 # SparkQuest — Google Play Data Safety Form Guide
 
-Use the exact answers below when filling out the **Data safety** section in Google Play Console (`App content &rarr; Data safety`).
+> **Shipping Target**: `sparkquest_flutter/` (`com.sparkquest.sparkquest`, `v2.2.1+19`). Use the exact answers below when filling out the **Data safety** and **Permissions declarations** sections in Google Play Console (`App content → Data safety`).
 
 ---
 
@@ -51,13 +51,16 @@ Use the exact answers below when filling out the **Data safety** section in Goog
 
 ### 📷 Photos and Videos
 * **Photos**:
-  * **Collected?**: Yes | **Shared?**: No | **Purpose**: Profile pictures, 3D Anti-Catfish liveness selfie verification
+  * **Collected?**: Yes | **Shared?**: No | **Purpose**: Profile pictures, 24h Stories, and front-camera 3D Anti-Catfish liveness selfie verification (`CAMERA` permission)
 
 ### 🎙️ Audio Files
 * **Voice or sound recordings**:
   * **Collected?**: Yes
-  * **Processed ephemerally?**: **Yes** (Real-time WebRTC audio streams for drop-in Voice Lounges; streams are not saved to disk)
+  * **Processed ephemerally?**: Voice Lounges & calls are ephemeral real-time WebRTC audio streams; Voice Sparks & chat voice notes are stored in private authenticated-only Storage buckets (`RECORD_AUDIO` permission) and removed upon account deletion.
   * **Purposes**: App functionality
+
+### 🔐 Account & Media Deletion Guarantees
+* Account deletion via the in-app **Delete Account** action (or `https://dreke20.github.io/SparkQuest/delete-account.html`) invokes the `delete-account` Edge Function and `delete_user_account()` SQL routine, deleting profile rows, matches, messages, swipes, stories, voice lounge membership, call signals, uploaded `avatars`/`stories`/`voice-notes` files, and the `auth.users` account record.
 
 ### 💬 Messages
 * **Other in-app messages**:

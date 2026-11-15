@@ -12,7 +12,7 @@ export const AdMobService = {
         await AdMob.initialize({
           requestTrackingAuthorization: true,
           testingDevices: [],
-          initializeForTesting: true,
+          initializeForTesting: false,
         });
         this.isInitialized = true;
         console.log('[AdMobService] Initialized natively');
@@ -29,8 +29,11 @@ export const AdMobService = {
     if (Capacitor.isNativePlatform()) {
       try {
         const adId = Capacitor.getPlatform() === 'ios'
-          ? (window.SPARK_CONFIG?.ADMOB_IOS_REWARD_ID || 'ca-app-pub-3940256099942544/1712485313')
-          : (window.SPARK_CONFIG?.ADMOB_ANDROID_REWARD_ID || 'ca-app-pub-3940256099942544/5224354917');
+          ? (window.SPARK_CONFIG?.ADMOB_IOS_REWARD_ID || '')
+          : (window.SPARK_CONFIG?.ADMOB_ANDROID_REWARD_ID || 'ca-app-pub-3920607003046699/1262728662');
+        if (!adId) {
+          throw new Error('AdMob unit ID not configured for this platform');
+        }
 
         // Remove previous listener if exists to prevent duplicates
         if (this.rewardListener) {
