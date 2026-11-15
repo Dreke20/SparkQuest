@@ -467,7 +467,7 @@ void main() {
     expect(logs.length, 1);
     expect(logs.first['source'], 'unit_test');
     expect(logs.first['error'], contains('Simulated test exception'));
-    expect(logs.first['app_version'], '2.1.0+16');
+    expect(logs.first['app_version'], '2.1.0+17');
     expect(logs.first['synced'], isFalse);
 
     final fallbackWidget = CrashReportingService.buildErrorFallbackWidget(
@@ -514,5 +514,37 @@ void main() {
     expect(rtc.iceStateLabel, isNotEmpty);
     expect(rtc.hasTurnRelay, isFalse);
     rtc.dispose();
+  });
+
+  test('Phase 21: Profile photos stay empty for real users and persist uploaded URLs', () async {
+    SharedPreferences.setMockInitialValues({});
+    await StorageService.instance.init();
+
+    // Real user sees no mock asset photos on signup/login
+    await StorageService.instance.saveUserEmail('alice@example.com');
+    expect(StorageService.instance.getPrimaryUserPhoto(), isNull);
+    expect(StorageService.instance.getUserPhotos().every((p) => p == null), isTrue);
+
+    // Uploaded cloud URL persists and strips leaked assets for real users
+    const uploadedUrl = 'https://kqvjntbiagzywstijtsz.supabase.co/storage/v1/object/public/avatars/u1/selfie.jpg';
+    await StorageService.instance.saveUserPhotos([
+      uploadedUrl,
+      'assets/images/alex.png',
+      null,
+      null,
+      null,
+      null,
+    ]);
+    final loaded = StorageService.instance.getUserPhotos();
+    expect(loaded[0], uploadedUrl);
+    expect(loaded[1], isNull);
+    expect(StorageService.instance.getPrimaryUserPhoto(), uploadedUrl);
+
+    await SupabaseService.instance.signOut();
+    expect(StorageService.instance.getPrimaryUserPhoto(), isNull);
+
+    // Reviewer keeps demo assets
+    await StorageService.instance.saveUserEmail('reviewer@sparkquest.app');
+    expect(StorageService.instance.getPrimaryUserPhoto(), 'assets/images/alex.png');
   });
 }

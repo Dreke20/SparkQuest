@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../models/chat_model.dart';
 import '../theme/app_theme.dart';
@@ -163,25 +164,51 @@ class _MatchesChatScreenState extends State<MatchesChatScreen> {
               final caption = captionCtrl.text.trim();
               Navigator.pop(ctx);
               HapticFeedback.mediumImpact();
-              final cloudUrl = await SupabaseService.instance.uploadAssetToBucket(
-                bucket: 'stories',
-                assetPath: 'assets/images/alex.png',
-                customFileName: 'story_alex.png',
-              );
+              String? cloudUrl;
+              try {
+                final picked = await ImagePicker().pickImage(
+                  source: ImageSource.gallery,
+                  maxWidth: 1200,
+                  imageQuality: 85,
+                );
+                if (picked != null) {
+                  final bytes = await picked.readAsBytes();
+                  final ext = picked.name.contains('.')
+                      ? picked.name.split('.').last.toLowerCase()
+                      : 'jpg';
+                  cloudUrl = await SupabaseService.instance.uploadMediaBytes(
+                    bucket: 'stories',
+                    fileName: 'story_${DateTime.now().millisecondsSinceEpoch}.$ext',
+                    bytes: bytes,
+                    contentType: ext == 'png' ? 'image/png' : 'image/jpeg',
+                  );
+                }
+              } catch (_) {}
+              if (cloudUrl == null || cloudUrl.isEmpty) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Select a photo to upload your 24h Story.'),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
+                return;
+              }
+              final userAvatar =
+                  StorageService.instance.getPrimaryUserPhoto() ?? cloudUrl;
               await SupabaseService.instance.postStory(
-                userName: 'Alex Explorer',
-                avatarUrl: cloudUrl ?? 'assets/images/alex.png',
-                imageUrl: cloudUrl ?? 'assets/images/alex.png',
+                userName: StorageService.instance.getUserName(),
+                avatarUrl: userAvatar,
+                imageUrl: cloudUrl,
                 caption: caption.isEmpty ? 'Out on a Spark Quest ⚡' : caption,
               );
               widget.onAwardEmbers?.call(15);
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
+                  const SnackBar(
                     content: Text(
-                      cloudUrl != null
-                          ? '☁️ Story uploaded to Supabase Storage & posted! (+15🔥)'
-                          : '📸 24h Story posted! (+15🔥)',
+                      '☁️ Story uploaded to Supabase Storage & posted! (+15🔥)',
                     ),
                     backgroundColor: AppTheme.emeraldGreen,
                   ),

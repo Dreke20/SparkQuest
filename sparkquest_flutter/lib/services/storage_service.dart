@@ -284,9 +284,61 @@ class StorageService {
   Future<void> savePartyWingman(String name) async =>
       await _prefs?.setString('party_wingman_name', name);
 
-  String getUserName() => _prefs?.getString('user_display_name') ?? 'Alex';
+  String getUserName() =>
+      _prefs?.getString('user_display_name') ??
+      (isReviewerAccount() ? 'Alex' : 'Explorer');
   Future<void> saveUserName(String name) async =>
       await _prefs?.setString('user_display_name', name);
+
+  int getUserAge() => _prefs?.getInt('user_age') ?? 25;
+  Future<void> saveUserAge(int age) async =>
+      await _prefs?.setInt('user_age', age.clamp(18, 99));
+
+  /// Persisted 6-slot user profile photos. Returns empty slots for non-reviewers
+  /// until the user uploads real photos (never leaking mock asset photos).
+  List<String?> getUserPhotos() {
+    final stored = _prefs?.getStringList('user_profile_photos');
+    final reviewer = isReviewerAccount();
+    if (stored != null && stored.isNotEmpty) {
+      final result = List<String?>.filled(6, null);
+      for (int i = 0; i < 6 && i < stored.length; i++) {
+        final item = stored[i].trim();
+        if (item.isEmpty) continue;
+        if (!reviewer && item.startsWith('assets/images/')) continue;
+        result[i] = item;
+      }
+      return result;
+    }
+    if (reviewer) {
+      return [
+        'assets/images/alex.png',
+        'assets/images/quest_coffee.png',
+        'assets/images/quest_arcade.png',
+        null,
+        null,
+        null,
+      ];
+    }
+    return List<String?>.filled(6, null);
+  }
+
+  Future<void> saveUserPhotos(List<String?> photos) async {
+    final encoded = List<String>.generate(
+      6,
+      (i) => (i < photos.length ? (photos[i] ?? '') : ''),
+    );
+    await _prefs?.setStringList('user_profile_photos', encoded);
+  }
+
+  Future<void> clearUserPhotos() async =>
+      await _prefs?.remove('user_profile_photos');
+
+  String? getPrimaryUserPhoto() {
+    for (final p in getUserPhotos()) {
+      if (p != null && p.trim().isNotEmpty) return p;
+    }
+    return null;
+  }
 
   // --- Phase 8–12 Persisted State (Subclass, Guilds, Streak Shield, Match Perks) ---
   bool isStreakShieldArmed() =>

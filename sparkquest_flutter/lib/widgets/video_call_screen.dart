@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../services/realtime_chat_service.dart';
+import '../services/storage_service.dart';
 import '../services/supabase_service.dart';
 import '../services/webrtc_call_service.dart';
 import '../theme/app_theme.dart';
@@ -399,12 +401,47 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                         objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
                       )
                     else
-                      Image.asset(
-                        'assets/images/alex.png',
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => const Center(
-                          child: Icon(Icons.person, color: Colors.white54),
-                        ),
+                      Builder(
+                        builder: (_) {
+                          final localPhoto =
+                              StorageService.instance.getPrimaryUserPhoto();
+                          if (localPhoto != null &&
+                              (localPhoto.startsWith('http://') ||
+                                  localPhoto.startsWith('https://'))) {
+                            return Image.network(
+                              localPhoto,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => const Center(
+                                child: Icon(
+                                  Icons.videocam_off,
+                                  color: Colors.white54,
+                                ),
+                              ),
+                            );
+                          }
+                          if (localPhoto != null &&
+                              !localPhoto.startsWith('assets/')) {
+                            return Image.file(
+                              File(localPhoto),
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => const Center(
+                                child: Icon(
+                                  Icons.videocam_off,
+                                  color: Colors.white54,
+                                ),
+                              ),
+                            );
+                          }
+                          return Container(
+                            color: AppTheme.bgInput,
+                            child: const Center(
+                              child: Icon(
+                                Icons.videocam_off,
+                                color: Colors.white54,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     if (_webRtc.hasLocalVideo)
                       Positioned(

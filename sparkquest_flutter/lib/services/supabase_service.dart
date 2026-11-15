@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'storage_service.dart';
 
@@ -20,7 +21,13 @@ class SupabaseService {
   String? accessToken;
   Map<String, dynamic>? currentUserProfile;
   VoidCallback? onAuthSessionUpdated;
+  final ValueNotifier<int> authSessionRevision = ValueNotifier<int>(0);
   final HttpClient _httpClient = HttpClient();
+
+  void _notifyAuthUpdated() {
+    authSessionRevision.value++;
+    onAuthSessionUpdated?.call();
+  }
 
   bool get isSignedIn =>
       accessToken != null || StorageService.instance.getUserEmail() != null;
@@ -86,8 +93,10 @@ class SupabaseService {
           if (user is Map<String, dynamic>) {
             currentUserId = user['id'] ?? 'user_me';
           }
+          await StorageService.instance.clearUserPhotos();
+          await fetchMyProfile();
           await upsertMyProfile();
-          onAuthSessionUpdated?.call();
+          _notifyAuthUpdated();
           return decoded;
         }
       }
@@ -120,8 +129,10 @@ class SupabaseService {
               await StorageService.instance.saveUserEmail(email);
             }
           }
+          await StorageService.instance.clearUserPhotos();
+          await fetchMyProfile();
           await upsertMyProfile();
-          onAuthSessionUpdated?.call();
+          _notifyAuthUpdated();
           return decoded;
         }
       }
@@ -139,7 +150,7 @@ class SupabaseService {
       final response = await request.close();
       return response.statusCode == 200;
     } catch (_) {
-      return true;
+      return false;
     }
   }
 
@@ -162,8 +173,10 @@ class SupabaseService {
           }
           await StorageService.instance.saveUserName(email.split('@').first);
           await StorageService.instance.saveUserEmail(email);
+          await StorageService.instance.clearUserPhotos();
+          await fetchMyProfile();
           await upsertMyProfile();
-          onAuthSessionUpdated?.call();
+          _notifyAuthUpdated();
           return decoded;
         }
       }
@@ -190,10 +203,11 @@ class SupabaseService {
           }
           await StorageService.instance.saveUserName(email.split('@').first);
           await StorageService.instance.saveUserEmail(email);
+          await StorageService.instance.clearUserPhotos();
           if (accessToken != null) {
             await upsertMyProfile();
           }
-          onAuthSessionUpdated?.call();
+          _notifyAuthUpdated();
           return decoded;
         }
       }
@@ -208,7 +222,7 @@ class SupabaseService {
     await StorageService.instance.saveUserName('Google Play Reviewer');
     await StorageService.instance.saveUserEmail('reviewer@sparkquest.app');
     await StorageService.instance.setReviewerMode(true);
-    onAuthSessionUpdated?.call();
+    _notifyAuthUpdated();
     return {
       'access_token': accessToken,
       'user': {
@@ -226,8 +240,55 @@ class SupabaseService {
     currentUserId = 'user_me';
     currentUserProfile = null;
     await StorageService.instance.saveUserEmail(null);
+    await StorageService.instance.clearUserPhotos();
     await StorageService.instance.setReviewerMode(false);
-    onAuthSessionUpdated?.call();
+    _notifyAuthUpdated();
+  }
+
+  /// Fetch the signed-in user's profile row from `public.profiles` and
+  /// hydrate local display name, age, bio, and primary cloud avatar photo.
+  Future<Map<String, dynamic>?> fetchMyProfile() async {
+    final uid = currentUserId;
+    if (uid == null || uid.isEmpty || uid == 'user_me') return null;
+    try {
+      final uri = Uri.parse(
+        '$baseUrl/rest/v1/profiles?user_id=eq.${Uri.encodeComponent(uid)}&select=*&limit=1',
+      );
+      final request = await _httpClient.getUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(body);
+        if (decoded is List && decoded.isNotEmpty && decoded.first is Map) {
+          final row = Map<String, dynamic>.from(decoded.first as Map);
+          currentUserProfile = row;
+          final remoteName = (row['name'] ?? '').toString().trim();
+          if (remoteName.isNotEmpty) {
+            await StorageService.instance.saveUserName(remoteName);
+          }
+          final remoteAge = row['age'];
+          if (remoteAge is int && remoteAge >= 18) {
+            await StorageService.instance.saveUserAge(remoteAge);
+          }
+          final remoteBio = (row['bio'] ?? '').toString().trim();
+          if (remoteBio.isNotEmpty) {
+            await StorageService.instance.saveUserBio(remoteBio);
+          }
+          final remoteAvatar = (row['avatar_url'] ?? '').toString().trim();
+          if (remoteAvatar.startsWith('http://') ||
+              remoteAvatar.startsWith('https://')) {
+            final photos = StorageService.instance.getUserPhotos();
+            if (photos[0] != remoteAvatar) {
+              photos[0] = remoteAvatar;
+              await StorageService.instance.saveUserPhotos(photos);
+            }
+          }
+          return row;
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 
   /// Upsert the signed-in user's discovery profile into `public.profiles`
@@ -236,6 +297,7 @@ class SupabaseService {
     int? age,
     String? bio,
     String? city,
+    String? avatarUrl,
   }) async {
     final uid = currentUserId;
     if (uid == null || uid.isEmpty || uid == 'user_me') return false;
@@ -244,18 +306,28 @@ class SupabaseService {
       final request = await _httpClient.postUrl(uri);
       _headers.forEach((key, val) => request.headers.set(key, val));
       request.headers.set('Prefer', 'resolution=merge-duplicates,return=representation');
-      request.write(jsonEncode({
+      final primaryPhoto = avatarUrl ?? StorageService.instance.getPrimaryUserPhoto();
+      final payload = <String, dynamic>{
         'user_id': uid,
         'name': name ?? StorageService.instance.getUserName(),
-        'age': age ?? 25,
+        'age': age ?? StorageService.instance.getUserAge(),
         'bio': bio ?? StorageService.instance.getUserBio(),
         'city': city ?? StorageService.instance.getTeleportCity(),
         'embers': StorageService.instance.getEmbers(),
         'is_vip': StorageService.instance.isGoldVip(),
         'selected_frame': StorageService.instance.getSelectedFrame(),
         'updated_at': DateTime.now().toUtc().toIso8601String(),
-      }));
+      };
+      if (primaryPhoto != null &&
+          (primaryPhoto.startsWith('http://') ||
+              primaryPhoto.startsWith('https://'))) {
+        payload['avatar_url'] = primaryPhoto;
+      } else if (avatarUrl == '') {
+        payload['avatar_url'] = '';
+      }
+      request.write(jsonEncode(payload));
       final response = await request.close();
+      await response.drain<void>();
       return response.statusCode >= 200 && response.statusCode < 300;
     } catch (_) {
       return false;
@@ -516,7 +588,8 @@ class SupabaseService {
   }) async {
     try {
       final uid = currentUserId ?? 'user_me';
-      final objectPath = '$uid/${DateTime.now().millisecondsSinceEpoch}_$fileName';
+      final safeName = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+      final objectPath = '$uid/${DateTime.now().millisecondsSinceEpoch}_$safeName';
       final uri = Uri.parse('$baseUrl/storage/v1/object/$bucket/$objectPath');
       final request = await _httpClient.postUrl(uri);
       request.headers.set('apikey', anonKey);
@@ -525,6 +598,7 @@ class SupabaseService {
       request.headers.set('x-upsert', 'true');
       request.add(bytes);
       final response = await request.close();
+      await response.drain<void>();
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return '$baseUrl/storage/v1/object/public/$bucket/$objectPath';
       }

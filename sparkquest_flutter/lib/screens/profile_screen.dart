@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../theme/app_theme.dart';
 import '../widgets/spark_pass_dialog.dart';
@@ -56,21 +58,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isGoldVip = false;
   bool _smartPhotosEnabled = true;
   List<Map<String, String>> _userPrompts = [];
+  int? _uploadingPhotoIndex;
+  final ImagePicker _imagePicker = ImagePicker();
 
-  final List<String?> _photos = [
-    'assets/images/alex.png',
-    'assets/images/quest_coffee.png',
-    'assets/images/quest_arcade.png',
-    null,
-    null,
-    null,
-  ];
+  List<String?> _photos = List<String?>.filled(6, null);
 
   @override
   void initState() {
     super.initState();
     IAPService.instance.addListener(_onIapChanged);
+    SupabaseService.instance.authSessionRevision.addListener(_onAuthChanged);
     _loadProfilePrefs();
+  }
+
+  void _onAuthChanged() {
+    if (mounted) {
+      setState(() {
+        _loadProfilePrefs();
+      });
+    }
   }
 
   void _onIapChanged() {
@@ -95,6 +101,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _notifyMessages = StorageService.instance.isNotifyMessagesEnabled();
     _notifyCalls = StorageService.instance.isNotifyCallsEnabled();
     _isGoldVip = StorageService.instance.isGoldVip();
+    _photos = StorageService.instance.getUserPhotos();
   }
 
   void _openDiagnosticsSheet() {
@@ -326,6 +333,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void dispose() {
     IAPService.instance.removeListener(_onIapChanged);
+    SupabaseService.instance.authSessionRevision.removeListener(_onAuthChanged);
     _voiceTimer?.cancel();
     super.dispose();
   }
@@ -338,17 +346,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (ctx) => _LivenessVerificationModal(
         onVerified: () async {
           setState(() => _isVerified = true);
-          final avatarUrl = await SupabaseService.instance.uploadAssetToBucket(
-            bucket: 'avatars',
-            assetPath: 'assets/images/alex.png',
-            customFileName: 'verified_selfie_alex.png',
-          );
-          if (avatarUrl != null) {
-            await SupabaseService.instance.updateProfileField(
-              'avatar_url',
-              avatarUrl,
-            );
-          }
           await SupabaseService.instance.updateProfileField(
             'is_verified',
             true,
@@ -357,7 +354,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text(
-                  '🎉 Face Verified & Synced to Supabase Cloud Storage!',
+                  '🎉 Face Verified & Synced to your Profile!',
                 ),
                 backgroundColor: AppTheme.emeraldGreen,
               ),
@@ -1813,7 +1810,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(width: 8),
                         const Text(
-                          'SparkQuest v2.1.0+16',
+                          'SparkQuest v2.1.0+17',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 13,
@@ -1845,7 +1842,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Build: 2026.11 • SparkQuest v2.1.0+16',
+                  'Build: 2026.11 • SparkQuest v2.1.0+17',
                   style: TextStyle(color: AppTheme.textDim, fontSize: 10.5),
                 ),
                 const SizedBox(height: 10),
@@ -1976,23 +1973,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ],
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(19),
-                  child: Image.asset(
-                    'assets/images/alex.png',
-                    width: 72,
-                    height: 72,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => Container(
-                      width: 72,
-                      height: 72,
-                      color: AppTheme.bgInput,
-                      child: const Icon(
-                        Icons.person,
-                        color: AppTheme.neonCyan,
-                        size: 40,
-                      ),
-                    ),
+                child: GestureDetector(
+                  onTap: () => _openPhotoSlotOptions(0),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(19),
+                    child: _buildProfileAvatarHeaderImage(),
                   ),
                 ),
               ),
@@ -2022,12 +2007,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 Row(
                   children: [
-                    const Text(
-                      'Alex, 27',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textPrimary,
+                    Flexible(
+                      child: GestureDetector(
+                        onTap: _openEditIdentityDialog,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                '${StorageService.instance.getUserName()}, ${StorageService.instance.getUserAge()}',
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.textPrimary,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.edit_outlined,
+                              size: 15,
+                              color: AppTheme.textDim,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -2482,6 +2486,314 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildProfileAvatarHeaderImage() {
+    final primaryPhoto = _photos.firstWhere(
+      (p) => p != null && p.trim().isNotEmpty,
+      orElse: () => null,
+    );
+    if (primaryPhoto == null) {
+      return Container(
+        width: 72,
+        height: 72,
+        color: AppTheme.bgInput,
+        child: const Icon(
+          Icons.add_a_photo_outlined,
+          color: AppTheme.neonCyan,
+          size: 32,
+        ),
+      );
+    }
+    return _buildPhotoWidget(primaryPhoto, width: 72, height: 72, iconSize: 36);
+  }
+
+  Widget _buildPhotoWidget(
+    String photo, {
+    double? width,
+    double? height,
+    double iconSize = 28,
+  }) {
+    Widget fallback() => Container(
+          width: width,
+          height: height,
+          color: AppTheme.bgInput,
+          child: Icon(
+            Icons.person,
+            color: AppTheme.textSecondary,
+            size: iconSize,
+          ),
+        );
+
+    if (photo.startsWith('http://') || photo.startsWith('https://')) {
+      return Image.network(
+        photo,
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
+        loadingBuilder: (_, child, progress) {
+          if (progress == null) return child;
+          return Container(
+            width: width,
+            height: height,
+            color: AppTheme.bgInput,
+            child: const Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppTheme.neonCyan,
+                ),
+              ),
+            ),
+          );
+        },
+        errorBuilder: (_, _, _) => fallback(),
+      );
+    }
+    if (photo.startsWith('assets/')) {
+      return Image.asset(
+        photo,
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => fallback(),
+      );
+    }
+    return Image.file(
+      File(photo),
+      width: width,
+      height: height,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => fallback(),
+    );
+  }
+
+  Future<void> _openEditIdentityDialog() async {
+    final nameCtrl = TextEditingController(
+      text: StorageService.instance.getUserName(),
+    );
+    final ageCtrl = TextEditingController(
+      text: StorageService.instance.getUserAge().toString(),
+    );
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.bgCard,
+        title: const Text(
+          'Edit Profile Name & Age',
+          style: TextStyle(color: Colors.white, fontSize: 16),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameCtrl,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'Display Name',
+                labelStyle: TextStyle(color: AppTheme.textSecondary),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ageCtrl,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'Age (18+)',
+                labelStyle: TextStyle(color: AppTheme.textSecondary),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: AppTheme.textDim)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.neonCyan,
+              foregroundColor: Colors.black,
+            ),
+            onPressed: () async {
+              final newName = nameCtrl.text.trim();
+              final parsedAge = int.tryParse(ageCtrl.text.trim());
+              if (newName.isNotEmpty) {
+                await StorageService.instance.saveUserName(newName);
+              }
+              if (parsedAge != null && parsedAge >= 18) {
+                await StorageService.instance.saveUserAge(parsedAge);
+              }
+              await SupabaseService.instance.upsertMyProfile();
+              if (mounted) setState(() {});
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openPhotoSlotOptions(int index) async {
+    HapticFeedback.selectionClick();
+    final existing = _photos[index];
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF14182D),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 38,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              existing == null ? 'Upload Profile Photo' : 'Manage Photo Slot ${index + 1}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined, color: AppTheme.neonCyan),
+              title: const Text('Choose from Gallery', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickAndUploadPhoto(index, source: ImageSource.gallery);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined, color: AppTheme.sparkCoral),
+              title: const Text('Take a Photo', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickAndUploadPhoto(index, source: ImageSource.camera);
+              },
+            ),
+            if (existing != null && index != 0)
+              ListTile(
+                leading: const Icon(Icons.star_outline, color: AppTheme.questGold),
+                title: const Text(
+                  'Set as Main Profile Photo',
+                  style: TextStyle(color: Colors.white),
+                ),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  final currentMain = _photos[0];
+                  setState(() {
+                    _photos[0] = existing;
+                    _photos[index] = currentMain;
+                  });
+                  await StorageService.instance.saveUserPhotos(_photos);
+                  await SupabaseService.instance.upsertMyProfile(
+                    avatarUrl: existing,
+                  );
+                },
+              ),
+            if (existing != null)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                title: const Text(
+                  'Remove Photo',
+                  style: TextStyle(color: Colors.redAccent),
+                ),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  setState(() => _photos[index] = null);
+                  await StorageService.instance.saveUserPhotos(_photos);
+                  await SupabaseService.instance.upsertMyProfile(
+                    avatarUrl: StorageService.instance.getPrimaryUserPhoto() ?? '',
+                  );
+                },
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickAndUploadPhoto(int index, {required ImageSource source}) async {
+    try {
+      final picked = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 1200,
+        imageQuality: 85,
+      );
+      if (picked == null) return;
+      if (mounted) setState(() => _uploadingPhotoIndex = index);
+
+      final bytes = await picked.readAsBytes();
+      final nameParts = picked.name.split('.');
+      final ext = nameParts.length > 1 ? nameParts.last.toLowerCase() : 'jpg';
+      final contentType = ext == 'png'
+          ? 'image/png'
+          : ext == 'webp'
+              ? 'image/webp'
+              : 'image/jpeg';
+
+      final cloudUrl = await SupabaseService.instance.uploadMediaBytes(
+        bucket: 'avatars',
+        fileName: 'profile_slot_${index}_${DateTime.now().millisecondsSinceEpoch}.$ext',
+        bytes: bytes,
+        contentType: contentType,
+      );
+
+      if (!mounted) return;
+      if (cloudUrl != null && cloudUrl.isNotEmpty) {
+        setState(() {
+          _photos[index] = cloudUrl;
+          _uploadingPhotoIndex = null;
+        });
+        await StorageService.instance.saveUserPhotos(_photos);
+        final primaryPhoto = StorageService.instance.getPrimaryUserPhoto();
+        if (primaryPhoto != null) {
+          await SupabaseService.instance.upsertMyProfile(avatarUrl: primaryPhoto);
+        }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('☁️ Photo uploaded & synced to your profile!'),
+              backgroundColor: AppTheme.emeraldGreen,
+            ),
+          );
+        }
+      } else {
+        setState(() => _uploadingPhotoIndex = null);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not upload photo to cloud storage. Check your connection and try again.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _uploadingPhotoIndex = null);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Photo selection failed: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
   Widget _buildPhotoGrid() {
     return GridView.builder(
       shrinkWrap: true,
@@ -2495,71 +2807,74 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       itemBuilder: (context, index) {
         final photo = _photos[index];
+        final isUploading = _uploadingPhotoIndex == index;
+        if (isUploading) {
+          return Container(
+            decoration: BoxDecoration(
+              color: AppTheme.bgSurface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppTheme.neonCyan),
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: AppTheme.neonCyan,
+              ),
+            ),
+          );
+        }
         if (photo != null) {
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Image.asset(
-                  photo,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => Container(
-                    color: AppTheme.bgInput,
-                    child: const Icon(
-                      Icons.person,
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 6,
-                  right: 6,
-                  child: Container(
-                    padding: const EdgeInsets.all(3),
-                    decoration: const BoxDecoration(
-                      color: Colors.black54,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.check,
-                      size: 14,
-                      color: AppTheme.neonCyan,
-                    ),
-                  ),
-                ),
-                if (index == 0)
+          return GestureDetector(
+            onTap: () => _openPhotoSlotOptions(index),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _buildPhotoWidget(photo),
                   Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
+                    top: 6,
+                    right: 6,
                     child: Container(
-                      color: AppTheme.sparkCoral.withValues(alpha: 0.85),
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: const Text(
-                        'MAIN',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.edit,
+                        size: 13,
+                        color: AppTheme.neonCyan,
                       ),
                     ),
                   ),
-              ],
+                  if (index == 0)
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        color: AppTheme.sparkCoral.withValues(alpha: 0.85),
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: const Text(
+                          'MAIN',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           );
         }
 
         return InkWell(
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Select image from Gallery or Camera'),
-              ),
-            );
-          },
+          onTap: () => _openPhotoSlotOptions(index),
           borderRadius: BorderRadius.circular(14),
           child: Container(
             decoration: BoxDecoration(

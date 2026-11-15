@@ -74,13 +74,13 @@ class ReleaseNotesDialog extends StatelessWidget {
                     _buildVersionCard(
                       badge: 'CURRENT RELEASE',
                       badgeColor: AppTheme.emeraldGreen,
-                      version: 'v2.1.0+16',
+                      version: 'v2.1.0+17',
                       date: 'November 2026',
-                      title: '100% Live Data, Real Auth, WebRTC Video & Push Alerts',
+                      title: 'Real Profile Photo Uploads, Live Profiles & Auth Sync',
                       highlights: const [
-                        '✅ Zero Mock/Fake Data for Production Users: Live Supabase leaderboard, authentic profiles, real auth flows, and no fabricated replies or offline stubs.',
-                        '🔔 Native Android Push Notifications & Live Supabase Realtime WebSocket alerts for Sparks, Chats & Calls.',
-                        '📹 Real-time P2P WebRTC Video/Voice Calls with TURN relay fallback, ICE restart, Comfort Blur, and SDP/ICE signaling.',
+                        '📸 Real Gallery & Camera Profile Photo Uploader syncing directly to Supabase Storage (`avatars` & `stories` buckets).',
+                        '🪪 Zero Mock Avatars on Sign-Up/Login: Dynamic header photo, editable display name & age synced with cloud profiles.',
+                        '✅ Live XP Leaderboard, WebRTC TURN/ICE resilience & Native Push Notifications.',
                         '🛡️ Strict Reviewer Account Isolation (`reviewer@sparkquest.app`) with zero demo leaks.',
                       ],
                     ),
