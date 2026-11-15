@@ -11,6 +11,7 @@ import 'package:sparkquest/services/storage_service.dart';
 import 'package:sparkquest/services/supabase_service.dart';
 import 'package:sparkquest/services/admob_service.dart';
 import 'package:sparkquest/services/webrtc_call_service.dart';
+import 'package:sparkquest/widgets/auth_dialog.dart';
 
 void main() {
   setUp(() async {
@@ -573,5 +574,23 @@ void main() {
 
     await SupabaseService.instance.signOut();
     expect(StorageService.instance.getIntroVideoUrl(), isNull);
+  });
+
+  testWidgets('Phase 23: Google Sign-In button & FCM fallback safety', (
+    WidgetTester tester,
+  ) async {
+    expect(PushNotificationService.instance.isFirebaseReady, isFalse);
+    final updated = await SupabaseService.instance.upsertFcmToken('fcm_test_token');
+    expect(updated, isFalse);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AuthDialog(onAuthenticated: () {}),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.text('Continue with Google'), findsOneWidget);
   });
 }

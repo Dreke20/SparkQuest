@@ -2,13 +2,25 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import 'storage_service.dart';
 import 'supabase_service.dart';
 
-/// Bridges native Android local notifications (`MethodChannel`) with a live
+@pragma('vm:entry-point')
+Future<void> sparkQuestFcmBackgroundHandler(RemoteMessage message) async {
+  try {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp();
+    }
+  } catch (_) {}
+}
+
+/// Bridges native Android local notifications (`MethodChannel`) + optional FCM
+/// (`FirebaseMessaging` when `google-services.json` is configured) with a live
 /// Supabase Realtime Phoenix WebSocket (`public.messages`, `public.matches`,
 /// `public.call_signals`) for sparks, chats, incoming calls, and WebRTC signaling.
 class PushNotificationService extends ChangeNotifier {
@@ -28,7 +40,9 @@ class PushNotificationService extends ChangeNotifier {
   Timer? _reconnectTimer;
   bool _initialized = false;
   bool _realtimeConnected = false;
+  bool _firebaseReady = false;
   bool _disposed = false;
+  String? _latestFcmToken;
   int _refCounter = 1;
   int _reconnectAttempts = 0;
 
@@ -38,7 +52,9 @@ class PushNotificationService extends ChangeNotifier {
   VoidCallback? onWearSosTriggered;
 
   bool get isRealtimeConnected => _realtimeConnected;
+  bool get isFirebaseReady => _firebaseReady;
   bool get isInitialized => _initialized;
+  String? get latestFcmToken => _latestFcmToken;
 
   Future<void> initialize({bool requestAndroidPermission = false}) async {
     if (_initialized) return;
@@ -62,6 +78,10 @@ class PushNotificationService extends ChangeNotifier {
 
     SupabaseService.instance.onAuthSessionUpdated = () {
       unawaited(syncBackgroundSession());
+      final token = _latestFcmToken;
+      if (token != null && token.isNotEmpty) {
+        unawaited(SupabaseService.instance.upsertFcmToken(token));
+      }
     };
 
     if (requestAndroidPermission) {
@@ -72,8 +92,57 @@ class PushNotificationService extends ChangeNotifier {
       await SupabaseService.instance.triggerSosAlert(source: 'wear_os_action');
       onWearSosTriggered?.call();
     }
+    await _initFirebaseMessaging(requestPermissionPrompt: requestAndroidPermission);
     await syncBackgroundSession();
     unawaited(connectRealtime());
+  }
+
+  /// Safely initializes Firebase Cloud Messaging when `google-services.json` is
+  /// present in `android/app/`. Falls back silently to native Android
+  /// `NotificationSyncJobService` + Supabase Realtime if Firebase is unconfigured.
+  Future<void> _initFirebaseMessaging({bool requestPermissionPrompt = false}) async {
+    try {
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp();
+      }
+      _firebaseReady = Firebase.apps.isNotEmpty;
+      if (!_firebaseReady) return;
+
+      FirebaseMessaging.onBackgroundMessage(sparkQuestFcmBackgroundHandler);
+      final messaging = FirebaseMessaging.instance;
+      if (requestPermissionPrompt) {
+        await messaging.requestPermission();
+      }
+      // ignore: deprecated_member_use
+      final token = await messaging.getToken();
+      if (token != null && token.isNotEmpty) {
+        _latestFcmToken = token;
+        unawaited(SupabaseService.instance.upsertFcmToken(token));
+      }
+      // ignore: deprecated_member_use
+      messaging.onTokenRefresh.listen((newToken) {
+        if (newToken.isNotEmpty) {
+          _latestFcmToken = newToken;
+          unawaited(SupabaseService.instance.upsertFcmToken(newToken));
+        }
+      });
+      FirebaseMessaging.onMessage.listen((RemoteMessage remote) {
+        final title = remote.notification?.title ?? 'SparkQuest';
+        final body = remote.notification?.body ?? 'You have a new update!';
+        final channel =
+            remote.data['channel_id']?.toString() ?? channelMessages;
+        onInAppBanner?.call(title, body);
+        unawaited(showLocalNotification(
+          id: remote.messageId?.hashCode ?? DateTime.now().millisecond,
+          title: title,
+          body: body,
+          channelId: channel,
+        ));
+      });
+      notifyListeners();
+    } catch (_) {
+      _firebaseReady = false;
+    }
   }
 
   /// Arms persistent Android notification with WearOS 1-Tap SOS watch action

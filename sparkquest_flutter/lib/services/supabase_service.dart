@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'storage_service.dart';
 
 /// Supabase Service for SparkQuest Flutter App
@@ -12,11 +14,15 @@ class SupabaseService {
   static const String baseUrl = 'https://kqvjntbiagzywstijtsz.supabase.co';
   static const String anonKey =
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxdmpudGJpYWd6eXdzdGlqdHN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMxMjMzNzIsImV4cCI6MjEwODY5OTM3Mn0.Hwh0Rkdiu1SuZXmsyxshnbkwAviG46PM-yT8kbvp62E';
+  static const String googleWebClientId =
+      String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
 
   static final SupabaseService instance = SupabaseService._internal();
   SupabaseService._internal();
 
   bool isConnected = false;
+  bool _googleSignInInitialized = false;
+  String? lastAuthError;
   String? currentUserId = 'user_me';
   String? accessToken;
   Map<String, dynamic>? currentUserProfile;
@@ -104,9 +110,50 @@ class SupabaseService {
     return null;
   }
 
+  /// Interactive native Google Sign-In -> exchanges ID token with Supabase Auth.
+  Future<Map<String, dynamic>?> signInWithGoogle() async {
+    lastAuthError = null;
+    try {
+      if (!_googleSignInInitialized) {
+        await GoogleSignIn.instance.initialize(
+          serverClientId:
+              googleWebClientId.isNotEmpty ? googleWebClientId : null,
+        );
+        _googleSignInInitialized = true;
+      }
+      final account = await GoogleSignIn.instance.authenticate();
+      final idToken = account.authentication.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        lastAuthError =
+            'Google Sign-In did not return an ID token. Configure a Google Web Client ID in Google Cloud Console & Supabase Auth.';
+        return null;
+      }
+      final displayName = account.displayName?.trim();
+      if (displayName != null &&
+          displayName.isNotEmpty &&
+          StorageService.instance.getUserName().isEmpty) {
+        await StorageService.instance.saveUserName(displayName);
+      }
+      return await signInWithGoogleToken(idToken);
+    } on GoogleSignInException catch (e) {
+      if (e.code == GoogleSignInExceptionCode.canceled) {
+        lastAuthError = 'Google Sign-In was canceled.';
+      } else {
+        lastAuthError =
+            'Google Sign-In requires Google Cloud OAuth & SHA-1 setup (${e.code.name}).';
+      }
+      return null;
+    } catch (e) {
+      lastAuthError =
+          'Google Sign-In unavailable until Google Cloud OAuth / google-services.json is configured.';
+      return null;
+    }
+  }
+
   /// Sign In with Google ID Token via Supabase Auth
   Future<Map<String, dynamic>?> signInWithGoogleToken(String idToken) async {
     if (idToken.isEmpty || idToken.contains('mock')) return null;
+    lastAuthError = null;
     try {
       final uri = Uri.parse('$baseUrl/auth/v1/token?grant_type=id_token');
       final request = await _httpClient.postUrl(uri);
@@ -128,6 +175,15 @@ class SupabaseService {
             if (email != null) {
               await StorageService.instance.saveUserEmail(email);
             }
+            final meta = user['user_metadata'];
+            final fullName = meta is Map
+                ? (meta['full_name'] ?? meta['name'])?.toString().trim()
+                : null;
+            if (fullName != null &&
+                fullName.isNotEmpty &&
+                StorageService.instance.getUserName().isEmpty) {
+              await StorageService.instance.saveUserName(fullName);
+            }
           }
           await StorageService.instance.clearUserPhotos();
           await fetchMyProfile();
@@ -135,8 +191,13 @@ class SupabaseService {
           _notifyAuthUpdated();
           return decoded;
         }
+      } else {
+        lastAuthError =
+            'Supabase Google OAuth rejected token (${response.statusCode}). Ensure Google provider is enabled in Supabase Auth.';
       }
-    } catch (_) {}
+    } catch (_) {
+      lastAuthError = 'Network error during Google Sign-In.';
+    }
     return null;
   }
 
@@ -236,13 +297,56 @@ class SupabaseService {
 
   /// Sign Out
   Future<void> signOut() async {
+    if (_googleSignInInitialized) {
+      try {
+        await GoogleSignIn.instance.signOut();
+      } catch (_) {}
+    }
     accessToken = null;
     currentUserId = 'user_me';
     currentUserProfile = null;
+    lastAuthError = null;
     await StorageService.instance.saveUserEmail(null);
     await StorageService.instance.clearUserPhotos();
     await StorageService.instance.setReviewerMode(false);
     _notifyAuthUpdated();
+  }
+
+  /// Syncs the device's FCM registration token to `public.profiles.fcm_token`
+  /// so the `push-notify` Edge Function can send background push alerts.
+  Future<bool> upsertFcmToken(String fcmToken) async {
+    final uid = currentUserId;
+    if (fcmToken.isEmpty || uid == null || uid.isEmpty || uid == 'user_me') {
+      return false;
+    }
+    try {
+      final uri = Uri.parse(
+        '$baseUrl/rest/v1/profiles?user_id=eq.${Uri.encodeComponent(uid)}',
+      );
+      final request = await _httpClient.patchUrl(uri);
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      request.write(jsonEncode({'fcm_token': fcmToken}));
+      final response = await request.close();
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Invokes `push-notify` Edge Function for FCM HTTP v1 delivery when configured.
+  Future<void> dispatchRemotePush({
+    required String table,
+    required Map<String, dynamic> record,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/functions/v1/push-notify');
+      final request = await _httpClient
+          .postUrl(uri)
+          .timeout(const Duration(seconds: 4));
+      _headers.forEach((key, val) => request.headers.set(key, val));
+      request.write(jsonEncode({'table': table, 'record': record}));
+      await request.close().timeout(const Duration(seconds: 4));
+    } catch (_) {}
   }
 
   /// Fetch the signed-in user's profile row from `public.profiles` and
@@ -479,16 +583,20 @@ class SupabaseService {
       final uri = Uri.parse('$baseUrl/rest/v1/messages');
       final request = await _httpClient.postUrl(uri);
       _headers.forEach((key, val) => request.headers.set(key, val));
-      final payload = jsonEncode({
+      final payloadMap = {
         'match_id': matchId,
         'sender_id': senderId,
         'content': content,
         'is_voice': isVoice,
         'duration_sec': durationSec,
-      });
-      request.write(payload);
+      };
+      request.write(jsonEncode(payloadMap));
       final response = await request.close();
-      return response.statusCode >= 200 && response.statusCode < 300;
+      final ok = response.statusCode >= 200 && response.statusCode < 300;
+      if (ok) {
+        unawaited(dispatchRemotePush(table: 'messages', record: payloadMap));
+      }
+      return ok;
     } catch (_) {
       return false;
     }
@@ -574,6 +682,15 @@ class SupabaseService {
       if (response.statusCode == 200) {
         final decoded = jsonDecode(body);
         if (decoded is Map<String, dynamic>) {
+          if (decoded['is_match'] == true) {
+            unawaited(dispatchRemotePush(
+              table: 'matches',
+              record: {
+                'user_id_2': targetId,
+                'user_name': StorageService.instance.getUserName(),
+              },
+            ));
+          }
           return decoded;
         }
       }
@@ -792,7 +909,7 @@ class SupabaseService {
       final uri = Uri.parse('$baseUrl/rest/v1/call_signals');
       final request = await _httpClient.postUrl(uri);
       _headers.forEach((key, val) => request.headers.set(key, val));
-      request.write(jsonEncode({
+      final signalMap = {
         'room_id': roomId,
         'caller_id': currentUserId ?? 'user_me',
         'caller_name': callerName,
@@ -800,9 +917,14 @@ class SupabaseService {
         'callee_id': calleeId,
         'call_type': callType,
         'status': 'ringing',
-      }));
+      };
+      request.write(jsonEncode(signalMap));
       final response = await request.close();
-      return response.statusCode >= 200 && response.statusCode < 300;
+      final ok = response.statusCode >= 200 && response.statusCode < 300;
+      if (ok) {
+        unawaited(dispatchRemotePush(table: 'call_signals', record: signalMap));
+      }
+      return ok;
     } catch (_) {
       return false;
     }

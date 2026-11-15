@@ -157,6 +157,36 @@ class _AuthDialogState extends State<AuthDialog> with SingleTickerProviderStateM
     }
   }
 
+  void _signInWithGoogle() async {
+    HapticFeedback.mediumImpact();
+    setState(() => _isLoading = true);
+    final res = await SupabaseService.instance.signInWithGoogle();
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (res != null) {
+      HapticFeedback.heavyImpact();
+      _confettiController.play();
+      widget.onAuthenticated();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🎉 Signed in with Google! Cloud Sync active.'),
+          backgroundColor: Color(0xFF10B981),
+        ),
+      );
+      Navigator.pop(context);
+    } else {
+      final err = SupabaseService.instance.lastAuthError ??
+          'Google Sign-In could not complete.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(err),
+          backgroundColor: Colors.orangeAccent.shade700,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -379,6 +409,37 @@ class _AuthDialogState extends State<AuthDialog> with SingleTickerProviderStateM
                           ],
                         ),
                       ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.12))),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 10),
+                        child: Text(
+                          'OR',
+                          style: TextStyle(color: Colors.white38, fontSize: 11),
+                        ),
+                      ),
+                      Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.12))),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: _isLoading ? null : _signInWithGoogle,
+                    icon: const Icon(Icons.g_mobiledata, size: 24, color: Color(0xFF06B6D4)),
+                    label: const Text(
+                      'Continue with Google',
+                      style: TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ),
                 ],
